@@ -156,7 +156,7 @@ void stopFsiScan(sdbusplus::bus::bus& bus)
         auto method = bus.new_method_call(SYSTEMD_SERVICE, SYSTEMD_OBJ_PATH,
                                           SYSTEMD_INTERFACE, "StopUnit");
 
-        method.append(FSI_SCAN_SVC);
+        method.append(FSI_SCAN_SVC, "replace");
 
         bus.call_noreply(method);
     }
