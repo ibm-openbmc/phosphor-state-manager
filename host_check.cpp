@@ -102,6 +102,10 @@ bool checkFirmwareConditionRunning(sdbusplus::bus::bus& bus)
 
                 std::variant<std::string> currentFwCond;
                 response.read(currentFwCond);
+                info(
+                    "Read host fw condition {COND_VALUE} from {COND_SERVICE}, {COND_PATH}",
+                    "COND_VALUE", std::get<std::string>(currentFwCond),
+                    "COND_SERVICE", service.c_str(), "COND_PATH", path.c_str());
 
                 if (std::get<std::string>(currentFwCond) ==
                     "xyz.openbmc_project.Condition.HostFirmware."
@@ -177,10 +181,10 @@ bool isHostRunning()
     // normal cases where the BMC is rebooted with chassis power off. In
     // cases where chassis power is on, the host is likely running so we want
     // to be sure we check all interfaces
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 5; i++)
     {
         // Give mapper a small window to introspect new objects on bus
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         if (checkFirmwareConditionRunning(bus))
         {
             info("Host is running!");
