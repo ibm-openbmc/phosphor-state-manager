@@ -63,6 +63,7 @@ constexpr auto HOST_STATE_DIAGNOSTIC_MODE =
     "obmc-host-diagnostic-mode@0.target";
 
 constexpr auto HOST_STATE_QUIESCE_TGT = "obmc-host-quiesce@0.target";
+constexpr auto HOST_STATE_CRASH_TGT = "obmc-host-crash@0.target";
 
 constexpr auto ACTIVE_STATE = "active";
 constexpr auto ACTIVATING_STATE = "activating";
@@ -342,6 +343,20 @@ void Host::sysStateChangeJobNew(sdbusplus::message::message& msg)
     {
         info("Received signal that host is in diagnostice mode");
         this->currentHostState(server::Host::HostState::DiagnosticMode);
+    }
+    else if ((newStateUnit == HOST_STATE_CRASH_TGT) &&
+             (server::Host::currentHostState() ==
+              server::Host::HostState::Running))
+    {
+        // Only decrease the boot count if host was running when the host crash
+        // target was started. Systemd will sometimes trigger multiple
+        // JobNew events for the same target. This seems to be related to
+        // how OpenBMC utilizes the targets in the reboot scenario
+        info("Received signal that host has crashed, decrement reboot count");
+
+        // A host crash can cause a reboot of the host so decrement the reboot
+        // count
+        decrementRebootCount();
     }
 }
 
