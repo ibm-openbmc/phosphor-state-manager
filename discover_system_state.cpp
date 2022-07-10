@@ -167,12 +167,14 @@ int main(int argc, char** argv)
         else if (RestorePolicy::Policy::AlwaysOff ==
                  RestorePolicy::convertPolicyFromString(powerPolicy))
         {
-            info("power_policy=ALWAYS_POWER_OFF, set requested state to off");
+            info(
+                "power_policy=ALWAYS_POWER_OFF, set requested state to off (30s delay)");
             // Read last requested state and re-request it to execute it
             auto hostReqState = phosphor::state::manager::utils::getProperty(
                 bus, hostPath, HOST_BUSNAME, "RequestedHostTransition");
             if (hostReqState == convertForMessage(server::Host::Transition::On))
             {
+                std::this_thread::sleep_for(std::chrono::seconds(30));
                 phosphor::state::manager::utils::setProperty(
                     bus, hostPath, HOST_BUSNAME, "RequestedHostTransition",
                     convertForMessage(server::Host::Transition::Off));
