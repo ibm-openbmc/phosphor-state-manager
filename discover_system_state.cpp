@@ -139,34 +139,14 @@ int main(int argc, char** argv)
                 convertForMessage(RestorePolicy::Policy::None));
         }
 
-        auto methodUserSettingDelay = bus.new_method_call(
-            settings.service(settings.powerRestorePolicy, powerRestoreIntf)
-                .c_str(),
-            settings.powerRestorePolicy.c_str(),
-            "org.freedesktop.DBus.Properties", "Get");
-
-        methodUserSettingDelay.append(powerRestoreIntf, "PowerRestoreDelay");
-
-        std::variant<uint64_t> restoreDelay;
-
-        auto delayResult = bus.call(methodUserSettingDelay);
-        delayResult.read(restoreDelay);
-        auto powerRestoreDelayUsec =
-            std::chrono::microseconds(std::get<uint64_t>(restoreDelay));
-        auto powerRestoreDelaySec =
-            std::chrono::duration_cast<std::chrono::seconds>(
-                powerRestoreDelayUsec);
-
         info("Host power is off, processing power policy {POWER_POLICY}",
              "POWER_POLICY", powerPolicy);
 
         if (RestorePolicy::Policy::AlwaysOn ==
             RestorePolicy::convertPolicyFromString(powerPolicy))
         {
-            info(
-                "power_policy=ALWAYS_POWER_ON, powering host on ({DELAY}s delay)",
-                "DELAY", powerRestoreDelaySec.count());
-            std::this_thread::sleep_for(powerRestoreDelayUsec);
+            info("power_policy=ALWAYS_POWER_ON, powering host on (30s delay)");
+            std::this_thread::sleep_for(std::chrono::seconds(30));
             phosphor::state::manager::utils::setProperty(
                 bus, hostPath, HOST_BUSNAME, "RestartCause",
                 convertForMessage(
@@ -190,15 +170,14 @@ int main(int argc, char** argv)
                  RestorePolicy::convertPolicyFromString(powerPolicy))
         {
             info(
-                "power_policy=ALWAYS_POWER_OFF, set requested state to off ({DELAY}s delay)",
-                "DELAY", powerRestoreDelaySec.count());
-            std::this_thread::sleep_for(powerRestoreDelayUsec);
+                "power_policy=ALWAYS_POWER_OFF, set requested state to off (30s delay)");
             // Read last requested state and re-request it to execute it
             auto hostReqState = phosphor::state::manager::utils::getProperty(
                 bus, hostPath, HOST_BUSNAME, "RequestedHostTransition");
             if (hostReqState !=
                 convertForMessage(server::Host::Transition::Off))
             {
+                std::this_thread::sleep_for(std::chrono::seconds(30));
                 phosphor::state::manager::utils::setProperty(
                     bus, hostPath, HOST_BUSNAME, "RequestedHostTransition",
                     convertForMessage(server::Host::Transition::Off));
@@ -207,9 +186,7 @@ int main(int argc, char** argv)
         else if (RestorePolicy::Policy::Restore ==
                  RestorePolicy::convertPolicyFromString(powerPolicy))
         {
-            info("power_policy=RESTORE, restoring last state ({DELAY}s delay)",
-                 "DELAY", powerRestoreDelaySec.count());
-            std::this_thread::sleep_for(powerRestoreDelayUsec);
+            info("power_policy=RESTORE, restoring last state (30s delay)");
             // Read last requested state and re-request it to execute it
             auto hostReqState = phosphor::state::manager::utils::getProperty(
                 bus, hostPath, HOST_BUSNAME, "RequestedHostTransition");
@@ -218,6 +195,7 @@ int main(int argc, char** argv)
             if (hostReqState !=
                 convertForMessage(server::Host::Transition::Off))
             {
+                std::this_thread::sleep_for(std::chrono::seconds(30));
                 phosphor::state::manager::utils::setProperty(
                     bus, hostPath, HOST_BUSNAME, "RestartCause",
                     convertForMessage(
