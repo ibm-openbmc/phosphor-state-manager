@@ -108,6 +108,18 @@ int main(int argc, char** argv)
     methodUserSetting.append(powerRestoreIntf, "PowerRestorePolicy");
 
     std::variant<std::string> result;
+    bool acLoss = false;
+    // Only run APR iff chassis power was on prior to
+    // the BMC reboot (unless policy is AlwaysOn)
+    auto size = std::snprintf(nullptr, 0, CHASSIS_LOST_POWER_FILE, 0);
+    size++; // null
+    std::unique_ptr<char[]> buf(new char[size]);
+    std::snprintf(buf.get(), size, CHASSIS_LOST_POWER_FILE, 0);
+    if (fs::exists(buf.get()))
+    {
+        acLoss = true;
+    }
+
     try
     {
         auto reply = bus.call(methodOneTime);
@@ -119,19 +131,6 @@ int main(int argc, char** argv)
         {
             // one_time is set to None so use the customer setting
             info("One time not set, check user setting of power policy");
-
-            // Only use customer setting if chassis power was on prior to
-            // the BMC reboot
-            auto size = std::snprintf(nullptr, 0, CHASSIS_LOST_POWER_FILE, 0);
-            size++; // null
-            std::unique_ptr<char[]> buf(new char[size]);
-            std::snprintf(buf.get(), size, CHASSIS_LOST_POWER_FILE, 0);
-            if (!fs::exists(buf.get()))
-            {
-                info(
-                    "Chassis power was not on prior to BMC reboot so do not run any power policy");
-                return 0;
-            }
 
             auto reply = bus.call(methodUserSetting);
             reply.read(result);
@@ -163,6 +162,14 @@ int main(int argc, char** argv)
             phosphor::state::manager::utils::setProperty(
                 bus, hostPath, HOST_BUSNAME, "RequestedHostTransition",
                 convertForMessage(server::Host::Transition::On));
+        }
+        // Always execute power on if AlwaysOn is set, otherwise check
+        // AC loss status on whether to execute other policy settings
+        else if (!acLoss)
+        {
+            info(
+                "Chassis power was not on prior to BMC reboot so do not run any further power policy");
+            return 0;
         }
         else if (RestorePolicy::Policy::AlwaysOff ==
                  RestorePolicy::convertPolicyFromString(powerPolicy))
