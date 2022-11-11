@@ -395,7 +395,11 @@ bool Chassis::determineStatusOfPSUPower()
                     "Error reading Power System Inputs property, error: {ERROR}, "
                     "service: {SERVICE} path: {PATH}",
                     "ERROR", e, "SERVICE", service, "PATH", path);
-                throw;
+                // This D-Bus call can fail due to timeout.  This occurs when
+                // the BMC is heavily loaded, such as when the BMC is rebooted
+                // while the chassis is powered on.  Assume PSU power is good.
+                // Rely on a PropertiesChanged event if that changes.
+                return true;
             }
         }
     }
