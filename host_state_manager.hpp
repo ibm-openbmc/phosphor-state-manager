@@ -146,6 +146,13 @@ class Host : public HostInherit
         debug("External request to reset reboot count");
         auto retryAttempts = sdbusplus::xyz::openbmc_project::Control::Boot::
             server::RebootAttempts::retryAttempts();
+
+        // For legacy purposes, if a caller passes in 0, they expect the
+        // default to be set
+        if (value == 0)
+        {
+            value = retryAttempts;
+        }
         return (
             sdbusplus::xyz::openbmc_project::Control::Boot::server::
                 RebootAttempts::attemptsLeft(std::min(value, retryAttempts)));
