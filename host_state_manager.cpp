@@ -94,15 +94,26 @@ void Host::subscribeToSystemdSignals()
 {
     auto method = this->bus.new_method_call(SYSTEMD_SERVICE, SYSTEMD_OBJ_PATH,
                                             SYSTEMD_INTERFACE, "Subscribe");
-    try
+    // There are times during the BMC boot where systemd is unable to respond to
+    // the "Subscribe" call. Handle this by retrying the call up to 3 times
+    // before logging an error
+    for (int i = 0; i < 3; i++)
     {
-        this->bus.call_noreply(method);
+        try
+        {
+            this->bus.call_noreply(method);
+        }
+        catch (const sdbusplus::exception::exception& e)
+        {
+            error("Failed to subscribe to systemd signals: {ERROR}", "ERROR",
+                  e);
+            continue;
+        }
+        return;
     }
-    catch (const sdbusplus::exception::exception& e)
-    {
-        error("Failed to subscribe to systemd signals: {ERROR}", "ERROR", e);
-        elog<InternalFailure>();
-    }
+    // Multiple tries above did not work so log an InternalFailure and crash the
+    // service
+    elog<InternalFailure>();
     return;
 }
 
