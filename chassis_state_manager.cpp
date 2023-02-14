@@ -79,23 +79,6 @@ constexpr auto POWERSYSINPUTS_INTERFACE =
     "xyz.openbmc_project.State.Decorator.PowerSystemInputs";
 constexpr auto PROPERTY_INTERFACE = "org.freedesktop.DBus.Properties";
 
-void Chassis::subscribeToSystemdSignals()
-{
-    try
-    {
-        auto method = this->bus.new_method_call(
-            SYSTEMD_SERVICE, SYSTEMD_OBJ_PATH, SYSTEMD_INTERFACE, "Subscribe");
-        this->bus.call(method);
-    }
-    catch (const sdbusplus::exception::exception& e)
-    {
-        error("Failed to subscribe to systemd signals: {ERROR}", "ERROR", e);
-        elog<InternalFailure>();
-    }
-
-    return;
-}
-
 // TODO - Will be rewritten once sdbusplus client bindings are in place
 //        and persistent storage design is in place and sdbusplus
 //        has read property function
