@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utils.hpp"
 #include "xyz/openbmc_project/State/BMC/server.hpp"
 
 #include <linux/watchdog.h>
@@ -43,7 +44,7 @@ class BMC : public BMCInherit
             std::bind(std::mem_fn(&BMC::bmcStateChange), this,
                       std::placeholders::_1)))
     {
-        subscribeToSystemdSignals();
+        utils::subscribeToSystemdSignals(bus);
         discoverInitialState();
         discoverLastRebootCause();
         this->emit_object_added();
@@ -77,11 +78,6 @@ class BMC : public BMCInherit
      * @brief discover the state of the bmc
      **/
     void discoverInitialState();
-
-    /**
-     * @brief subscribe to the systemd signals
-     **/
-    void subscribeToSystemdSignals();
 
     /** @brief Execute the transition request
      *
