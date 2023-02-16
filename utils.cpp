@@ -28,26 +28,21 @@ void subscribeToSystemdSignals(sdbusplus::bus::bus& bus)
 {
     auto method = bus.new_method_call(SYSTEMD_SERVICE, SYSTEMD_OBJ_PATH,
                                       SYSTEMD_INTERFACE, "Subscribe");
-    // There are times during the BMC boot where systemd is unable to respond to
-    // the "Subscribe" call. Handle this by retrying the call up to 3 times
-    // before logging an error
-    for (int i = 0; i < 3; i++)
+
+    try
     {
-        try
-        {
-            bus.call_noreply(method);
-        }
-        catch (const sdbusplus::exception::exception& e)
-        {
-            error("Failed to subscribe to systemd signals: {ERROR}", "ERROR",
-                  e);
-            continue;
-        }
-        return;
+        // On OpenBMC based systems, systemd has had a few situations where it
+        // has been unable to respond to this call within the default d-bus
+        // timeout of 25 seconds. This is due to the large amount of work being
+        // done by systemd during OpenBMC startup. Set the timeout for this call
+        // to 60 seconds.
+        bus.call(method, (60 * 1000000L));
     }
-    // Multiple tries above did not work so throw an error and crash the
-    // service
-    throw std::runtime_error("Unable to subscribe to systemd signals");
+    catch (const sdbusplus::exception::exception& e)
+    {
+        error("Failed to subscribe to systemd signals: {ERROR}", "ERROR", e);
+        throw std::runtime_error("Unable to subscribe to systemd signals");
+    }
     return;
 }
 
