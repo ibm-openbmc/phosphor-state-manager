@@ -50,6 +50,9 @@ constexpr auto PROPERTY_RESTART_CAUSE = "RestartCause";
 
 uint64_t ScheduledHostTransition::scheduledTime(uint64_t value)
 {
+    info("A scheduled host transtion request has been made for {TIME}", "TIME",
+         value);
+
     if (value == 0)
     {
         // 0 means the function Scheduled Host Transition is disabled
@@ -202,6 +205,19 @@ void ScheduledHostTransition::handleTimeUpdates()
     auto deltaTime = seconds(schedTime) - getTime();
     if (deltaTime <= seconds(0))
     {
+        auto currentBmcState = phosphor::state::manager::utils::getProperty(
+            bus, "/xyz/openbmc_project/state/bmc0",
+            "xyz.openbmc_project.State.BMC", "CurrentBMCState");
+
+        // If BMC is not in Ready state, delay 60s
+        if (currentBmcState != "xyz.openbmc_project.State.BMC.BMCState.Ready")
+        {
+            info("CurrentBMCState ({BMC_STATE}) is not ready so delay by 60s",
+                 "BMC_STATE", currentBmcState);
+            timer.restart(seconds(60));
+            return;
+        }
+
         hostTransition();
         // Set scheduledTime to 0 to disable host transition and update
         // scheduled values
