@@ -22,6 +22,7 @@ unit_files = [
     'phosphor-set-host-transition-to-running@.service',
     'phosphor-chassis-check-power-status@.service',
     'phosphor-bmc-security-check.service',
+    'phosphor-broadcast-active-bmc-role.service',
     'phosphor-create-chassis-poweron-log@.service',
     'phosphor-set-chassis-transition-to-on@.service',
     'phosphor-set-chassis-transition-to-off@.service'

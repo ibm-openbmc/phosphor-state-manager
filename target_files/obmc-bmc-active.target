@@ -1,3 +1,4 @@
 [Unit]
 Description=Active BMC Target
 Conflicts=obmc-bmc-passive.target
+BindsTo=phosphor-broadcast-active-bmc-role.service
