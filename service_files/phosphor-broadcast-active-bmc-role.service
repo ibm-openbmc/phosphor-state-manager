@@ -1,0 +1,10 @@
+[Unit]
+Description=Broadcast that this BMC role is Active
+PartOf=obmc-bmc-active.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=mkdir -p /run/openbmc/
+ExecStart=/bin/touch /run/openbmc/active-bmc
+ExecStop=/bin/rm -f /run/openbmc/active-bmc
