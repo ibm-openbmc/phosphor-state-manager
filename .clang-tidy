@@ -287,3 +287,4 @@ readability-uniqueptr-delete-release,
 readability-uppercase-literal-suffix'
 
 WarningsAsErrors: '*'
+HeaderFilterRegex: '.*.hpp'
