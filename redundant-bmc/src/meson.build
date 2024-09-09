@@ -5,6 +5,8 @@ executable(
     'phosphor-rbmc-state-manager',
     'manager.cpp',
     'rbmc_manager_main.cpp',
+    'role_determination.cpp',
+    'services_impl.cpp',
     dependencies: [phosphordbusinterfaces, phosphorlogging, sdbusplus],
     install: true,
     install_dir: execinstalldir,
