@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 #include "manager.hpp"
+#include "services_impl.hpp"
 
 #include <sdbusplus/async/context.hpp>
 #include <sdbusplus/server/manager.hpp>
@@ -14,7 +15,10 @@ int main()
     sdbusplus::async::context ctx;
     sdbusplus::server::manager_t objMgr{ctx, "/xyz/openbmc_project/state"};
 
-    rbmc::Manager manager{ctx};
+    std::unique_ptr<rbmc::Services> services =
+        std::make_unique<rbmc::ServicesImpl>();
+
+    rbmc::Manager manager{ctx, std::move(services)};
 
     // clang-tidy currently mangles this into something unreadable
     // NOLINTNEXTLINE
