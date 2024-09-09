@@ -6,9 +6,11 @@
 namespace rbmc
 {
 
-Manager::Manager(sdbusplus::async::context& ctx) :
+Manager::Manager(sdbusplus::async::context& ctx,
+                 std::unique_ptr<Services>&& services) :
     ctx(ctx),
-    redundancyInterface(ctx.get_bus(), RedundancyInterface::instance_path)
+    redundancyInterface(ctx.get_bus(), RedundancyInterface::instance_path),
+    services(std::move(services))
 {
     ctx.spawn(startup());
 }
@@ -17,11 +19,9 @@ Manager::Manager(sdbusplus::async::context& ctx) :
 // NOLINTNEXTLINE
 sdbusplus::async::task<> Manager::startup()
 {
-    // TODO: Actually figure out the role
-    lg2::info("Setting role to passive");
-    redundancyInterface.role(RedundancyInterface::Role::Passive);
-
     ctx.spawn(doHeartBeat());
+
+    redundancyInterface.role(determineRole());
 
     co_return;
 }
@@ -40,6 +40,30 @@ sdbusplus::async::task<> Manager::doHeartBeat()
     }
 
     co_return;
+}
+
+Role Manager::determineRole()
+{
+    Role role{Role::Unknown};
+
+    try
+    {
+        role_determination::Input input{
+            .bmcPosition = services->getBMCPosition()};
+
+        role = role_determination::run(input);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Exception while determining, role.  Will have to be "
+                   "passive. Error = {ERROR}",
+                   "ERROR", e);
+        role = Role::Passive;
+    }
+
+    lg2::info("Role Determined: {ROLE}", "ROLE", role);
+
+    return role;
 }
 
 } // namespace rbmc
