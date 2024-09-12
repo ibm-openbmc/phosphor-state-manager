@@ -18,6 +18,7 @@ namespace role_determination
 struct Input
 {
     size_t bmcPosition;
+    Role previousRole;
     size_t siblingPosition;
     Role siblingRole;
     bool siblingHeartbeat;

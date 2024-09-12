@@ -60,9 +60,16 @@ class Manager
     /**
      * @brief Determines the BMC role
      *
-     * @return Role - The role
+     * @return roleInfo - The role + role error if any
      */
-    Role determineRole();
+    role_determination::RoleInfo determineRole();
+
+    /**
+     * @brief Updates D-Bus with and serializes the new role
+     *
+     * @param[in] roleInfo - The new role and error if any
+     */
+    void updateRole(const role_determination::RoleInfo& roleInfo);
 
     /**
      * @brief Creates either an ActiveRoleHandler or
@@ -97,6 +104,20 @@ class Manager
      * @brief Object to handle sibling BMC access
      */
     std::unique_ptr<Sibling> sibling;
+
+    /**
+     * @brief The previously serialized role value.
+     *
+     * Read from the filesystem in the constructor.
+     */
+    Role previousRole{Role::Unknown};
+
+    /**
+     * @brief If previous passive role was selected due to an error case.
+     *
+     * Read from the filesystem in the constructor.
+     */
+    bool chosePassiveDueToError{false};
 };
 
 } // namespace rbmc
