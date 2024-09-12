@@ -24,7 +24,9 @@ The current rules for role determination are:
 1. If the sibling isn't provisioned, choose active.
 1. If the sibling is already passive, choose active.
 1. If the sibling is already active, choose passive.
-1. If this BMC's position is zero choose active, otherwise passive.
+1. If the previous role isn't unknown, choose that assuming it wasn't passive
+   just due to an error.
+1. Finally, if this BMC's position is zero choose active, otherwise passive.
 
 If there is an internal failure during role determination, like an exception,
 the BMC will also have to become passive.

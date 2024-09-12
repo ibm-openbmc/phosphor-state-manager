@@ -3,6 +3,7 @@
 
 #include "active_role_handler.hpp"
 #include "passive_role_handler.hpp"
+#include "persistent_data.hpp"
 
 #include <phosphor-logging/lg2.hpp>
 
@@ -18,6 +19,33 @@ Manager::Manager(sdbusplus::async::context& ctx,
     redundancyInterface(ctx.get_bus(), RedundancyInterface::instance_path),
     services(std::move(services)), sibling(std::move(sibling))
 {
+    try
+    {
+        previousRole =
+            data::read<Role>(data::key::role).value_or(Role::Unknown);
+        lg2::info("Previous role was {ROLE}", "ROLE", previousRole);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed trying to obtain previous role: {ERROR}", "ERROR",
+                   e);
+    }
+
+    try
+    {
+        chosePassiveDueToError =
+            data::read<bool>(data::key::passiveError).value_or(false);
+        if (chosePassiveDueToError)
+        {
+            lg2::info("Was previously passive due to error");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed trying to obtain previous role error: {ERROR}",
+                   "ERROR", e);
+    }
+
     ctx.spawn(startup());
 }
 
@@ -34,7 +62,7 @@ sdbusplus::async::task<> Manager::startup()
         co_await sibling->waitForSiblingUp(siblingTimeout);
     }
 
-    redundancyInterface.role(determineRole());
+    updateRole(determineRole());
 
     spawnRoleHandler();
 
@@ -78,7 +106,7 @@ sdbusplus::async::task<> Manager::doHeartBeat()
     co_return;
 }
 
-Role Manager::determineRole()
+role_determination::RoleInfo Manager::determineRole()
 {
     using namespace role_determination;
 
@@ -94,10 +122,19 @@ Role Manager::determineRole()
 
         role_determination::Input input{
             .bmcPosition = services->getBMCPosition(),
+            .previousRole = previousRole,
             .siblingPosition = siblingPosition,
             .siblingRole = siblingRole,
             .siblingHeartbeat = sibling->hasHeartbeat(),
             .siblingProvisioned = siblingProvisioned};
+
+        // If an error case forced it to passive last time, don't use
+        // the previous role in the determination so that we don't try
+        // to choose the role just because that's what was used last time.
+        if (chosePassiveDueToError)
+        {
+            input.previousRole = Role::Unknown;
+        }
 
         roleInfo = role_determination::run(input);
     }
@@ -110,12 +147,39 @@ Role Manager::determineRole()
         roleInfo.error = ErrorCase::internalError;
     }
 
-    if (roleInfo.error != role_determination::ErrorCase::noError)
+    // TODO, probably: Create an error log if passive due to an error
+
+    return roleInfo;
+}
+
+void Manager::updateRole(const role_determination::RoleInfo& roleInfo)
+{
+    redundancyInterface.role(roleInfo.role);
+
+    try
     {
-        // TODO: Create an error log
+        data::write(data::key::role, roleInfo.role);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed serializing the role value of {ROLE}: {ERROR}",
+                   "ROLE", roleInfo.role, "ERROR", e);
     }
 
-    return roleInfo.role;
+    chosePassiveDueToError =
+        (roleInfo.role == Role::Passive) &&
+        (roleInfo.error != role_determination::ErrorCase::noError);
+
+    try
+    {
+        data::write(data::key::passiveError, chosePassiveDueToError);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error(
+            "Failed serializing the role error value of {VALUE}: {ERROR}",
+            "VALUE", roleInfo.error, "ERROR", e);
+    }
 }
 
 } // namespace rbmc

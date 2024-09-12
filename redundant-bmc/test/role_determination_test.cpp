@@ -14,6 +14,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     // BMC pos 0 with sibling healthy
     {
         Input input{.bmcPosition = 0,
+                    .previousRole = Unknown,
                     .siblingPosition = 1,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
@@ -26,6 +27,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     // BMC pos 1 with sibling healthy
     {
         Input input{.bmcPosition = 1,
+                    .previousRole = Unknown,
                     .siblingPosition = 0,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
@@ -38,6 +40,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     // No Sibling heartbeat, BMC pos 1
     {
         Input input{.bmcPosition = 1,
+                    .previousRole = Unknown,
                     .siblingPosition = 0,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = false,
@@ -50,6 +53,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     // Both BMCs report the same position
     {
         Input input{.bmcPosition = 0,
+                    .previousRole = Unknown,
                     .siblingPosition = 0,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
@@ -62,6 +66,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     // Sibling not provisioned
     {
         Input input{.bmcPosition = 1,
+                    .previousRole = Unknown,
                     .siblingPosition = 0,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
@@ -74,6 +79,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     // Sibling already active, this pos = 0
     {
         Input input{.bmcPosition = 0,
+                    .previousRole = Unknown,
                     .siblingPosition = 1,
                     .siblingRole = Active,
                     .siblingHeartbeat = true,
@@ -86,11 +92,40 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     // Sibling already passive, this pos = 1
     {
         Input input{.bmcPosition = 1,
+                    .previousRole = Unknown,
                     .siblingPosition = 0,
                     .siblingRole = Passive,
                     .siblingHeartbeat = true,
                     .siblingProvisioned = true};
 
+        RoleInfo info{Active, noError};
+        EXPECT_EQ(run(input), info);
+    }
+
+    // BMC pos 0 with sibling healthy, previous role = Passive
+    {
+        Input input{.bmcPosition = 0,
+                    .previousRole = Passive,
+                    .siblingPosition = 1,
+                    .siblingRole = Unknown,
+                    .siblingHeartbeat = true,
+                    .siblingProvisioned = true};
+
+        // Preserve passive
+        RoleInfo info{Passive, noError};
+        EXPECT_EQ(run(input), info);
+    }
+
+    // BMC pos 1 with sibling healthy, previous role = Active
+    {
+        Input input{.bmcPosition = 1,
+                    .previousRole = Active,
+                    .siblingPosition = 0,
+                    .siblingRole = Unknown,
+                    .siblingHeartbeat = true,
+                    .siblingProvisioned = true};
+
+        // Preserve active
         RoleInfo info{Active, noError};
         EXPECT_EQ(run(input), info);
     }

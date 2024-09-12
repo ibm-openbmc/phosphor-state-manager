@@ -12,6 +12,12 @@ namespace data
 const std::filesystem::path dataFile{
     "/var/lib/phosphor-state-manager/redundant-bmc/data.json"};
 
+namespace key
+{
+constexpr auto role = "Role";
+constexpr auto passiveError = "PassiveDueToError";
+} // namespace key
+
 namespace util
 {
 
