@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+execinstalldir = join_paths(get_option('libexecdir'), 'phosphor-state-manager')
+
+executable(
+    'phosphor-rbmc-state-manager',
+    'manager.cpp',
+    'rbmc_manager_main.cpp',
+    dependencies: [phosphordbusinterfaces, phosphorlogging, sdbusplus],
+    install: true,
+    install_dir: execinstalldir,
+)

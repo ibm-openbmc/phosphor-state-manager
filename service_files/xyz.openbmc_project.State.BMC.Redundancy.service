@@ -1,0 +1,13 @@
+[Unit]
+Description=Phosphor Redundant BMC State Manager
+Wants=xyz.openbmc_project.State.BMC.service
+After=xyz.openbmc_project.State.BMC.service
+
+[Service]
+ExecStart=/usr/libexec/phosphor-state-manager/phosphor-rbmc-state-manager
+Restart=always
+Type=dbus
+BusName=xyz.openbmc_project.State.BMC.Redundancy
+
+[Install]
+WantedBy=multi-user.target

@@ -365,3 +365,7 @@ if build_tests.allowed()
         ),
     )
 endif
+
+if get_option('rbmc-state-management').allowed()
+    subdir('redundant-bmc')
+endif
