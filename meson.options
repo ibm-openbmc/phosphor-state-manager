@@ -210,3 +210,10 @@ option(
     value: 12,
     description: 'Maximum number of chassis instances to aggregate in multi-chassis SMP mode (1-N)',
 )
+
+option (
+    'rbmc-state-management',
+    type: 'feature',
+    value 'enabled',
+    description: 'Enable redundant BMC state management',
+)
