@@ -299,4 +299,37 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingUp(
     co_return;
 }
 
+// NOLINTNEXTLINE
+sdbusplus::async::task<> SiblingImpl::waitForSiblingRole()
+{
+    using namespace std::chrono_literals;
+    std::chrono::seconds timeout{10};
+    bool waiting = false;
+
+    auto noRole = [this]() {
+        return getRole().value_or(Role::Unknown) == Role::Unknown;
+    };
+
+    if (!hasHeartbeat() || !noRole())
+    {
+        co_return;
+    }
+
+    auto start = std::chrono::steady_clock::now();
+
+    while (noRole() && ((std::chrono::steady_clock::now() - start) < timeout))
+    {
+        if (!waiting)
+        {
+            waiting = true;
+            lg2::info("Waiting up to {TIME}s for sibling role", "TIME",
+                      timeout.count());
+        }
+
+        co_await sdbusplus::async::sleep_for(ctx, 500ms);
+    }
+
+    co_return;
+}
+
 } // namespace rbmc
