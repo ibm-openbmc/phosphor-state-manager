@@ -37,6 +37,12 @@ class Sibling
     Sibling& operator=(Sibling&&) = delete;
 
     /**
+     * @brief The name of the unit/service.
+     */
+    static constexpr auto unitName =
+        "xyz.openbmc_project.State.BMC.Redundancy.Sibling.service";
+
+    /**
      * @brief Returns if the Sibling interface is on D-Bus
      */
     virtual bool getInterfacePresent() const = 0;

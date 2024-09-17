@@ -32,7 +32,9 @@ enum class ErrorCase
 {
     noError,
     internalError,
-    samePositions
+    samePositions,
+    notProvisioned,
+    noSiblingService
 };
 
 /**

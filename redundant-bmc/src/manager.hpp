@@ -65,6 +65,17 @@ class Manager
     role_determination::RoleInfo determineRole();
 
     /**
+     * @brief Determine if the BMC must be passive due to a problem.
+     *
+     * If so, the role will be set before the heartbeat is started, so
+     * the sibling BMC can know it should be active if possible.
+     *
+     * @return roleInfo - The passive role + error if must be passive.
+     */
+    sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
+        determinePassiveRoleIfRequired();
+
+    /**
      * @brief Updates D-Bus with and serializes the new role
      *
      * @param[in] roleInfo - The new role and error if any
