@@ -74,6 +74,16 @@ class SiblingImpl : public Sibling
         const std::chrono::seconds& timeout) override;
 
     /**
+     * @brief Waits for the sibling role to change, assuming that the
+     *        sibling is alive and hasn't determined a role yet.
+     *
+     * This is used to give the previously active BMC a head start
+     * to be active again, which also avoids possible race conditions
+     * when they both come up at the same time.
+     */
+    sdbusplus::async::task<> waitForSiblingRole() override;
+
+    /**
      * @brief Returns the sibling BMC's position
      *
      * @return - The position or nullopt if not available
