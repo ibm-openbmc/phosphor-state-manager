@@ -70,6 +70,11 @@ sdbusplus::async::task<> Manager::startup()
         if (sibling->isBMCPresent())
         {
             co_await sibling->waitForSiblingUp(siblingTimeout);
+
+            if (previousRole == Role::Passive)
+            {
+                co_await sibling->waitForSiblingRole();
+            }
         }
 
         updateRole(determineRole());

@@ -13,6 +13,14 @@ On startup, the code will wait for up to six minutes for the sibling BMC's
 heartbeat to start, assuming the BMC is present. After that it will determine
 its role.
 
+If the BMCs happen to get to determining the role at the same time, the BMC that
+was previously passive will wait for the other BMC to determine its role first
+to lessen the likelihood of a role switch or each them each thinking they should
+be active. One example is when BMC 0 was forced to passive before but isn't
+anymore and so would default to active based on its position, and BMC 1 was
+active last time and would default to just restoring its role. Letting BMC 1 go
+first in this case would ensure BMC 0 remains passive.
+
 ## Role Determination Rules
 
 The current rules for role determination are:

@@ -69,6 +69,12 @@ class Sibling
         const std::chrono::seconds& timeout) = 0;
 
     /**
+     * @brief Waits for the sibling role to change, assuming that the
+     *        sibling is alive and hasn't determined a role yet.
+     */
+    virtual sdbusplus::async::task<> waitForSiblingRole() = 0;
+
+    /**
      * @brief Returns the sibling BMC's position
      *
      * @return - The position or nullopt if not available
