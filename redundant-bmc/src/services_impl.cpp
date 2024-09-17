@@ -149,4 +149,10 @@ sdbusplus::async::task<> ServicesImpl::startUnit(
     co_return;
 }
 
+bool ServicesImpl::getProvisioned() const
+{
+    // TODO: Eventually get this from somewhere.
+    return true;
+}
+
 } // namespace rbmc
