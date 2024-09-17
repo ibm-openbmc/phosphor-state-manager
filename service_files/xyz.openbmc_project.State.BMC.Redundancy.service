@@ -2,6 +2,8 @@
 Description=Phosphor Redundant BMC State Manager
 Wants=xyz.openbmc_project.State.BMC.service
 After=xyz.openbmc_project.State.BMC.service
+Wants=xyz.openbmc_project.State.BMC.Redundancy.Sibling.service
+After=xyz.openbmc_project.State.BMC.Redundancy.Sibling.service
 
 [Service]
 ExecStart=/usr/libexec/phosphor-state-manager/phosphor-rbmc-state-manager
