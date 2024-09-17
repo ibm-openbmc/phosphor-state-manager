@@ -55,14 +55,25 @@ sdbusplus::async::task<> Manager::startup()
 {
     co_await sibling->init();
 
-    ctx.spawn(doHeartBeat());
-
-    if (sibling->isBMCPresent())
+    // If we know the role must be passive, set that now,
+    // before starting the heartbeat or waiting for the sibling.
+    auto passiveRoleInfo = co_await determinePassiveRoleIfRequired();
+    if (passiveRoleInfo)
     {
-        co_await sibling->waitForSiblingUp(siblingTimeout);
+        updateRole(*passiveRoleInfo);
     }
 
-    updateRole(determineRole());
+    ctx.spawn(doHeartBeat());
+
+    if (!passiveRoleInfo)
+    {
+        if (sibling->isBMCPresent())
+        {
+            co_await sibling->waitForSiblingUp(siblingTimeout);
+        }
+
+        updateRole(determineRole());
+    }
 
     spawnRoleHandler();
 
@@ -151,6 +162,36 @@ role_determination::RoleInfo Manager::determineRole()
 
     return roleInfo;
 }
+
+// clang-tidy appears to get confused on some code down in stdexec
+// in this function.  Hopefully a future version of clang will fix it.
+// NOLINTBEGIN
+sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
+    Manager::determinePassiveRoleIfRequired()
+{
+    using namespace role_determination;
+
+    // An unprovisioned BMC cannot be active.
+    if (!services->getProvisioned())
+    {
+        lg2::info("Role = passive because BMC not provisioned");
+        co_return RoleInfo{Role::Passive, ErrorCase::notProvisioned};
+    }
+
+    // The sibling service must be up and running.
+    if (!sibling->getInterfacePresent())
+    {
+        auto state = co_await services->getUnitState(Sibling::unitName);
+        if (state != "active")
+        {
+            lg2::info("Role = passive because sibling BMC service not running");
+            co_return RoleInfo{Role::Passive, ErrorCase::noSiblingService};
+        }
+    }
+
+    co_return std::nullopt;
+}
+// NOLINTEND
 
 void Manager::updateRole(const role_determination::RoleInfo& roleInfo)
 {

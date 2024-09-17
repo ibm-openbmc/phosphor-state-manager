@@ -42,6 +42,23 @@ class Services
      */
     virtual sdbusplus::async::task<> startUnit(
         const std::string& unitName) const = 0;
+
+    /**
+     * @brief Gets the systemd unit state
+     *
+     * @param[in] - The unit/service name
+     *
+     * @return state - The systemd unit state
+     */
+    virtual sdbusplus::async::task<std::string> getUnitState(
+        const std::string& unitName) const = 0;
+
+    /**
+     * @brief If this BMC has been provisioned
+     *
+     * @return bool - If provisioned or not.
+     */
+    virtual bool getProvisioned() const = 0;
 };
 
 } // namespace rbmc

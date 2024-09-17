@@ -47,6 +47,23 @@ class ServicesImpl : public Services
     sdbusplus::async::task<> startUnit(
         const std::string& unitName) const override;
 
+    /**
+     * @brief Gets the systemd unit state
+     *
+     * @param[in] - The unit/service name
+     *
+     * @return state - The systemd unit state
+     */
+    sdbusplus::async::task<std::string> getUnitState(
+        const std::string& name) const override;
+
+    /**
+     * @brief If this BMC has been provisioned
+     *
+     * @return bool - If provisioned or not.
+     */
+    bool getProvisioned() const override;
+
   private:
     /**
      * @brief Returns the D-Bus object path for the unit in the
@@ -58,16 +75,6 @@ class ServicesImpl : public Services
      */
     sdbusplus::async::task<sdbusplus::message::object_path> getUnitPath(
         const std::string& unitName) const;
-
-    /**
-     * @brief Gets the systemd unit state
-     *
-     * @param[in] - The unit/service name
-     *
-     * @return state - The systemd unit state
-     */
-    sdbusplus::async::task<std::string> getUnitState(
-        const std::string& name) const;
 
     /**
      * @brief The async context object

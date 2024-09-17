@@ -28,8 +28,20 @@ The current rules for role determination are:
    just due to an error.
 1. Finally, if this BMC's position is zero choose active, otherwise passive.
 
-If there is an internal failure during role determination, like an exception,
-the BMC will also have to become passive.
+### Cases that require a BMC must be passive
+
+There are some error cases that require that the BMC is passive regardless of
+what the sibling is doing. These are:
+
+1. The BMC is not provisioned.
+1. The systemd service that maintains the sibling API isn't running. Without
+   this service running, the sibling BMC will think this BMC is dead and will
+   become active.
+1. There is an internal failure during role determination, like an exception.
+
+The passive role in all but the last of these cases can be set before the
+heartbeat is even started, and waiting for the sibling won't even need to be
+done as it doesn't need that info for full role determination.
 
 ## After the role is determined
 
