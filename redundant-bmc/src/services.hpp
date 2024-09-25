@@ -32,6 +32,16 @@ class Services
      * @return - The position
      */
     virtual size_t getBMCPosition() const = 0;
+
+    /**
+     * @brief Starts a systemd unit
+     *
+     * Waits for it to be active or failed before returning.
+     *
+     * @param[in] unitName - The unit name
+     */
+    virtual sdbusplus::async::task<>
+        startUnit(const std::string& unitName) const = 0;
 };
 
 } // namespace rbmc

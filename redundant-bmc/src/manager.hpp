@@ -2,6 +2,7 @@
 #pragma once
 
 #include "role_determination.hpp"
+#include "role_handler.hpp"
 #include "services.hpp"
 
 #include <sdbusplus/async.hpp>
@@ -61,6 +62,13 @@ class Manager
     Role determineRole();
 
     /**
+     * @brief Creates either an ActiveRoleHandler or
+     *        PassiveRoleHandler object depending on
+     *        the role and spawns handler->start().
+     */
+    void spawnRoleHandler();
+
+    /**
      * @brief The async context object
      */
     sdbusplus::async::context& ctx;
@@ -76,6 +84,11 @@ class Manager
      * Wraps system interfaces.
      */
     std::unique_ptr<Services> services;
+
+    /**
+     * @brief The role handler class
+     */
+    std::unique_ptr<RoleHandler> handler;
 };
 
 } // namespace rbmc
