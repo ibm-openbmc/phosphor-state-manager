@@ -9,11 +9,14 @@
 namespace rbmc
 {
 
+const std::chrono::minutes siblingTimeout{6};
+
 Manager::Manager(sdbusplus::async::context& ctx,
-                 std::unique_ptr<Services>&& services) :
+                 std::unique_ptr<Services>&& services,
+                 std::unique_ptr<Sibling>&& sibling) :
     ctx(ctx),
     redundancyInterface(ctx.get_bus(), RedundancyInterface::instance_path),
-    services(std::move(services))
+    services(std::move(services)), sibling(std::move(sibling))
 {
     ctx.spawn(startup());
 }
@@ -22,7 +25,14 @@ Manager::Manager(sdbusplus::async::context& ctx,
 // NOLINTNEXTLINE
 sdbusplus::async::task<> Manager::startup()
 {
+    co_await sibling->init();
+
     ctx.spawn(doHeartBeat());
+
+    if (sibling->isBMCPresent())
+    {
+        co_await sibling->waitForSiblingUp(siblingTimeout);
+    }
 
     redundancyInterface.role(determineRole());
 
