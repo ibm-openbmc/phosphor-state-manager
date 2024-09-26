@@ -18,6 +18,32 @@ namespace role_determination
 struct Input
 {
     size_t bmcPosition;
+    size_t siblingPosition;
+    Role siblingRole;
+    bool siblingHeartbeat;
+    bool siblingProvisioned;
+};
+
+/**
+ * @brief Role determination error cases.
+ */
+enum class ErrorCase
+{
+    noError,
+    internalError,
+    samePositions
+};
+
+/**
+ * @brief The role and the error reason returned from run()
+ */
+struct RoleInfo
+{
+    Role role;
+    ErrorCase error;
+
+    // use the default <, ==, > operators for compares
+    auto operator<=>(const RoleInfo&) const = default;
 };
 
 /**
@@ -25,9 +51,9 @@ struct Input
  *
  * @param[in] input  - The structure of inputs
  *
- * @return The role
+ * @return The role and error case
  */
-Role run(const Input& input);
+RoleInfo run(const Input& input);
 
 } // namespace role_determination
 
