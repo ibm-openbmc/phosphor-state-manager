@@ -4,6 +4,7 @@
 #include "role_determination.hpp"
 #include "role_handler.hpp"
 #include "services.hpp"
+#include "sibling.hpp"
 
 #include <sdbusplus/async.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/server.hpp>
@@ -36,9 +37,11 @@ class Manager
      *
      * @param[in] ctx - The async context object
      * @param[in] services - The services object to interface with system data.
+     * @param[in] sibling - The sibling access object
      */
     Manager(sdbusplus::async::context& ctx,
-            std::unique_ptr<Services>&& services);
+            std::unique_ptr<Services>&& services,
+            std::unique_ptr<Sibling>&& sibling);
 
   private:
     /**
@@ -89,6 +92,11 @@ class Manager
      * @brief The role handler class
      */
     std::unique_ptr<RoleHandler> handler;
+
+    /**
+     * @brief Object to handle sibling BMC access
+     */
+    std::unique_ptr<Sibling> sibling;
 };
 
 } // namespace rbmc
