@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+#include "persistent_data.hpp"
 #include "services_impl.hpp"
 
 #include <CLI/CLI.hpp>
@@ -94,6 +95,10 @@ sdbusplus::async::task<>
                                      services.getFWVersion());
             std::cout << std::format("Provisioned:         {}\n",
                                      services.getProvisioned());
+            std::cout << std::format(
+                "Role Reason:         {}\n",
+                data::read<std::string>(data::key::roleReason)
+                    .value_or("No reason found"));
         }
     }
     catch (const std::exception& e)

@@ -26,24 +26,31 @@ struct Input
 };
 
 /**
- * @brief Role determination error cases.
+ * @brief The reason the role is what it is.
  */
-enum class ErrorCase
+enum class RoleReason
 {
-    noError,
-    internalError,
+    unknown,
+    noSiblingHeartbeat,
     samePositions,
+    siblingNotProvisioned,
+    siblingPassive,
+    siblingActive,
+    resumePrevious,
+    positionZero,
+    positionNonzero,
     notProvisioned,
-    noSiblingService
+    siblingServiceNotRunning,
+    exception
 };
 
 /**
- * @brief The role and the error reason returned from run()
+ * @brief The role and the reason returned from run()
  */
 struct RoleInfo
 {
     Role role;
-    ErrorCase error;
+    RoleReason reason;
 
     // use the default <, ==, > operators for compares
     auto operator<=>(const RoleInfo&) const = default;
@@ -57,6 +64,19 @@ struct RoleInfo
  * @return The role and error case
  */
 RoleInfo run(const Input& input);
+
+/**
+ * @brief Return the string description of the reason
+ *
+ * @return The human readable description.
+ */
+std::string getRoleReasonDescription(RoleReason reason);
+
+/**
+ * @brief If the reason is an error case that requires the
+ *        BMC to be passive.
+ */
+bool isErrorReason(RoleReason reason);
 
 } // namespace role_determination
 
