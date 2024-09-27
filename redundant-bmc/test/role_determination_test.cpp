@@ -8,8 +8,8 @@ using namespace role_determination;
 
 TEST(RoleDeterminationTest, RoleDeterminationTest)
 {
-    using enum ErrorCase;
     using enum Role;
+    using enum RoleReason;
 
     // BMC pos 0 with sibling healthy
     {
@@ -20,8 +20,9 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingHeartbeat = true,
                     .siblingProvisioned = true};
 
-        RoleInfo info{Active, noError};
+        RoleInfo info{Active, positionZero};
         EXPECT_EQ(run(input), info);
+        EXPECT_EQ(getRoleReasonDescription(info.reason), "BMC is position 0");
     }
 
     // BMC pos 1 with sibling healthy
@@ -32,9 +33,10 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
                     .siblingProvisioned = true};
-
-        RoleInfo info{Passive, noError};
+        RoleInfo info{Passive, positionNonzero};
         EXPECT_EQ(run(input), info);
+        EXPECT_EQ(getRoleReasonDescription(info.reason),
+                  "BMC is not position 0");
     }
 
     // No Sibling heartbeat, BMC pos 1
@@ -46,8 +48,10 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingHeartbeat = false,
                     .siblingProvisioned = true};
 
-        RoleInfo info{Active, noError};
+        RoleInfo info{Active, noSiblingHeartbeat};
         EXPECT_EQ(run(input), info);
+        EXPECT_EQ(getRoleReasonDescription(info.reason),
+                  "No sibling heartbeat");
     }
 
     // Both BMCs report the same position
@@ -61,6 +65,8 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
 
         RoleInfo info{Passive, samePositions};
         EXPECT_EQ(run(input), info);
+        EXPECT_EQ(getRoleReasonDescription(info.reason),
+                  "Both BMCs have the same position");
     }
 
     // Sibling not provisioned
@@ -72,8 +78,10 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingHeartbeat = true,
                     .siblingProvisioned = false};
 
-        RoleInfo info{Active, noError};
+        RoleInfo info{Active, siblingNotProvisioned};
         EXPECT_EQ(run(input), info);
+        EXPECT_EQ(getRoleReasonDescription(info.reason),
+                  "Sibling is not provisioned");
     }
 
     // Sibling already active, this pos = 0
@@ -85,8 +93,10 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingHeartbeat = true,
                     .siblingProvisioned = true};
 
-        RoleInfo info{Passive, noError};
+        RoleInfo info{Passive, siblingActive};
         EXPECT_EQ(run(input), info);
+        EXPECT_EQ(getRoleReasonDescription(info.reason),
+                  "Sibling is already active");
     }
 
     // Sibling already passive, this pos = 1
@@ -98,8 +108,10 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingHeartbeat = true,
                     .siblingProvisioned = true};
 
-        RoleInfo info{Active, noError};
+        RoleInfo info{Active, siblingPassive};
         EXPECT_EQ(run(input), info);
+        EXPECT_EQ(getRoleReasonDescription(info.reason),
+                  "Sibling is already passive");
     }
 
     // BMC pos 0 with sibling healthy, previous role = Passive
@@ -112,8 +124,10 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingProvisioned = true};
 
         // Preserve passive
-        RoleInfo info{Passive, noError};
+        RoleInfo info{Passive, resumePrevious};
         EXPECT_EQ(run(input), info);
+        EXPECT_EQ(getRoleReasonDescription(info.reason),
+                  "Resuming previous role");
     }
 
     // BMC pos 1 with sibling healthy, previous role = Active
@@ -126,7 +140,15 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingProvisioned = true};
 
         // Preserve active
-        RoleInfo info{Active, noError};
+        RoleInfo info{Active, resumePrevious};
         EXPECT_EQ(run(input), info);
+        EXPECT_EQ(getRoleReasonDescription(info.reason),
+                  "Resuming previous role");
     }
+}
+
+TEST(RoleDeterminationTest, ErrorReasonTest)
+{
+    EXPECT_TRUE(isErrorReason(RoleReason::notProvisioned));
+    EXPECT_FALSE(isErrorReason(RoleReason::resumePrevious));
 }
