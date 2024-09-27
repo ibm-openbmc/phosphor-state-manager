@@ -36,6 +36,9 @@ The current rules for role determination are:
    just due to an error.
 1. Finally, if this BMC's position is zero choose active, otherwise passive.
 
+The actual reason the code used to determine the role is saved in the
+`RoleReason` field in `/var/lib/phosphor-state-manager/redundant-bmc/data.json`.
+
 ### Cases that require a BMC must be passive
 
 There are some error cases that require that the BMC is passive regardless of

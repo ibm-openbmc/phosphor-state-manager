@@ -2,67 +2,115 @@
 
 #include "role_determination.hpp"
 
-#include <phosphor-logging/lg2.hpp>
-
 namespace rbmc::role_determination
 {
 
 RoleInfo run(const Input& input)
 {
+    RoleInfo result;
+
     // Must check this before any other sibling fields
     if (!input.siblingHeartbeat)
     {
-        lg2::info("Role = active due to no sibling heartbeat");
-        return {Role::Active, ErrorCase::noError};
+        result = {Role::Active, RoleReason::noSiblingHeartbeat};
     }
 
     else if (input.bmcPosition == input.siblingPosition)
     {
-        lg2::error(
-            "Role = passive due to both BMC's having the same position {POSITION}",
-            "POSITION", input.bmcPosition);
-        return {Role::Passive, ErrorCase::samePositions};
+        result = {Role::Passive, RoleReason::samePositions};
     }
 
     else if (!input.siblingProvisioned)
     {
-        lg2::info("Role = active due to the sibling not being provisioned");
-        return {Role::Active, ErrorCase::noError};
+        result = {Role::Active, RoleReason::siblingNotProvisioned};
     }
 
     else if (input.siblingRole == Role::Passive)
     {
-        lg2::info("Role = active due to the sibling already being passive");
-        return {Role::Active, ErrorCase::noError};
+        result = {Role::Active, RoleReason::siblingPassive};
     }
 
     else if (input.siblingRole == Role::Active)
     {
-        lg2::info("Role = passive due to the sibling already being active");
-        return {Role::Passive, ErrorCase::noError};
+        result = {Role::Passive, RoleReason::siblingActive};
     }
 
     else if (input.previousRole == Role::Active)
     {
-        lg2::info("Role = active due to that was the previous role");
-        return {Role::Active, ErrorCase::noError};
+        result = {Role::Active, RoleReason::resumePrevious};
     }
 
     else if (input.previousRole == Role::Passive)
     {
-        lg2::info("Role = passive due to that was the previous role");
-        return {Role::Passive, ErrorCase::noError};
+        result = {Role::Passive, RoleReason::resumePrevious};
     }
 
     else if (input.bmcPosition == 0)
     {
-        lg2::info("Role = active due to BMC position 0");
-        return {Role::Active, ErrorCase::noError};
+        result = {Role::Active, RoleReason::positionZero};
     }
 
-    lg2::info("Role = passive due to BMC position {POSITION}", "POSITION",
-              input.bmcPosition);
-    return {Role::Passive, ErrorCase::noError};
+    else
+    {
+        result = {Role::Passive, RoleReason::positionNonzero};
+    }
+
+    return result;
+}
+
+std::string getRoleReasonDescription(RoleReason reason)
+{
+    using namespace std::string_literals;
+    std::string desc;
+
+    switch (reason)
+    {
+        case RoleReason::unknown:
+            desc = "Unknown reason"s;
+            break;
+        case RoleReason::noSiblingHeartbeat:
+            desc = "No sibling heartbeat"s;
+            break;
+        case RoleReason::samePositions:
+            desc = "Both BMCs have the same position"s;
+            break;
+        case RoleReason::siblingNotProvisioned:
+            desc = "Sibling is not provisioned"s;
+            break;
+        case RoleReason::siblingPassive:
+            desc = "Sibling is already passive"s;
+            break;
+        case RoleReason::siblingActive:
+            desc = "Sibling is already active"s;
+            break;
+        case RoleReason::resumePrevious:
+            desc = "Resuming previous role"s;
+            break;
+        case RoleReason::positionZero:
+            desc = "BMC is position 0"s;
+            break;
+        case RoleReason::positionNonzero:
+            desc = "BMC is not position 0"s;
+            break;
+        case RoleReason::notProvisioned:
+            desc = "BMC is not provisioned"s;
+            break;
+        case RoleReason::siblingServiceNotRunning:
+            desc = "Sibling BMC service is not running"s;
+            break;
+        case RoleReason::exception:
+            desc = "Exception thrown while determining role"s;
+            break;
+    }
+
+    return desc;
+}
+
+bool isErrorReason(RoleReason reason)
+{
+    using enum RoleReason;
+    return (reason == samePositions) || (reason == notProvisioned) ||
+           (reason == siblingServiceNotRunning) || (reason == exception);
 }
 
 } // namespace rbmc::role_determination

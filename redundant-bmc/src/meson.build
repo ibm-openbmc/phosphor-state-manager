@@ -28,6 +28,7 @@ executable(
 
 executable(
     'rbmctool',
+    'persistent_data.cpp',
     'rbmc_tool.cpp',
     'services_impl.cpp',
     dependencies: [rbmc_deps, CLI11],
