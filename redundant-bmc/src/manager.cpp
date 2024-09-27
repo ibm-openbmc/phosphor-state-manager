@@ -134,7 +134,7 @@ role_determination::RoleInfo Manager::determineRole()
 {
     using namespace role_determination;
 
-    RoleInfo roleInfo{Role::Unknown, ErrorCase::noError};
+    RoleInfo roleInfo{Role::Unknown, RoleReason::unknown};
 
     try
     {
@@ -164,11 +164,10 @@ role_determination::RoleInfo Manager::determineRole()
     }
     catch (const std::exception& e)
     {
-        lg2::error("Exception while determining, role.  Will have to be "
-                   "passive. Error = {ERROR}",
-                   "ERROR", e);
         roleInfo.role = Role::Passive;
-        roleInfo.error = ErrorCase::internalError;
+        roleInfo.reason = RoleReason::exception;
+        lg2::error("Exception while determining role: {ERROR}", "ERROR",
+                   e.what());
     }
 
     // TODO, probably: Create an error log if passive due to an error
@@ -187,8 +186,7 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
     // An unprovisioned BMC cannot be active.
     if (!services->getProvisioned())
     {
-        lg2::info("Role = passive because BMC not provisioned");
-        co_return RoleInfo{Role::Passive, ErrorCase::notProvisioned};
+        co_return RoleInfo{Role::Passive, RoleReason::notProvisioned};
     }
 
     // The sibling service must be up and running.
@@ -197,8 +195,9 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
         auto state = co_await services->getUnitState(Sibling::unitName);
         if (state != "active")
         {
-            lg2::info("Role = passive because sibling BMC service not running");
-            co_return RoleInfo{Role::Passive, ErrorCase::noSiblingService};
+            lg2::info("Sibling service state is {STATE}", "STATE", state);
+            co_return RoleInfo{Role::Passive,
+                               RoleReason::siblingServiceNotRunning};
         }
     }
 
@@ -208,6 +207,12 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
 
 void Manager::updateRole(const role_determination::RoleInfo& roleInfo)
 {
+    auto reasonDesc =
+        role_determination::getRoleReasonDescription(roleInfo.reason);
+
+    lg2::info("Role = {ROLE} due to: {REASON}", "ROLE", roleInfo.role, "REASON",
+              reasonDesc);
+
     redundancyInterface.role(roleInfo.role);
 
     try
@@ -220,9 +225,8 @@ void Manager::updateRole(const role_determination::RoleInfo& roleInfo)
                    "ROLE", roleInfo.role, "ERROR", e);
     }
 
-    chosePassiveDueToError =
-        (roleInfo.role == Role::Passive) &&
-        (roleInfo.error != role_determination::ErrorCase::noError);
+    chosePassiveDueToError = (roleInfo.role == Role::Passive) &&
+                             role_determination::isErrorReason(roleInfo.reason);
 
     try
     {
@@ -232,7 +236,17 @@ void Manager::updateRole(const role_determination::RoleInfo& roleInfo)
     {
         lg2::error(
             "Failed serializing the role error value of {VALUE}: {ERROR}",
-            "VALUE", roleInfo.error, "ERROR", e);
+            "VALUE", chosePassiveDueToError, "ERROR", e);
+    }
+
+    try
+    {
+        data::write(data::key::roleReason, reasonDesc);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::info("Could not serialize RoleReason value of {REASON}: {ERROR}",
+                  "REASON", reasonDesc, "ERROR", e);
     }
 }
 
