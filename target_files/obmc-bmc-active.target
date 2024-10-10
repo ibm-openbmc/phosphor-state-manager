@@ -1,0 +1,3 @@
+[Unit]
+Description=Active BMC Target
+Conflicts=obmc-bmc-passive.target
