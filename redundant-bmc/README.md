@@ -19,3 +19,11 @@ The current rules for role determination are:
 
 If there is an internal failure during role determination, like an exception,
 the BMC will also have to become passive.
+
+## After the role is determined
+
+After the role has been determined, the code will
+
+1. Update the Role property on D-Bus.
+1. Start either the obmc-bmc-active.target or obmc-bmc-passive.target systemd
+   target.

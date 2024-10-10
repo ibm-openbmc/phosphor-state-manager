@@ -16,7 +16,7 @@ int main()
     sdbusplus::server::manager_t objMgr{ctx, "/xyz/openbmc_project/state"};
 
     std::unique_ptr<rbmc::Services> services =
-        std::make_unique<rbmc::ServicesImpl>();
+        std::make_unique<rbmc::ServicesImpl>(ctx);
 
     rbmc::Manager manager{ctx, std::move(services)};
 

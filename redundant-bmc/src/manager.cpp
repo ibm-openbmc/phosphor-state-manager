@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "manager.hpp"
 
+#include "active_role_handler.hpp"
+#include "passive_role_handler.hpp"
+
 #include <phosphor-logging/lg2.hpp>
 
 namespace rbmc
@@ -23,7 +26,30 @@ sdbusplus::async::task<> Manager::startup()
 
     redundancyInterface.role(determineRole());
 
+    spawnRoleHandler();
+
     co_return;
+}
+
+void Manager::spawnRoleHandler()
+{
+    if (redundancyInterface.role() == Role::Active)
+    {
+        handler = std::make_unique<ActiveRoleHandler>(ctx, services);
+    }
+    else if (redundancyInterface.role() == Role::Passive)
+    {
+        handler = std::make_unique<PassiveRoleHandler>(ctx, services);
+    }
+    else
+    {
+        lg2::error(
+            "Invalid role {ROLE} found when trying to create role handler",
+            "ROLE", redundancyInterface.role());
+        throw std::invalid_argument("Invalid role found when spawning handler");
+    }
+
+    ctx.spawn(handler->start());
 }
 
 // clang-tidy currently mangles this into something unreadable
