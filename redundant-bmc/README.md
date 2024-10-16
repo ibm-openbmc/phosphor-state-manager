@@ -9,13 +9,22 @@ redundancy related properties.
 
 ## Startup
 
-So far on startup the application will just immediately determine its role.
+On startup, the code will wait for up to six minutes for the sibling BMC's
+heartbeat to start, assuming the BMC is present. After that it will determine
+its role.
 
 ## Role Determination Rules
 
 The current rules for role determination are:
 
-1. If BMC position zero choose the active role, otherwise passive.
+1. If the sibling BMC doesn't have a heartbeat, choose active. It could be the
+   sibling isn't even present.
+1. If the sibling BMC's position matches this BMC's position, choose passive.
+   This is an error case.
+1. If the sibling isn't provisioned, choose active.
+1. If the sibling is already passive, choose active.
+1. If the sibling is already active, choose passive.
+1. If this BMC's position is zero choose active, otherwise passive.
 
 If there is an internal failure during role determination, like an exception,
 the BMC will also have to become passive.

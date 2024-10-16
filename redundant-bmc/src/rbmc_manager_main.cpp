@@ -2,6 +2,7 @@
 
 #include "manager.hpp"
 #include "services_impl.hpp"
+#include "sibling_impl.hpp"
 
 #include <sdbusplus/async/context.hpp>
 #include <sdbusplus/server/manager.hpp>
@@ -17,8 +18,10 @@ int main()
 
     std::unique_ptr<rbmc::Services> services =
         std::make_unique<rbmc::ServicesImpl>(ctx);
+    std::unique_ptr<rbmc::Sibling> sibling =
+        std::make_unique<rbmc::SiblingImpl>(ctx);
 
-    rbmc::Manager manager{ctx, std::move(services)};
+    rbmc::Manager manager{ctx, std::move(services), std::move(sibling)};
 
     // clang-tidy currently mangles this into something unreadable
     // NOLINTNEXTLINE
