@@ -21,7 +21,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingProvisioned = true};
 
         RoleInfo info{Active, positionZero};
-        EXPECT_EQ(run(input), info);
+        EXPECT_EQ(determineRole(input), info);
         EXPECT_EQ(getRoleReasonDescription(info.reason), "BMC is position 0");
     }
 
@@ -34,7 +34,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingHeartbeat = true,
                     .siblingProvisioned = true};
         RoleInfo info{Passive, positionNonzero};
-        EXPECT_EQ(run(input), info);
+        EXPECT_EQ(determineRole(input), info);
         EXPECT_EQ(getRoleReasonDescription(info.reason),
                   "BMC is not position 0");
     }
@@ -49,7 +49,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingProvisioned = true};
 
         RoleInfo info{Active, noSiblingHeartbeat};
-        EXPECT_EQ(run(input), info);
+        EXPECT_EQ(determineRole(input), info);
         EXPECT_EQ(getRoleReasonDescription(info.reason),
                   "No sibling heartbeat");
     }
@@ -64,7 +64,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingProvisioned = true};
 
         RoleInfo info{Passive, samePositions};
-        EXPECT_EQ(run(input), info);
+        EXPECT_EQ(determineRole(input), info);
         EXPECT_EQ(getRoleReasonDescription(info.reason),
                   "Both BMCs have the same position");
     }
@@ -79,7 +79,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingProvisioned = false};
 
         RoleInfo info{Active, siblingNotProvisioned};
-        EXPECT_EQ(run(input), info);
+        EXPECT_EQ(determineRole(input), info);
         EXPECT_EQ(getRoleReasonDescription(info.reason),
                   "Sibling is not provisioned");
     }
@@ -94,7 +94,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingProvisioned = true};
 
         RoleInfo info{Passive, siblingActive};
-        EXPECT_EQ(run(input), info);
+        EXPECT_EQ(determineRole(input), info);
         EXPECT_EQ(getRoleReasonDescription(info.reason),
                   "Sibling is already active");
     }
@@ -109,7 +109,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .siblingProvisioned = true};
 
         RoleInfo info{Active, siblingPassive};
-        EXPECT_EQ(run(input), info);
+        EXPECT_EQ(determineRole(input), info);
         EXPECT_EQ(getRoleReasonDescription(info.reason),
                   "Sibling is already passive");
     }
@@ -125,7 +125,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
 
         // Preserve passive
         RoleInfo info{Passive, resumePrevious};
-        EXPECT_EQ(run(input), info);
+        EXPECT_EQ(determineRole(input), info);
         EXPECT_EQ(getRoleReasonDescription(info.reason),
                   "Resuming previous role");
     }
@@ -141,7 +141,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
 
         // Preserve active
         RoleInfo info{Active, resumePrevious};
-        EXPECT_EQ(run(input), info);
+        EXPECT_EQ(determineRole(input), info);
         EXPECT_EQ(getRoleReasonDescription(info.reason),
                   "Resuming previous role");
     }
