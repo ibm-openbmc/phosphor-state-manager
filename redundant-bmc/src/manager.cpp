@@ -63,7 +63,7 @@ sdbusplus::async::task<> Manager::startup()
         updateRole(*passiveRoleInfo);
     }
 
-    ctx.spawn(doHeartBeat());
+    startHeartbeat();
 
     if (!passiveRoleInfo)
     {
@@ -101,12 +101,20 @@ void Manager::spawnRoleHandler()
     ctx.spawn(handler->start());
 }
 
+void Manager::startHeartbeat()
+{
+    lg2::info("Starting heartbeat");
+
+    // Emit one now and let the spawn handle the rest.
+    redundancyInterface.heartbeat();
+    ctx.spawn(doHeartBeat());
+}
+
 // clang-tidy currently mangles this into something unreadable
 // NOLINTNEXTLINE
 sdbusplus::async::task<> Manager::doHeartBeat()
 {
     using namespace std::chrono_literals;
-    lg2::info("Starting heartbeat");
 
     while (!ctx.stop_requested())
     {

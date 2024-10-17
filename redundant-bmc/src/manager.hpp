@@ -50,6 +50,11 @@ class Manager
     sdbusplus::async::task<> startup();
 
     /**
+     * @brief Starts the heartbeat.
+     */
+    void startHeartbeat();
+
+    /**
      * @brief Emits a heartbeat signal every second
      *
      * The sibling gets this via the sibling app to
