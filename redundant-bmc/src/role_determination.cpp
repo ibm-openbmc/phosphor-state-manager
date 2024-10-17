@@ -5,7 +5,7 @@
 namespace rbmc::role_determination
 {
 
-RoleInfo run(const Input& input)
+RoleInfo determineRole(const Input& input)
 {
     RoleInfo result;
 

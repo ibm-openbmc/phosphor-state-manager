@@ -160,7 +160,7 @@ role_determination::RoleInfo Manager::determineRole()
             input.previousRole = Role::Unknown;
         }
 
-        roleInfo = role_determination::run(input);
+        roleInfo = role_determination::determineRole(input);
     }
     catch (const std::exception& e)
     {

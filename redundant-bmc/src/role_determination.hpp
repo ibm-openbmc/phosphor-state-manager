@@ -45,7 +45,7 @@ enum class RoleReason
 };
 
 /**
- * @brief The role and the reason returned from run()
+ * @brief The role and the reason returned from determineRole()
  */
 struct RoleInfo
 {
@@ -63,7 +63,7 @@ struct RoleInfo
  *
  * @return The role and error case
  */
-RoleInfo run(const Input& input);
+RoleInfo determineRole(const Input& input);
 
 /**
  * @brief Return the string description of the reason
