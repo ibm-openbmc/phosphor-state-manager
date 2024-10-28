@@ -9,11 +9,14 @@
 namespace rbmc
 {
 
+const std::chrono::minutes siblingTimeout{6};
+
 Manager::Manager(sdbusplus::async::context& ctx,
-                 std::unique_ptr<Services>&& services) :
+                 std::unique_ptr<Services>&& services,
+                 std::unique_ptr<Sibling>&& sibling) :
     ctx(ctx),
     redundancyInterface(ctx.get_bus(), RedundancyInterface::instance_path),
-    services(std::move(services))
+    services(std::move(services)), sibling(std::move(sibling))
 {
     ctx.spawn(startup());
 }
@@ -22,7 +25,14 @@ Manager::Manager(sdbusplus::async::context& ctx,
 // NOLINTNEXTLINE
 sdbusplus::async::task<> Manager::startup()
 {
+    co_await sibling->init();
+
     ctx.spawn(doHeartBeat());
+
+    if (sibling->isBMCPresent())
+    {
+        co_await sibling->waitForSiblingUp(siblingTimeout);
+    }
 
     redundancyInterface.role(determineRole());
 
@@ -70,26 +80,42 @@ sdbusplus::async::task<> Manager::doHeartBeat()
 
 Role Manager::determineRole()
 {
-    Role role{Role::Unknown};
+    using namespace role_determination;
+
+    RoleInfo roleInfo{Role::Unknown, ErrorCase::noError};
 
     try
     {
-        role_determination::Input input{
-            .bmcPosition = services->getBMCPosition()};
+        // Note:  If these returned nullopts, the algorithm wouldn't use
+        //        them anyway because there would be no heartbeat.
+        auto siblingRole = sibling->getRole().value_or(Role::Unknown);
+        auto siblingProvisioned = sibling->getProvisioned().value_or(false);
+        auto siblingPosition = sibling->getPosition().value_or(0xFF);
 
-        role = role_determination::run(input);
+        role_determination::Input input{
+            .bmcPosition = services->getBMCPosition(),
+            .siblingPosition = siblingPosition,
+            .siblingRole = siblingRole,
+            .siblingHeartbeat = sibling->hasHeartbeat(),
+            .siblingProvisioned = siblingProvisioned};
+
+        roleInfo = role_determination::run(input);
     }
     catch (const std::exception& e)
     {
         lg2::error("Exception while determining, role.  Will have to be "
                    "passive. Error = {ERROR}",
                    "ERROR", e);
-        role = Role::Passive;
+        roleInfo.role = Role::Passive;
+        roleInfo.error = ErrorCase::internalError;
     }
 
-    lg2::info("Role Determined: {ROLE}", "ROLE", role);
+    if (roleInfo.error != role_determination::ErrorCase::noError)
+    {
+        // TODO: Create an error log
+    }
 
-    return role;
+    return roleInfo.role;
 }
 
 } // namespace rbmc
