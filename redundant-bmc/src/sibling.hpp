@@ -75,6 +75,12 @@ class Sibling
     virtual sdbusplus::async::task<> waitForSiblingRole() = 0;
 
     /**
+     * @brief Waits for up to 10 minutes for the sibling BMC to
+     *        reach steady state - either Ready or Quiesced.
+     */
+    virtual sdbusplus::async::task<> waitForBMCSteadyState() const = 0;
+
+    /**
      * @brief Returns the sibling BMC's position
      *
      * @return - The position or nullopt if not available
