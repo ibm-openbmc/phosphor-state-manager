@@ -1,20 +1,16 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #pragma once
 
+#include "redundancy_interface.hpp"
 #include "role_determination.hpp"
 #include "role_handler.hpp"
 #include "services.hpp"
 #include "sibling.hpp"
 
 #include <sdbusplus/async.hpp>
-#include <xyz/openbmc_project/State/BMC/Redundancy/server.hpp>
 
 namespace rbmc
 {
-
-using RedundancyIntf =
-    sdbusplus::xyz::openbmc_project::State::BMC::server::Redundancy;
-using RedundancyInterface = sdbusplus::server::object_t<RedundancyIntf>;
 
 /**
  * @class Manager
