@@ -40,6 +40,17 @@ class ActiveRoleHandler : public RoleHandler
      */
     sdbusplus::async::task<> start() override;
 
+    /**
+     * @brief Called when the DisableRedundancyOverride D-Bus property
+     *        is updated.
+     *
+     * May disable or enable redundancy at this time if possible.
+     *
+     * @param[in] disable - If redundancy should be disabled
+     *                      or enabled.
+     */
+    void disableRedPropChanged(bool disable) override;
+
   private:
     /**
      * @brief Enables or disables redundancy based on the
