@@ -40,8 +40,7 @@ bool RedundancyInterface::set_property(
     lg2::info("Request to change DisableRedundancy property to {VALUE}",
               "VALUE", disable);
 
-    // TODO: Actually disable redundancy
-    // manager.disableRedPropChanged(disable);
+    manager.disableRedPropChanged(disable);
 
     try
     {
