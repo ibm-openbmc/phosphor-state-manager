@@ -7,7 +7,9 @@
 #include <format>
 #include <fstream>
 
-namespace data::util
+namespace data
+{
+namespace util
 {
 
 std::optional<nlohmann::json> readFile(const std::filesystem::path& path)
@@ -45,4 +47,20 @@ void writeFile(const nlohmann::json& json, const std::filesystem::path& path)
     }
 }
 
-} // namespace data::util
+} // namespace util
+
+void remove(std::string_view name, const std::filesystem::path& path)
+{
+    auto json = util::readFile(path);
+    if (!json)
+    {
+        return;
+    }
+
+    if (json->erase(name) != 0)
+    {
+        util::writeFile(json.value(), path);
+    }
+}
+
+} // namespace data

@@ -88,3 +88,29 @@ TEST_F(PersistentDataTest, WriteAndReadTest)
 
     EXPECT_EQ(data::read<Role>("Role", saveFile), std::nullopt);
 }
+
+TEST_F(PersistentDataTest, RemoveTest)
+{
+    // Write three
+    data::write("Role", Role::Active, saveFile);
+    data::write("Bool", true, saveFile);
+    data::write("String", std::string{"String"}, saveFile);
+
+    // Remove the last one
+    data::remove("String", saveFile);
+    EXPECT_EQ(data::read<std::string>("String", saveFile), std::nullopt);
+
+    // Make sure other ones still there
+    EXPECT_EQ(data::read<Role>("Role", saveFile), Role::Active);
+    EXPECT_EQ(data::read<bool>("Bool", saveFile), true);
+
+    // now remove remaining ones
+    data::remove("Role", saveFile);
+    EXPECT_EQ(data::read<Role>("Role", saveFile), std::nullopt);
+
+    data::remove("Bool", saveFile);
+    EXPECT_EQ(data::read<bool>("Bool", saveFile), std::nullopt);
+
+    // Not found
+    data::remove("Blah");
+}
