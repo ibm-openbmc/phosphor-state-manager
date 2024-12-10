@@ -28,6 +28,7 @@ class Sibling
         sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy::Role;
     using BMCState =
         sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState;
+    using RedundancyEnabledCallback = std::function<void(bool)>;
 
     Sibling() = default;
     virtual ~Sibling() = default;
@@ -135,5 +136,34 @@ class Sibling
      * @return bool - if present
      */
     virtual bool isBMCPresent() = 0;
+
+    /**
+     * @brief Clears callbacks held by the name
+     *
+     * @param[in] role - The role to clear
+     */
+    void clearCallbacks(Role role)
+    {
+        redEnabledCBs.erase(role);
+    }
+
+    /**
+     * @brief Adds a callback function to invoke when the sibling's
+     *        RedundancyEnabled property changes
+     *
+     * @param[in] role - The role, used as a key into the map
+     * @param[in] callback - The callback function
+     */
+    void addRedundancyEnabledCallback(Role role,
+                                      RedundancyEnabledCallback callback)
+    {
+        redEnabledCBs.emplace(role, std::move(callback));
+    }
+
+  protected:
+    /**
+     * @brief Callbacks for RedundancyEnabled
+     */
+    std::map<Role, RedundancyEnabledCallback> redEnabledCBs;
 };
 } // namespace rbmc
