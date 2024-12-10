@@ -18,6 +18,7 @@ executable(
     'passive_role_handler.cpp',
     'persistent_data.cpp',
     'rbmc_manager_main.cpp',
+    'redundancy.cpp',
     'role_determination.cpp',
     'services_impl.cpp',
     'sibling_impl.cpp',
