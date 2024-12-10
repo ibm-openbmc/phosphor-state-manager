@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "persistent_data.hpp"
+#include "redundancy.hpp"
 #include "services_impl.hpp"
 
 #include <CLI/CLI.hpp>
@@ -99,6 +100,26 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
                 "Role Reason:         {}\n",
                 data::read<std::string>(data::key::roleReason)
                     .value_or("No reason found"));
+
+            if ((role == "Active") && !enabled)
+            {
+                using NoRedDetails =
+                    std::map<rbmc::redundancy::NoRedundancyReason, std::string>;
+                auto details = data::read<NoRedDetails>(data::key::noRedDetails)
+                                   .value_or(NoRedDetails{});
+                std::cout << std::format("Reasons for no BMC redundancy:\n");
+                if (!details.empty())
+                {
+                    for (const auto& d : std::views::values(details))
+                    {
+                        std::cout << std::format("    {}\n", d);
+                    }
+                }
+                else
+                {
+                    std::cout << std::format("    Unknown\n");
+                }
+            }
         }
     }
     catch (const std::exception& e)
