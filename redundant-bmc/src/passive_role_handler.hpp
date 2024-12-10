@@ -63,6 +63,17 @@ class PassiveRoleHandler : public RoleHandler
      * interface if the other BMC is Active.
      */
     void siblingRedEnabledHandler(bool enable) override;
+
+    /**
+     * @brief Handler for the DisableRedundancyOverride
+     *        property changing.
+     *
+     * Not supported on the passive BMC so an error will
+     * be thrown.
+     *
+     * @param[in] disable - The new disable value.
+     */
+    void disableRedPropChanged(bool disable) override;
 };
 
 } // namespace rbmc
