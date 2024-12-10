@@ -6,6 +6,7 @@
 #include "persistent_data.hpp"
 
 #include <phosphor-logging/lg2.hpp>
+#include <xyz/openbmc_project/Common/error.hpp>
 
 namespace rbmc
 {
@@ -250,6 +251,19 @@ void Manager::updateRole(const role_determination::RoleInfo& roleInfo)
         lg2::info("Could not serialize RoleReason value of {REASON}: {ERROR}",
                   "REASON", reasonDesc, "ERROR", e);
     }
+}
+
+void Manager::disableRedPropChanged(bool disable)
+{
+    if (!handler)
+    {
+        lg2::error(
+            "DisableRedundancy property cannot be changed to {VALUE} yet",
+            "VALUE", disable);
+        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+    }
+
+    handler->disableRedPropChanged(disable);
 }
 
 } // namespace rbmc

@@ -5,6 +5,7 @@
 
 #include <persistent_data.hpp>
 #include <phosphor-logging/lg2.hpp>
+#include <xyz/openbmc_project/Common/error.hpp>
 
 namespace rbmc
 {
@@ -112,6 +113,46 @@ void ActiveRoleHandler::enableOrDisableRedundancy(
     }
 
     redundancyInterface.redundancy_enabled(enable);
+}
+
+void ActiveRoleHandler::disableRedPropChanged(bool disable)
+{
+    try
+    {
+        if (services.isPoweredOn())
+        {
+            lg2::error("Cannot modify DisableRedundancy prop when powered on");
+            throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+        }
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Call to isPoweredOn failed: {ERROR}", "ERROR", e);
+        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+    }
+
+    manualDisable = disable;
+
+    if (!redundancyDetermined)
+    {
+        // Must be before we've handled redundancy, it should happen soon
+        lg2::info(
+            "Redundancy has not been determined yet, will not change redundancy now.");
+        return;
+    }
+
+    if (disable == !redundancyInterface.redundancy_enabled())
+    {
+        // No changes necessary now
+        lg2::info("No change to redundancy necessary");
+        return;
+    }
+
+    lg2::info(
+        "Revisiting redundancy after manual override of disable to {DISABLE}",
+        "DISABLE", disable);
+
+    determineAndSetRedundancy();
 }
 
 } // namespace rbmc

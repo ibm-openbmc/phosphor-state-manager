@@ -53,6 +53,14 @@ class RoleHandler
      */
     virtual void siblingRedEnabledHandler(bool /*enable*/) {};
 
+    /**
+     * @brief Handler for the DisableRedundancyOverride
+     *        property changing.
+     *
+     * @param[in] disable - The new disable value.
+     */
+    virtual void disableRedPropChanged(bool disable) = 0;
+
   protected:
     /**
      * @brief The async context object

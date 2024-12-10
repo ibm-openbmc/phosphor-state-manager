@@ -39,6 +39,16 @@ class Manager
             std::unique_ptr<Services>&& services,
             std::unique_ptr<Sibling>&& sibling);
 
+    /**
+     * @brief Handler for the DisableRedundancyOverride
+     *        property changing.
+     *
+     * Passes the value through to the role handler.
+     *
+     * @param[in] disable - The property value
+     */
+    void disableRedPropChanged(bool disable);
+
   private:
     /**
      * @brief Kicks off the Manager startup

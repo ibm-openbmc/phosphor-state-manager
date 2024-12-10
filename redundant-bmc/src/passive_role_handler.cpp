@@ -4,6 +4,7 @@
 #include "persistent_data.hpp"
 
 #include <phosphor-logging/lg2.hpp>
+#include <xyz/openbmc_project/Common/error.hpp>
 
 namespace rbmc
 {
@@ -65,6 +66,12 @@ void PassiveRoleHandler::siblingRedEnabledHandler(bool enable)
     {
         redundancyInterface.redundancy_enabled(enable);
     }
+}
+
+void PassiveRoleHandler::disableRedPropChanged(bool /*disable*/)
+{
+    lg2::error("Cannot modify DisableRedundancy property on passive BMC");
+    throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
 }
 
 } // namespace rbmc
