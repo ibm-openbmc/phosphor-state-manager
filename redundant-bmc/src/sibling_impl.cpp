@@ -4,6 +4,8 @@
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
 
+#include <ranges>
+
 namespace rbmc
 {
 
@@ -118,7 +120,16 @@ void SiblingImpl::loadFromPropertyMap(
     it = propertyMap.find("RedundancyEnabled");
     if (it != propertyMap.end())
     {
+        auto old = redEnabled;
         redEnabled = std::get<bool>(it->second);
+        if (redEnabled != old)
+        {
+            for (const auto& callback :
+                 std::ranges::views::values(redEnabledCBs))
+            {
+                callback(redEnabled);
+            }
+        }
     }
 
     it = propertyMap.find("FailoversPaused");

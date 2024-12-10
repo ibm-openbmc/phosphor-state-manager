@@ -25,6 +25,9 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
                    e);
     }
 
+    // Setup the mirroring of the active BMC RedundancyEnabled
+    setupSiblingRedEnabledWatch();
+
     try
     {
         // Only the active needs NoRedundancyDetails persisted.
@@ -36,7 +39,32 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
             "Failed while removing NoRedundancyDetails saved value: {ERROR}",
             "ERROR", e);
     }
+
     co_return;
+}
+
+void PassiveRoleHandler::setupSiblingRedEnabledWatch()
+{
+    // Mirror the active BMC's RedundancyEnabled value
+    auto sibRedEnabled = sibling.getRedundancyEnabled();
+    if (sibRedEnabled)
+    {
+        siblingRedEnabledHandler(sibRedEnabled.value());
+    }
+
+    // Also register for changes
+    sibling.addRedundancyEnabledCallback(Role::Passive, [this](bool enabled) {
+        siblingRedEnabledHandler(enabled);
+    });
+}
+
+void PassiveRoleHandler::siblingRedEnabledHandler(bool enable)
+{
+    // If the sibling is Active, mirror the property on this BMC.
+    if (sibling.getRole().value_or(Role::Unknown) == Role::Active)
+    {
+        redundancyInterface.redundancy_enabled(enable);
+    }
 }
 
 } // namespace rbmc
