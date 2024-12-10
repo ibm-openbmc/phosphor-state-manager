@@ -47,6 +47,12 @@ class RoleHandler
      */
     virtual sdbusplus::async::task<> start() = 0;
 
+    /**
+     * @brief Handler for the RedundancyEnabled property
+     *        on the sibling's D-Bus interface changing.
+     */
+    virtual void siblingRedEnabledHandler(bool /*enable*/) {};
+
   protected:
     /**
      * @brief The async context object
