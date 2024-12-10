@@ -25,9 +25,9 @@ class PassiveRoleHandler : public RoleHandler
      * @param[in] ctx - The async context object
      * @param[in] services - The services object
      */
-    PassiveRoleHandler(sdbusplus::async::context& ctx,
-                       std::unique_ptr<Services>& services) :
-        RoleHandler(ctx, services)
+    PassiveRoleHandler(sdbusplus::async::context& ctx, Services& services,
+                       Sibling& sibling, RedundancyInterface& iface) :
+        RoleHandler(ctx, services, sibling, iface)
     {}
 
     /**
