@@ -88,11 +88,13 @@ void Manager::spawnRoleHandler()
 {
     if (redundancyInterface.role() == Role::Active)
     {
-        handler = std::make_unique<ActiveRoleHandler>(ctx, services);
+        handler = std::make_unique<ActiveRoleHandler>(ctx, *services, *sibling,
+                                                      redundancyInterface);
     }
     else if (redundancyInterface.role() == Role::Passive)
     {
-        handler = std::make_unique<PassiveRoleHandler>(ctx, services);
+        handler = std::make_unique<PassiveRoleHandler>(ctx, *services, *sibling,
+                                                       redundancyInterface);
     }
     else
     {
