@@ -19,6 +19,7 @@ executable(
     'persistent_data.cpp',
     'rbmc_manager_main.cpp',
     'redundancy.cpp',
+    'redundancy_interface.cpp',
     'role_determination.cpp',
     'services_impl.cpp',
     'sibling_impl.cpp',

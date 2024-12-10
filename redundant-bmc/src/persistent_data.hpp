@@ -17,6 +17,7 @@ namespace key
 constexpr auto role = "Role";
 constexpr auto passiveError = "PassiveDueToError";
 constexpr auto roleReason = "RoleReason";
+constexpr auto disableRed = "DisableRedundancy";
 } // namespace key
 
 namespace util

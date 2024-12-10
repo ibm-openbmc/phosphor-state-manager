@@ -15,9 +15,8 @@ const std::chrono::minutes siblingTimeout{6};
 Manager::Manager(sdbusplus::async::context& ctx,
                  std::unique_ptr<Services>&& services,
                  std::unique_ptr<Sibling>&& sibling) :
-    ctx(ctx),
-    redundancyInterface(ctx.get_bus(), RedundancyInterface::instance_path),
-    services(std::move(services)), sibling(std::move(sibling))
+    ctx(ctx), redundancyInterface(ctx, *this), services(std::move(services)),
+    sibling(std::move(sibling))
 {
     try
     {
