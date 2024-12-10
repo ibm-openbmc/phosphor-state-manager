@@ -332,4 +332,45 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingRole()
     co_return;
 }
 
+// NOLINTBEGIN(clang-analyzer-core.uninitialized.Branch,-warnings-as-errors,
+//             readability-static-accessed-through-instance,-warnings-as-errors)
+sdbusplus::async::task<> SiblingImpl::waitForBMCSteadyState() const
+{
+    using namespace std::chrono_literals;
+    auto start = std::chrono::steady_clock::now();
+    std::chrono::minutes timeout{10};
+    bool waiting = false;
+
+    // If sibling isn't alive don't bother waiting
+    if (!hasHeartbeat())
+    {
+        co_return;
+    }
+
+    auto steadyState = [](BMCState state) {
+        return (state == BMCState::Ready) || (state == BMCState::Quiesced);
+    };
+
+    while (!steadyState(bmcState) &&
+           ((std::chrono::steady_clock::now() - start) < timeout))
+    {
+        if (!waiting)
+        {
+            lg2::info(
+                "Waiting up to {TIME} minutes for sibling BMC steady state.",
+                "TIME", timeout.count());
+            waiting = true;
+        }
+
+        co_await sdbusplus::async::sleep_for(ctx, 500ms);
+    }
+
+    lg2::info("Done waiting for sibling steady state. State = {STATE}", "STATE",
+              bmcState);
+
+    co_return;
+}
+// NOLINTEND(clang-analyzer-core.uninitialized.Branch,-warnings-as-errors,
+//           readability-static-accessed-through-instance,-warnings-as-errors)
+
 } // namespace rbmc
