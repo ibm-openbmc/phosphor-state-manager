@@ -59,6 +59,15 @@ class Services
      * @return bool - If provisioned or not.
      */
     virtual bool getProvisioned() const = 0;
+
+    /**
+     * @brief Returns an 8 character hash of the FW version
+     *
+     * It's read out of the VERSION_ID field in /etc/os-release.
+     *
+     * @return - The version hash
+     */
+    virtual std::string getFWVersion() const = 0;
 };
 
 } // namespace rbmc

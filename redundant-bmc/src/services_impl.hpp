@@ -64,6 +64,15 @@ class ServicesImpl : public Services
      */
     bool getProvisioned() const override;
 
+    /**
+     * @brief Returns an 8 character hash of the FW version
+     *
+     * It's read out of the VERSION_ID field in /etc/os-release.
+     *
+     * @return - The version hash
+     */
+    std::string getFWVersion() const override;
+
   private:
     /**
      * @brief Returns the D-Bus object path for the unit in the
