@@ -1,7 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "services_impl.hpp"
 
+#include <openssl/evp.h>
+
 #include <phosphor-logging/lg2.hpp>
+
+#include <fstream>
 
 namespace rbmc
 {
@@ -153,6 +157,49 @@ bool ServicesImpl::getProvisioned() const
 {
     // TODO: Eventually get this from somewhere.
     return true;
+}
+
+std::string ServicesImpl::getFWVersion() const
+{
+    std::ifstream versionFile{"/etc/os-release"};
+    std::string line;
+    std::string keyPattern{"VERSION_ID="};
+    std::string version;
+
+    while (std::getline(versionFile, line))
+    {
+        // Handle either quotes or no quotes around the value
+        if (line.substr(0, keyPattern.size()).find(keyPattern) !=
+            std::string::npos)
+        {
+            // If the value isn't surrounded by quotes, then pos will be
+            // npos + 1 = 0, and the 2nd arg to substr() will be npos
+            // which means get the rest of the string.
+            auto value = line.substr(keyPattern.size());
+            std::size_t pos = value.find_first_of('"') + 1;
+            version = value.substr(pos, value.find_last_of('"') - pos);
+            break;
+        }
+    }
+
+    if (version.empty())
+    {
+        lg2::error("Unable to parse VERSION_ID out of /etc/os-release");
+        // let it hash the empty string
+    }
+
+    using EVP_MD_CTX_Ptr =
+        std::unique_ptr<EVP_MD_CTX, decltype(&::EVP_MD_CTX_free)>;
+
+    std::array<unsigned char, EVP_MAX_MD_SIZE> digest{};
+    EVP_MD_CTX_Ptr context(EVP_MD_CTX_new(), &::EVP_MD_CTX_free);
+
+    EVP_DigestInit(context.get(), EVP_sha512());
+    EVP_DigestUpdate(context.get(), version.c_str(), strlen(version.c_str()));
+    EVP_DigestFinal(context.get(), digest.data(), nullptr);
+
+    return std::format("{:02X}{:02X}{:02X}{:02X}", digest[0], digest[1],
+                       digest[2], digest[3]);
 }
 
 } // namespace rbmc
