@@ -4,15 +4,32 @@
 #include <openssl/evp.h>
 
 #include <phosphor-logging/lg2.hpp>
+#include <xyz/openbmc_project/ObjectMapper/client.hpp>
+#include <xyz/openbmc_project/State/Host/client.hpp>
 
 #include <fstream>
 
 namespace rbmc
 {
 
+using HostState = sdbusplus::client::xyz::openbmc_project::state::Host<>;
+using ObjectMapper = sdbusplus::client::xyz::openbmc_project::ObjectMapper<>;
+
+using HostProperties =
+    std::variant<std::string, HostState::HostState, HostState::RestartCause,
+                 HostState::Transition, std::set<HostState::Transition>>;
+using HostPropMap = std::unordered_map<std::string, HostProperties>;
+using HostInterfaceMap = std::map<std::string, HostPropMap>;
+
+namespace rules = sdbusplus::bus::match::rules;
+
 namespace object_path
 {
 constexpr auto systemd = "/org/freedesktop/systemd1";
+
+// host0 represents the overall host state
+const std::string hostState = std::string{HostState::namespace_path::value} +
+                              '/' + HostState::namespace_path::host + '0';
 } // namespace object_path
 
 namespace interface
@@ -25,6 +42,108 @@ namespace service
 {
 constexpr auto systemd = "org.freedesktop.systemd1";
 } // namespace service
+
+namespace util
+{
+
+bool getPoweredOnValue(HostState::HostState state)
+{
+    // For the current purposes, consider all other values
+    // as On. May need to revisit in the future.
+    return state != HostState::HostState::Off;
+}
+
+} // namespace util
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> ServicesImpl::init()
+{
+    ctx.spawn(watchHostInterfacesAdded());
+    ctx.spawn(watchHostPropertiesChanged());
+    co_await readHostState();
+    co_return;
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> ServicesImpl::readHostState()
+{
+    auto mapper = ObjectMapper(ctx)
+                      .service(ObjectMapper::default_service)
+                      .path(ObjectMapper::instance_path);
+
+    std::vector<std::string> stateIface{HostState::interface};
+
+    try
+    {
+        auto object =
+            co_await mapper.get_object(object_path::hostState, stateIface);
+        auto service = object.begin()->first;
+
+        auto stateMgr =
+            HostState(ctx).service(service).path(object_path::hostState);
+
+        auto hostState = co_await stateMgr.current_host_state();
+        poweredOn = util::getPoweredOnValue(hostState);
+
+        lg2::debug("initial host state is {STATE}", "STATE", hostState);
+    }
+    catch (const sdbusplus::exception_t& e)
+    {
+        // Not on D-Bus
+    }
+
+    co_return;
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> ServicesImpl::watchHostInterfacesAdded()
+{
+    sdbusplus::async::match match(
+        ctx, rules::interfacesAddedAtPath(object_path::hostState));
+
+    while (!ctx.stop_requested())
+    {
+        auto [_, interfaces] =
+            co_await match
+                .next<sdbusplus::message::object_path, HostInterfaceMap>();
+
+        auto it = interfaces.find(HostState::interface);
+        if (it != interfaces.end())
+        {
+            auto hostState = std::get<HostState::HostState>(
+                it->second.at("CurrentHostState"));
+            poweredOn = util::getPoweredOnValue(hostState);
+
+            lg2::debug("The added Host state is {STATE}", "STATE", hostState);
+        }
+    }
+
+    co_return;
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> ServicesImpl::watchHostPropertiesChanged()
+{
+    sdbusplus::async::match match(
+        ctx,
+        rules::propertiesChanged(object_path::hostState, HostState::interface));
+
+    while (!ctx.stop_requested())
+    {
+        auto [_, properties] = co_await match.next<std::string, HostPropMap>();
+
+        auto it = properties.find("CurrentHostState");
+        if (it != properties.end())
+        {
+            auto hostState = std::get<HostState::HostState>(it->second);
+            poweredOn = util::getPoweredOnValue(hostState);
+
+            lg2::debug("Host state changed to {STATE}", "STATE", hostState);
+        }
+    }
+
+    co_return;
+}
 
 size_t ServicesImpl::getBMCPosition() const
 {
@@ -200,6 +319,16 @@ std::string ServicesImpl::getFWVersion() const
 
     return std::format("{:02X}{:02X}{:02X}{:02X}", digest[0], digest[1],
                        digest[2], digest[3]);
+}
+
+bool ServicesImpl::isPoweredOn() const
+{
+    if (poweredOn.has_value())
+    {
+        return poweredOn.value();
+    }
+
+    throw std::runtime_error("Power state not available");
 }
 
 } // namespace rbmc
