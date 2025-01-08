@@ -52,7 +52,8 @@ Manager::Manager(sdbusplus::async::context& ctx,
 // NOLINTNEXTLINE
 sdbusplus::async::task<> Manager::startup()
 {
-    co_await sibling->init();
+    co_await sdbusplus::async::execution::when_all(services->init(),
+                                                   sibling->init());
 
     // If we know the role must be passive, set that now,
     // before starting the heartbeat or waiting for the sibling.

@@ -27,6 +27,13 @@ class Services
     Services& operator=(Services&&) = delete;
 
     /**
+     * @brief Sets up the D-Bus matches
+     *
+     * @return - The task object
+     */
+    virtual sdbusplus::async::task<> init() = 0;
+
+    /**
      * @brief Returns this BMC's position.
      *
      * @return - The position
@@ -68,6 +75,13 @@ class Services
      * @return - The version hash
      */
     virtual std::string getFWVersion() const = 0;
+
+    /**
+     * @brief Says if main power is on.
+     *
+     * @return If power is on
+     */
+    virtual bool isPoweredOn() const = 0;
 };
 
 } // namespace rbmc
