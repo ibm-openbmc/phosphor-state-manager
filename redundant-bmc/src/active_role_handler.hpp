@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-#include "redundancy.hpp"
+#include "redundancy_mgr.hpp"
 #include "role_handler.hpp"
 
 namespace rbmc
@@ -32,7 +32,7 @@ class ActiveRoleHandler : public RoleHandler
     ActiveRoleHandler(sdbusplus::async::context& ctx, Services& services,
                       Sibling& sibling, RedundancyInterface& iface) :
         RoleHandler(ctx, services, sibling, iface),
-        manualDisable(iface.disable_redundancy_override())
+        redMgr(ctx, services, sibling, iface)
     {}
 
     /**
@@ -49,43 +49,16 @@ class ActiveRoleHandler : public RoleHandler
      * @param[in] disable - If redundancy should be disabled
      *                      or enabled.
      */
-    void disableRedPropChanged(bool disable) override;
+    void disableRedPropChanged(bool disable) override
+    {
+        redMgr.disableRedPropChanged(disable);
+    }
 
   private:
     /**
-     * @brief Enables or disables redundancy based on the
-     *        system config.
+     * @brief Redundancy manager object
      */
-    void determineAndSetRedundancy();
-
-    /**
-     * @brief Returns the reasons that redundancy cannnot be
-     *        enabled, if any.
-     *
-     * @return The reasons.  If empty, then redundancy can be enabled.
-     */
-    redundancy::NoRedundancyReasons getNoRedundancyReasons();
-
-    /**
-     * @brief Based on if disableReasons is empty or not, disables
-     *        or enables redundancy.
-     *
-     * @param[in] disableReasons - The reasons redundancy must be
-     *            disabled, if any.
-     */
-    void enableOrDisableRedundancy(
-        const redundancy::NoRedundancyReasons& disableReasons);
-
-    /**
-     * @brief If determineAndSetRedundancy() has ran yet or not.
-     */
-    bool redundancyDetermined = false;
-
-    /**
-     * @brief If redundancy has been manually disabled via the
-     *        D-Bus property.
-     */
-    bool manualDisable = false;
+    RedundancyMgr redMgr;
 };
 
 } // namespace rbmc
