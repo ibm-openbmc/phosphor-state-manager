@@ -20,6 +20,7 @@ executable(
     'rbmc_manager_main.cpp',
     'redundancy.cpp',
     'redundancy_interface.cpp',
+    'redundancy_mgr.cpp',
     'role_determination.cpp',
     'services_impl.cpp',
     'sibling_impl.cpp',
