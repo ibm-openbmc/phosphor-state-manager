@@ -85,3 +85,10 @@ items to see if redundancy can be enabled:
 1. The sibling's 'sibling communication OK' property is true, meaning it is able
    to talk to the active BMC.
 1. The firmware versions are the same on the BMCs.
+
+## Scenarios
+
+### Passive BMC goes to the Quiesced state
+
+If redundancy was enabled, it would be disabled.  It would take rebooting the
+passive BMC before redundancy could possibly be re-enabled.
