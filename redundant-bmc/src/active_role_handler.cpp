@@ -36,7 +36,18 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
 
     // TODO: Create an error if no redundancy
 
+    startSiblingWatches();
+
     co_return;
+}
+
+void ActiveRoleHandler::siblingStateChange(BMCState state)
+{
+    if (state == BMCState::Quiesced)
+    {
+        lg2::error("Sibling BMC went to Quiesce, disabling redundancy");
+        redMgr.determineAndSetRedundancy();
+    }
 }
 
 } // namespace rbmc

@@ -29,6 +29,7 @@ class Sibling
     using BMCState =
         sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState;
     using RedundancyEnabledCallback = std::function<void(bool)>;
+    using BMCStateCallback = std::function<void(BMCState)>;
 
     Sibling() = default;
     virtual ~Sibling() = default;
@@ -145,13 +146,24 @@ class Sibling
     void clearCallbacks(Role role)
     {
         redEnabledCBs.erase(role);
+        clearBMCStateCallback(role);
+    }
+
+    /**
+     * @brief Clears the BMC state callback
+     *
+     * @param[in] role - The role to clear
+     */
+    void clearBMCStateCallback(Role role)
+    {
+        bmcStateCBs.erase(role);
     }
 
     /**
      * @brief Adds a callback function to invoke when the sibling's
      *        RedundancyEnabled property changes
      *
-     * @param[in] role - The role, used as a key into the map
+     * @param[in] role - The role to register with
      * @param[in] callback - The callback function
      */
     void addRedundancyEnabledCallback(Role role,
@@ -160,10 +172,27 @@ class Sibling
         redEnabledCBs.emplace(role, std::move(callback));
     }
 
+    /**
+     * @brief Adds a callback function to invoke when the sibling's
+     *        Heartbeat property changes
+     *
+     * @param[in] role - The role to register with
+     * @param[in] callback - The callback function
+     */
+    void addBMCStateCallback(Role role, BMCStateCallback callback)
+    {
+        bmcStateCBs.emplace(role, std::move(callback));
+    }
+
   protected:
     /**
      * @brief Callbacks for RedundancyEnabled
      */
     std::map<Role, RedundancyEnabledCallback> redEnabledCBs;
+
+    /**
+     * @brief Callbacks for BMCState
+     */
+    std::map<Role, BMCStateCallback> bmcStateCBs;
 };
 } // namespace rbmc

@@ -15,7 +15,6 @@ namespace rbmc
 class ActiveRoleHandler : public RoleHandler
 {
   public:
-    ActiveRoleHandler() = delete;
     ActiveRoleHandler(const ActiveRoleHandler&) = delete;
     ActiveRoleHandler& operator=(const ActiveRoleHandler&) = delete;
     ActiveRoleHandler(ActiveRoleHandler&&) = delete;
@@ -34,6 +33,14 @@ class ActiveRoleHandler : public RoleHandler
         RoleHandler(ctx, services, sibling, iface),
         redMgr(ctx, services, sibling, iface)
     {}
+
+    /**
+     * @brief Destructor
+     */
+    ~ActiveRoleHandler() override
+    {
+        sibling.clearCallbacks(Role::Active);
+    }
 
     /**
      * @brief Starts the handler.
@@ -55,6 +62,35 @@ class ActiveRoleHandler : public RoleHandler
     }
 
   private:
+    /**
+     * @brief Starts the Sibling property watches/callbacks
+     */
+    inline void startSiblingWatches()
+    {
+        sibling.addBMCStateCallback(
+            Role::Active,
+            std::bind_front(&ActiveRoleHandler::siblingStateChange, this));
+    }
+
+    /**
+     * @brief Stops the sibling property callbacks/watches
+     */
+    inline void stopSiblingWatches()
+    {
+        sibling.clearBMCStateCallback(Role::Active);
+    }
+
+    using BMCState =
+        sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState;
+
+    /**
+     * @brief Called when the sibling's BMC state changes
+     *        assuming the callback has been enabled.
+     *
+     * @param[in] state - The new state value
+     */
+    void siblingStateChange(BMCState state);
+
     /**
      * @brief Redundancy manager object
      */

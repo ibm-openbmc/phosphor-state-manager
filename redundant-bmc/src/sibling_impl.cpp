@@ -141,7 +141,15 @@ void SiblingImpl::loadFromPropertyMap(
     it = propertyMap.find("BMCState");
     if (it != propertyMap.end())
     {
+        auto old = bmcState;
         bmcState = std::get<BMCState>(it->second);
+        if (bmcState != old)
+        {
+            for (const auto& callback : std::ranges::views::values(bmcStateCBs))
+            {
+                callback(bmcState);
+            }
+        }
     }
 
     it = propertyMap.find("Role");
