@@ -195,6 +195,12 @@ class SiblingImpl : public Sibling
      */
     bool isBMCPresent() override;
 
+    /**
+     * @brief Waits for up to 10 minutes for the sibling BMC to
+     *        reach steady state - either Ready or Quiesced.
+     */
+    sdbusplus::async::task<> waitForBMCSteadyState() const override;
+
   private:
     /**
      * @brief Starts a Sibling InterfacesAdded watch

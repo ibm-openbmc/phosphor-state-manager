@@ -61,3 +61,27 @@ After the role has been determined, the code will
 1. Update the Role property on D-Bus.
 1. Start either the obmc-bmc-active.target or obmc-bmc-passive.target systemd
    target.
+1. The active BMC will attempt to enable redundancy.
+
+## Enabling Redundancy
+
+One of the requirements for enabling redundancy is that the passive BMC must be
+in the `Ready` state. As the roles can be determined before that state is
+reached, the active BMC may need to wait for the passive BMC to get there. It
+will wait up to ten minutes total for the passive BMC to get to a steady state
+(assuming the passive BMC is alive), which would either be `Ready` or
+`Quiesced`.
+
+After the passive BMC reaches steady state, it will then check the following
+items to see if redundancy can be enabled:
+
+1. The BMC does have the active role.
+1. The sibling BMC is present and is alive (has a heartbeat).
+1. The sibling is at the Ready state.
+1. The sibling BMC has the Passive role.
+1. Redundancy hasn't been manually disabled with the D-bus property that does
+   so.
+1. The sibling BMC has been provisioned.
+1. The sibling's 'sibling communication OK' property is true, meaning it is able
+   to talk to the active BMC.
+1. The firmware versions are the same on the BMCs.

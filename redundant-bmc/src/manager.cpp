@@ -15,9 +15,8 @@ const std::chrono::minutes siblingTimeout{6};
 Manager::Manager(sdbusplus::async::context& ctx,
                  std::unique_ptr<Services>&& services,
                  std::unique_ptr<Sibling>&& sibling) :
-    ctx(ctx),
-    redundancyInterface(ctx.get_bus(), RedundancyInterface::instance_path),
-    services(std::move(services)), sibling(std::move(sibling))
+    ctx(ctx), redundancyInterface(ctx, *this), services(std::move(services)),
+    sibling(std::move(sibling))
 {
     try
     {
@@ -89,11 +88,13 @@ void Manager::spawnRoleHandler()
 {
     if (redundancyInterface.role() == Role::Active)
     {
-        handler = std::make_unique<ActiveRoleHandler>(ctx, services);
+        handler = std::make_unique<ActiveRoleHandler>(ctx, *services, *sibling,
+                                                      redundancyInterface);
     }
     else if (redundancyInterface.role() == Role::Passive)
     {
-        handler = std::make_unique<PassiveRoleHandler>(ctx, services);
+        handler = std::make_unique<PassiveRoleHandler>(ctx, *services, *sibling,
+                                                       redundancyInterface);
     }
     else
     {

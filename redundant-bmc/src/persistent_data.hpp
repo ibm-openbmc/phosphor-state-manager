@@ -17,6 +17,8 @@ namespace key
 constexpr auto role = "Role";
 constexpr auto passiveError = "PassiveDueToError";
 constexpr auto roleReason = "RoleReason";
+constexpr auto noRedDetails = "NoRedundancyDetails";
+constexpr auto disableRed = "DisableRedundancy";
 } // namespace key
 
 namespace util
@@ -106,5 +108,15 @@ std::optional<T> read(std::string_view name,
 
     return std::nullopt;
 }
+
+/**
+ * @brief Remove an entry from the file
+ *
+ * @param[in] name - The key for the entry to remove
+ *
+ * @param[in] path - The path to the file
+ */
+void remove(std::string_view name,
+            const std::filesystem::path& path = dataFile);
 
 } // namespace data
