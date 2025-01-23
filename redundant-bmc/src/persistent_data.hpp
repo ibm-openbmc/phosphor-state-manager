@@ -53,6 +53,7 @@ void writeFile(const nlohmann::json& json, const std::filesystem::path& path);
  * @param[in] name - The key to save the value under
  * @param[in] value - The value to save
  */
+// NOLINTBEGIN
 template <typename T>
 void write(std::string_view name, T value,
            const std::filesystem::path& path = dataFile)
@@ -69,6 +70,7 @@ void write(std::string_view name, T value,
 
     util::writeFile(json, path);
 }
+// NOLINTEND
 
 /**
  * @brief Reads the value of the key specified in the file specified
