@@ -283,9 +283,11 @@ sdbusplus::async::task<>
     {
         if (!waiting)
         {
-            lg2::info("Waiting for sibling interface and/or heartbeat: "
-                      "Present = {PRES}, Heartbeat = {HB}",
-                      "PRES", interfacePresent, "HB", heartbeat);
+            lg2::info(
+                "Waiting up to {TIME}s for sibling interface and/or heartbeat: "
+                "Present = {PRES}, Heartbeat = {HB}",
+                "TIME", timeout.count(), "PRES", interfacePresent, "HB",
+                heartbeat);
             waiting = true;
         }
 
