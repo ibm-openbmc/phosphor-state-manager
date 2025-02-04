@@ -96,10 +96,13 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
                                      services.getFWVersion());
             std::cout << std::format("Provisioned:         {}\n",
                                      services.getProvisioned());
-            std::cout << std::format(
-                "Role Reason:         {}\n",
-                data::read<std::string>(data::key::roleReason)
-                    .value_or("No reason found"));
+            if (role != "Unknown")
+            {
+                std::cout << std::format(
+                    "Role Reason:         {}\n",
+                    data::read<std::string>(data::key::roleReason)
+                        .value_or("No reason found"));
+            }
 
             if ((role == "Active") && !enabled)
             {
