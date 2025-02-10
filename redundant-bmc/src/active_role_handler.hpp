@@ -3,6 +3,7 @@
 
 #include "redundancy_mgr.hpp"
 #include "role_handler.hpp"
+#include "timer.hpp"
 
 namespace rbmc
 {
@@ -31,7 +32,9 @@ class ActiveRoleHandler : public RoleHandler
     ActiveRoleHandler(sdbusplus::async::context& ctx, Services& services,
                       Sibling& sibling, RedundancyInterface& iface) :
         RoleHandler(ctx, services, sibling, iface),
-        redMgr(ctx, services, sibling, iface)
+        redMgr(ctx, services, sibling, iface),
+        siblingHBTimer(
+            ctx, std::bind_front(&ActiveRoleHandler::siblingHBCritical, this))
     {}
 
     /**
@@ -70,6 +73,10 @@ class ActiveRoleHandler : public RoleHandler
         sibling.addBMCStateCallback(
             Role::Active,
             std::bind_front(&ActiveRoleHandler::siblingStateChange, this));
+
+        sibling.addHeartbeatCallback(
+            Role::Active,
+            std::bind_front(&ActiveRoleHandler::siblingHBChange, this));
     }
 
     /**
@@ -77,7 +84,9 @@ class ActiveRoleHandler : public RoleHandler
      */
     inline void stopSiblingWatches()
     {
+        siblingHBTimer.stop();
         sibling.clearBMCStateCallback(Role::Active);
+        sibling.clearHeartbeatCallback(Role::Active);
     }
 
     using BMCState =
@@ -92,9 +101,42 @@ class ActiveRoleHandler : public RoleHandler
     void siblingStateChange(BMCState state);
 
     /**
+     * @brief Called when the sibling's heartbeat changes
+     *        assuming the callback has been enabled.
+     *
+     * Spawns siblingHBStarted() on a start, and calls
+     * siblingHBCritical() on a stop.
+     *
+     * @param[in] hb - The new heartbeat status
+     */
+    void siblingHBChange(bool hb);
+
+    /**
+     * @brief Called when the sibling heartbeat starts after
+     *        sibling monitoring has been enabled.
+     *
+     * This will attempt to re-enable redundancy, though it might
+     * not be possible for other reasons.
+     */
+    sdbusplus::async::task<> siblingHBStarted();
+
+    /**
+     * @brief Called when the sibling heartbeat has been stopped
+     *        long enough to explicitly disable redundancy.
+     */
+    void siblingHBCritical();
+
+    /**
      * @brief Redundancy manager object
      */
     RedundancyMgr redMgr;
+
+    /**
+     * @brief Timer used when the sibling's heartbeat stops
+     *
+     * Upon expiration redundancy will be disabled.
+     */
+    Timer siblingHBTimer;
 };
 
 } // namespace rbmc
