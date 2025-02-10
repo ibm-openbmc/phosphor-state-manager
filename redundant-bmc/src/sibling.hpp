@@ -30,6 +30,7 @@ class Sibling
         sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState;
     using RedundancyEnabledCallback = std::function<void(bool)>;
     using BMCStateCallback = std::function<void(BMCState)>;
+    using HeartbeatCallback = std::function<void(bool)>;
 
     Sibling() = default;
     virtual ~Sibling() = default;
@@ -139,7 +140,7 @@ class Sibling
     virtual bool isBMCPresent() = 0;
 
     /**
-     * @brief Clears callbacks held by the name
+     * @brief Clears callbacks held based on role
      *
      * @param[in] role - The role to clear
      */
@@ -147,6 +148,7 @@ class Sibling
     {
         redEnabledCBs.erase(role);
         clearBMCStateCallback(role);
+        clearHeartbeatCallback(role);
     }
 
     /**
@@ -157,6 +159,16 @@ class Sibling
     void clearBMCStateCallback(Role role)
     {
         bmcStateCBs.erase(role);
+    }
+
+    /**
+     * @brief Clears the heartbeat callback
+     *
+     * @param[in] role - The role to clear
+     */
+    void clearHeartbeatCallback(Role role)
+    {
+        heartbeatCBs.erase(role);
     }
 
     /**
@@ -184,6 +196,18 @@ class Sibling
         bmcStateCBs.emplace(role, std::move(callback));
     }
 
+    /**
+     * @brief Adds a callback function to invoke when the sibling's
+     *        Heartbeat property changes
+     *
+     * @param[in] role - The role to register with
+     * @param[in] callback - The callback function
+     */
+    void addHeartbeatCallback(Role role, HeartbeatCallback callback)
+    {
+        heartbeatCBs.emplace(role, std::move(callback));
+    }
+
   protected:
     /**
      * @brief Callbacks for RedundancyEnabled
@@ -194,5 +218,10 @@ class Sibling
      * @brief Callbacks for BMCState
      */
     std::map<Role, BMCStateCallback> bmcStateCBs;
+
+    /**
+     * @brief Callbacks for Heartbeat
+     */
+    std::map<Role, HeartbeatCallback> heartbeatCBs;
 };
 } // namespace rbmc
