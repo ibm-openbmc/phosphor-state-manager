@@ -167,7 +167,16 @@ void SiblingImpl::loadFromPropertyMap(
     it = propertyMap.find("Heartbeat");
     if (it != propertyMap.end())
     {
+        auto old = heartbeat;
         heartbeat = std::get<bool>(it->second);
+        if (old != heartbeat)
+        {
+            for (const auto& callback :
+                 std::ranges::views::values(heartbeatCBs))
+            {
+                callback(heartbeat);
+            }
+        }
     }
 }
 

@@ -92,3 +92,29 @@ items to see if redundancy can be enabled:
 
 If redundancy was enabled, it would be disabled. It would take rebooting the
 passive BMC before redundancy could possibly be re-enabled.
+
+### Passive BMC heartbeat changes
+
+The passive BMC's heartbeat could be lost due to events like:
+
+- The passive BMC is rebooted
+- The passive BMC dies
+- A cable is pulled
+- The RBMC management application on the passive BMC dies
+
+When the passive heartbeat stops, redundancy is functionally disabled as there
+is no passive BMC alive to handle the failover method. The active BMC will not
+do anything for five minutes to allow time for the passive BMC to come back
+after a reboot. At five minutes, it is assumed that the BMC won't come back and
+RedundancyEnabled will be set to false and an event log will be created.
+
+The active BMC will always notice when the passive BMC's heartbeat starts,
+either after a recovery or for the first time if added late. It will wait for
+the passive BMC to assume the passive role and then do the same checks as on
+startup to see if redundancy can be enabled. If redundancy can be enabled, a
+full sync will be done to handle any files that changed when the passive BMC
+wasn't running.
+
+Note that redundancy cannot be enabled at runtime if the system wasn't booted
+with redundancy enabled. A concurrent maintenance operation would be necessary
+in that case.
