@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #pragma once
 #include <sdbusplus/async.hpp>
+#include <xyz/openbmc_project/State/BMC/common.hpp>
 
 namespace rbmc
 {
@@ -82,6 +83,15 @@ class Services
      * @return If power is on
      */
     virtual bool isPoweredOn() const = 0;
+
+    /**
+     * @brief Reads the BMC state
+     *
+     * @return The BMC state
+     */
+    virtual sdbusplus::async::task<
+        sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState>
+        getBMCState() const = 0;
 };
 
 } // namespace rbmc

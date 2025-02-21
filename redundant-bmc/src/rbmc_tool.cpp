@@ -21,27 +21,12 @@ using BMCState = sdbusplus::client::xyz::openbmc_project::state::BMC<>;
 using Role = Redundancy::Role;
 
 // NOLINTNEXTLINE
-sdbusplus::async::task<std::string> getBMCState(sdbusplus::async::context& ctx)
+sdbusplus::async::task<std::string> getBMCState(const rbmc::Services& services)
 {
-    using ObjectMapper =
-        sdbusplus::client::xyz::openbmc_project::ObjectMapper<>;
-    using StateMgr = sdbusplus::client::xyz::openbmc_project::state::BMC<>;
-
     try
     {
-        auto mapper = ObjectMapper(ctx)
-                          .service(ObjectMapper::default_service)
-                          .path(ObjectMapper::instance_path);
-
-        std::string statePath = std::string{BMCState::namespace_path::value} +
-                                '/' + BMCState::namespace_path::bmc;
-        std::vector<std::string> stateIface{BMCState::interface};
-
-        auto object = co_await mapper.get_object(statePath, stateIface);
-        auto service = object.begin()->first;
-
-        auto stateMgr = StateMgr(ctx).service(service).path(statePath);
-        auto bmcState = co_await stateMgr.current_bmc_state();
+        // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+        auto bmcState = co_await services.getBMCState();
 
         auto stateString = BMCState::convertBMCStateToString(bmcState);
         co_return stateString.substr(stateString.find_last_of('.') + 1);
@@ -87,7 +72,7 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
 
         if (extended)
         {
-            auto bmcState = co_await getBMCState(ctx);
+            auto bmcState = co_await getBMCState(services);
             std::cout << std::format("BMC State:           {}\n", bmcState);
 
             std::cout << std::format("Failovers Paused:    {}\n",
