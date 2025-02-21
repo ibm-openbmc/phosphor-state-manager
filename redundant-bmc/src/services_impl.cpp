@@ -5,6 +5,7 @@
 
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
+#include <xyz/openbmc_project/State/BMC/client.hpp>
 #include <xyz/openbmc_project/State/Host/client.hpp>
 
 #include <fstream>
@@ -53,6 +54,20 @@ bool getPoweredOnValue(HostState::HostState state)
     return state != HostState::HostState::Off;
 }
 
+// NOLINTNEXTLINE
+sdbusplus::async::task<std::string> getService(sdbusplus::async::context& ctx,
+                                               const std::string& path,
+                                               const std::string& interface)
+{
+    auto mapper = ObjectMapper(ctx)
+                      .service(ObjectMapper::default_service)
+                      .path(ObjectMapper::instance_path);
+
+    std::vector<std::string> iface{interface};
+    auto object = co_await mapper.get_object(path, iface);
+    co_return object.begin()->first;
+}
+
 } // namespace util
 
 // NOLINTNEXTLINE
@@ -67,18 +82,10 @@ sdbusplus::async::task<> ServicesImpl::init()
 // NOLINTNEXTLINE
 sdbusplus::async::task<> ServicesImpl::readHostState()
 {
-    auto mapper = ObjectMapper(ctx)
-                      .service(ObjectMapper::default_service)
-                      .path(ObjectMapper::instance_path);
-
-    std::vector<std::string> stateIface{HostState::interface};
-
     try
     {
-        auto object =
-            co_await mapper.get_object(object_path::hostState, stateIface);
-        auto service = object.begin()->first;
-
+        auto service = co_await util::getService(ctx, object_path::hostState,
+                                                 HostState::interface);
         auto stateMgr =
             HostState(ctx).service(service).path(object_path::hostState);
 
@@ -329,6 +336,21 @@ bool ServicesImpl::isPoweredOn() const
     }
 
     throw std::runtime_error("Power state not available");
+}
+
+// NOLINTNEXTLINE
+auto ServicesImpl::getBMCState() const -> sdbusplus::async::task<
+    sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState>
+{
+    using StateMgr = sdbusplus::client::xyz::openbmc_project::state::BMC<>;
+
+    std::string statePath = std::string{StateMgr::namespace_path::value} + '/' +
+                            StateMgr::namespace_path::bmc;
+    auto service =
+        co_await util::getService(ctx, statePath, StateMgr::interface);
+
+    auto stateMgr = StateMgr(ctx).service(service).path(statePath);
+    co_return co_await stateMgr.current_bmc_state();
 }
 
 } // namespace rbmc
