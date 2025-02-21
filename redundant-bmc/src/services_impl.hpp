@@ -85,6 +85,15 @@ class ServicesImpl : public Services
      */
     bool isPoweredOn() const override;
 
+    /**
+     * @brief Reads the BMC state
+     *
+     * @return The BMC state
+     */
+    sdbusplus::async::task<
+        sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState>
+        getBMCState() const override;
+
   private:
     /**
      * @brief Returns the D-Bus object path for the unit in the
