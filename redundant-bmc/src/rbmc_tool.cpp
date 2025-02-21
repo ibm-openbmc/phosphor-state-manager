@@ -3,6 +3,7 @@
 #include "persistent_data.hpp"
 #include "redundancy.hpp"
 #include "services_impl.hpp"
+#include "sibling_reset_impl.hpp"
 
 #include <CLI/CLI.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
@@ -196,22 +197,56 @@ sdbusplus::async::task<> displayInfo(sdbusplus::async::context& ctx,
     co_return;
 }
 
+void resetSiblingBMC()
+{
+    rbmc::SiblingResetImpl reset;
+
+    try
+    {
+        reset.assertReset();
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed asserting sibling reset: {ERROR}", "ERROR", e);
+        return;
+    }
+
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(50ms);
+
+    try
+    {
+        reset.releaseReset();
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed releasing sibling reset: {ERROR}", "ERROR", e);
+    }
+}
+
 int main(int argc, char** argv)
 {
     CLI::App app{"RBMC Tool"};
     bool info{};
     bool extended{};
+    bool resetSibling{};
     sdbusplus::async::context ctx;
 
     auto* flag = app.add_flag("-d", info, "Display RBMC Information");
     app.add_flag("-e", extended, "Add extended RBMC details to the display")
         ->needs(flag);
 
+    app.add_flag("--reset-sibling", resetSibling, "Reset the sibling BMC");
+
     CLI11_PARSE(app, argc, argv);
 
     if (info)
     {
         ctx.spawn(displayInfo(ctx, extended));
+    }
+    else if (resetSibling)
+    {
+        resetSiblingBMC();
     }
     else
     {
