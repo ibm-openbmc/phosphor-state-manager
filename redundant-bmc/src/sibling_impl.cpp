@@ -245,7 +245,17 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved()
         {
             lg2::info("Sibling D-Bus interface removed");
             interfacePresent = false;
+
+            auto old = heartbeat;
             heartbeat = false;
+            if (old != heartbeat)
+            {
+                for (const auto& callback :
+                     std::ranges::views::values(heartbeatCBs))
+                {
+                    callback(heartbeat);
+                }
+            }
         }
     }
 
