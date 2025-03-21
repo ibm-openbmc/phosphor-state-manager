@@ -27,6 +27,11 @@ RedundancyMgr::RedundancyMgr(sdbusplus::async::context& ctx, Services& services,
 // NOLINTNEXTLINE
 void RedundancyMgr::determineAndSetRedundancy()
 {
+    if (!redundancyDetermined)
+    {
+        initSystemState();
+    }
+
     enableOrDisableRedundancy(getNoRedundancyReasons());
     redundancyDetermined = true;
 }
@@ -89,17 +94,9 @@ void RedundancyMgr::enableOrDisableRedundancy(
 
 void RedundancyMgr::disableRedPropChanged(bool disable)
 {
-    try
+    if (systemState.value_or(SystemState::other) != SystemState::off)
     {
-        if (services.isPoweredOn())
-        {
-            lg2::error("Cannot modify DisableRedundancy prop when powered on");
-            throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
-        }
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error("Call to isPoweredOn failed: {ERROR}", "ERROR", e);
+        lg2::error("Cannot modify DisableRedundancy prop when powered on");
         throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
     }
 
@@ -127,4 +124,35 @@ void RedundancyMgr::disableRedPropChanged(bool disable)
     determineAndSetRedundancy();
 }
 
+void RedundancyMgr::initSystemState()
+{
+    services.addSystemStateCallback(
+        std::bind_front(&RedundancyMgr::systemStateChange, this));
+
+    try
+    {
+        systemState = services.getSystemState();
+
+        lg2::info("RedundancyMgr: Initial system state is {STATE}", "STATE",
+                  Services::getSystemStateName(
+                      systemState.value_or(SystemState::other)));
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Could not get system state: {ERROR}", "ERROR", e);
+        systemState = SystemState::other;
+    }
+}
+
+void RedundancyMgr::systemStateChange(SystemState newState)
+{
+    lg2::info("System state change to {NEW}", "NEW",
+              Services::getSystemStateName(newState));
+
+    // TODO: Lock in the redundancy-enabled-at-runtime value
+
+    systemState = newState;
+
+    // TODO: on any change recalculate failovers paused
+}
 } // namespace rbmc

@@ -17,7 +17,6 @@ namespace rbmc
 class RedundancyMgr
 {
   public:
-    ~RedundancyMgr() = default;
     RedundancyMgr(const RedundancyMgr&) = delete;
     RedundancyMgr& operator=(const RedundancyMgr&) = delete;
     RedundancyMgr(RedundancyMgr&&) = delete;
@@ -33,6 +32,14 @@ class RedundancyMgr
      */
     RedundancyMgr(sdbusplus::async::context& ctx, Services& services,
                   Sibling& sibling, RedundancyInterface& iface);
+
+    /**
+     * @brief Destructor
+     */
+    ~RedundancyMgr()
+    {
+        services.clearSystemStateCallbacks();
+    }
 
     /**
      * @brief Enables or disables redundancy based on the
@@ -71,6 +78,20 @@ class RedundancyMgr
         const redundancy::NoRedundancyReasons& disableReasons);
 
     /**
+     * @brief Called when the system state changes to do
+     *        any necessary work.
+     *
+     * @param[in] newState - the new system state
+     */
+    void systemStateChange(SystemState newState);
+
+    /**
+     * @brief Reads the initial system state value and registers
+     *        for callbacks on changes
+     */
+    void initSystemState();
+
+    /**
      * @brief The async context object
      */
     sdbusplus::async::context& ctx;
@@ -100,6 +121,11 @@ class RedundancyMgr
      *        D-Bus property.
      */
     bool manualDisable = false;
+
+    /**
+     * @brief The current system state value
+     */
+    std::optional<SystemState> systemState;
 };
 
 } // namespace rbmc

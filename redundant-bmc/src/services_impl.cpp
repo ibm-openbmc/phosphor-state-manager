@@ -6,6 +6,7 @@
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
+#include <xyz/openbmc_project/State/Boot/Progress/client.hpp>
 #include <xyz/openbmc_project/State/Host/client.hpp>
 
 #include <fstream>
@@ -15,10 +16,13 @@ namespace rbmc
 
 using HostState = sdbusplus::client::xyz::openbmc_project::state::Host<>;
 using ObjectMapper = sdbusplus::client::xyz::openbmc_project::ObjectMapper<>;
+using BootProgress =
+    sdbusplus::client::xyz::openbmc_project::state::boot::Progress<>;
 
 using HostProperties =
     std::variant<std::string, HostState::HostState, HostState::RestartCause,
-                 HostState::Transition, std::set<HostState::Transition>>;
+                 HostState::Transition, std::set<HostState::Transition>,
+                 BootProgress::ProgressStages>;
 using HostPropMap = std::unordered_map<std::string, HostProperties>;
 using HostInterfaceMap = std::map<std::string, HostPropMap>;
 
@@ -47,13 +51,6 @@ constexpr auto systemd = "org.freedesktop.systemd1";
 namespace util
 {
 
-bool getPoweredOnValue(HostState::HostState state)
-{
-    // For the current purposes, consider all other values
-    // as On. May need to revisit in the future.
-    return state != HostState::HostState::Off;
-}
-
 // NOLINTNEXTLINE
 sdbusplus::async::task<std::string> getService(sdbusplus::async::context& ctx,
                                                const std::string& path,
@@ -74,8 +71,12 @@ sdbusplus::async::task<std::string> getService(sdbusplus::async::context& ctx,
 sdbusplus::async::task<> ServicesImpl::init()
 {
     ctx.spawn(watchHostInterfacesAdded());
-    ctx.spawn(watchHostPropertiesChanged());
+    ctx.spawn(watchHostStatePropertiesChanged());
+    ctx.spawn(watchBootProgressPropertiesChanged());
     co_await readHostState();
+    co_await readBootProgress();
+    updateSystemState();
+
     co_return;
 }
 
@@ -86,13 +87,12 @@ sdbusplus::async::task<> ServicesImpl::readHostState()
     {
         auto service = co_await util::getService(ctx, object_path::hostState,
                                                  HostState::interface);
-        auto stateMgr =
-            HostState(ctx).service(service).path(object_path::hostState);
+        hostState = co_await HostState(ctx)
+                        .service(service)
+                        .path(object_path::hostState)
+                        .current_host_state();
 
-        auto hostState = co_await stateMgr.current_host_state();
-        poweredOn = util::getPoweredOnValue(hostState);
-
-        lg2::debug("initial host state is {STATE}", "STATE", hostState);
+        lg2::debug("initial host state is {STATE}", "STATE", hostState.value());
     }
     catch (const sdbusplus::exception_t& e)
     {
@@ -110,6 +110,8 @@ sdbusplus::async::task<> ServicesImpl::watchHostInterfacesAdded()
 
     while (!ctx.stop_requested())
     {
+        bool changed = false;
+
         auto [_, interfaces] =
             co_await match
                 .next<sdbusplus::message::object_path, HostInterfaceMap>();
@@ -117,11 +119,28 @@ sdbusplus::async::task<> ServicesImpl::watchHostInterfacesAdded()
         auto it = interfaces.find(HostState::interface);
         if (it != interfaces.end())
         {
-            auto hostState = std::get<HostState::HostState>(
+            hostState = std::get<HostState::HostState>(
                 it->second.at("CurrentHostState"));
-            poweredOn = util::getPoweredOnValue(hostState);
 
-            lg2::debug("The added Host state is {STATE}", "STATE", hostState);
+            lg2::debug("The added Host state is {STATE}", "STATE",
+                       hostState.value());
+            changed = true;
+        }
+
+        it = interfaces.find(BootProgress::interface);
+        if (it != interfaces.end())
+        {
+            bootProgress = std::get<BootProgress::ProgressStages>(
+                it->second.at("BootProgress"));
+
+            lg2::debug("The added BootProgress is {PROGRESS}", "PROGRESS",
+                       bootProgress.value());
+            changed = true;
+        }
+
+        if (changed)
+        {
+            updateSystemState();
         }
     }
 
@@ -129,7 +148,7 @@ sdbusplus::async::task<> ServicesImpl::watchHostInterfacesAdded()
 }
 
 // NOLINTNEXTLINE
-sdbusplus::async::task<> ServicesImpl::watchHostPropertiesChanged()
+sdbusplus::async::task<> ServicesImpl::watchHostStatePropertiesChanged()
 {
     sdbusplus::async::match match(
         ctx,
@@ -142,14 +161,117 @@ sdbusplus::async::task<> ServicesImpl::watchHostPropertiesChanged()
         auto it = properties.find("CurrentHostState");
         if (it != properties.end())
         {
-            auto hostState = std::get<HostState::HostState>(it->second);
-            poweredOn = util::getPoweredOnValue(hostState);
+            hostState = std::get<HostState::HostState>(it->second);
 
-            lg2::debug("Host state changed to {STATE}", "STATE", hostState);
+            lg2::debug("Host state changed to {STATE}", "STATE",
+                       hostState.value());
+
+            updateSystemState();
         }
     }
 
     co_return;
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> ServicesImpl::readBootProgress()
+{
+    try
+    {
+        auto service = co_await util::getService(ctx, object_path::hostState,
+                                                 BootProgress::interface);
+        bootProgress = co_await BootProgress(ctx)
+                           .service(service)
+                           .path(object_path::hostState)
+                           .boot_progress();
+
+        lg2::debug("Initial BootProgress is {PROGRESS}", "PROGRESS",
+                   bootProgress.value());
+    }
+    catch (const sdbusplus::exception_t& e)
+    {
+        // Not on D-Bus yet
+    }
+
+    co_return;
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> ServicesImpl::watchBootProgressPropertiesChanged()
+{
+    sdbusplus::async::match match(
+        ctx, rules::propertiesChanged(object_path::hostState,
+                                      BootProgress::interface));
+
+    while (!ctx.stop_requested())
+    {
+        auto [_, properties] = co_await match.next<std::string, HostPropMap>();
+
+        auto it = properties.find("BootProgress");
+        if (it != properties.end())
+        {
+            bootProgress = std::get<BootProgress::ProgressStages>(it->second);
+
+            lg2::debug("BootProgress changed to {PROGRESS}", "PROGRESS",
+                       bootProgress.value());
+
+            updateSystemState();
+        }
+    }
+
+    co_return;
+}
+
+void ServicesImpl::updateSystemState()
+{
+    using BProgress = BootProgress::ProgressStages;
+    using HState = HostState::HostState;
+
+    if (!hostState.has_value() || !bootProgress.has_value())
+    {
+        lg2::debug("Cannot calculate system state yet");
+        return;
+    }
+
+    SystemState newState = SystemState::other;
+
+    if (hostState == HState::Off)
+    {
+        newState = SystemState::off;
+    }
+    else if (hostState == HState::TransitioningToRunning)
+    {
+        newState = SystemState::booting;
+    }
+    else if (hostState == HState::Running)
+    {
+        if ((bootProgress.value() == BProgress::SystemInitComplete) ||
+            (bootProgress.value() == BProgress::OSRunning))
+        {
+            newState = SystemState::runtime;
+        }
+        else
+        {
+            newState = SystemState::booting;
+        }
+    }
+
+    lg2::info("Calculated system state is {STATE}", "STATE",
+              getSystemStateName(newState));
+
+    if (!systemState.has_value() || (newState != systemState.value()))
+    {
+        if (systemState.has_value())
+        {
+            lg2::debug("System state changing from {OLD_STATE} to {NEW_STATE}",
+                       "OLD_STATE", getSystemStateName(systemState.value()),
+                       "NEW_STATE", getSystemStateName(newState));
+        }
+        systemState = newState;
+        std::ranges::for_each(systemStateCBs, [newState](const auto& callback) {
+            callback(newState);
+        });
+    }
 }
 
 size_t ServicesImpl::getBMCPosition() const
@@ -328,14 +450,14 @@ std::string ServicesImpl::getFWVersion() const
                        digest[2], digest[3]);
 }
 
-bool ServicesImpl::isPoweredOn() const
+SystemState ServicesImpl::getSystemState() const
 {
-    if (poweredOn.has_value())
+    if (systemState.has_value())
     {
-        return poweredOn.value();
+        return systemState.value();
     }
 
-    throw std::runtime_error("Power state not available");
+    throw std::runtime_error("System state not available");
 }
 
 // NOLINTNEXTLINE
