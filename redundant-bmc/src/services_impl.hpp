@@ -3,6 +3,9 @@
 
 #include "services.hpp"
 
+#include <xyz/openbmc_project/State/Boot/Progress/common.hpp>
+#include <xyz/openbmc_project/State/Host/common.hpp>
+
 namespace rbmc
 {
 
@@ -79,11 +82,11 @@ class ServicesImpl : public Services
     std::string getFWVersion() const override;
 
     /**
-     * @brief Says if main power is on.
+     * @brief Returns the system state
      *
-     * @return If power is on
+     * @return The system state
      */
-    bool isPoweredOn() const override;
+    SystemState getSystemState() const override;
 
     /**
      * @brief Reads the BMC state
@@ -114,7 +117,7 @@ class ServicesImpl : public Services
     /**
      * @brief Starts the PropertiesChanged watch for the host state
      */
-    sdbusplus::async::task<> watchHostPropertiesChanged();
+    sdbusplus::async::task<> watchHostStatePropertiesChanged();
 
     /**
      * @brief Reads the CurrentHostState property
@@ -122,17 +125,44 @@ class ServicesImpl : public Services
     sdbusplus::async::task<> readHostState();
 
     /**
+     * @brief Reads the BootProgress property
+     */
+    sdbusplus::async::task<> readBootProgress();
+
+    /**
+     * @brief Starts the PropertiesChanged watch for the BootProgress property
+     */
+    sdbusplus::async::task<> watchBootProgressPropertiesChanged();
+
+    /**
+     * @brief Called when either the host state or boot progress property
+     *        changes value to calculate the system state.
+     */
+    void updateSystemState();
+
+    /**
      * @brief The async context object
      */
     sdbusplus::async::context& ctx;
 
     /**
-     * @brief If the host is powered on
-     *
-     * Only valid after the host state service has been started.
-     * Will throw if called before then.
+     * @brief The host state value
      */
-    std::optional<bool> poweredOn;
+    std::optional<
+        sdbusplus::common::xyz::openbmc_project::state::Host::HostState>
+        hostState;
+
+    /**
+     * @brief The boot progress value
+     */
+    std::optional<sdbusplus::common::xyz::openbmc_project::state::boot::
+                      Progress::ProgressStages>
+        bootProgress;
+
+    /**
+     * @brief The current system state value
+     */
+    std::optional<SystemState> systemState;
 };
 
 } // namespace rbmc

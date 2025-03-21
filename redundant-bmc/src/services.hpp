@@ -6,6 +6,14 @@
 namespace rbmc
 {
 
+enum class SystemState
+{
+    off,
+    booting,
+    runtime,
+    other
+};
+
 /**
  * @class Services
  *
@@ -26,6 +34,8 @@ class Services
     Services& operator=(const Services&) = delete;
     Services(Services&&) = delete;
     Services& operator=(Services&&) = delete;
+
+    using SystemStateCallback = std::function<void(SystemState)>;
 
     /**
      * @brief Sets up the D-Bus matches
@@ -78,13 +88,6 @@ class Services
     virtual std::string getFWVersion() const = 0;
 
     /**
-     * @brief Says if main power is on.
-     *
-     * @return If power is on
-     */
-    virtual bool isPoweredOn() const = 0;
-
-    /**
      * @brief Reads the BMC state
      *
      * @return The BMC state
@@ -92,6 +95,60 @@ class Services
     virtual sdbusplus::async::task<
         sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState>
         getBMCState() const = 0;
+
+    /**
+     * @brief Returns the system state
+     *
+     * @return The system state
+     */
+    virtual SystemState getSystemState() const = 0;
+
+    /**
+     * @brief Returns the string name for the system state enum
+     *
+     * @param[in] state - The state enum
+     *
+     * @return The string name
+     */
+    static inline std::string getSystemStateName(SystemState state)
+    {
+        switch (state)
+        {
+            case SystemState::off:
+                return "Off";
+            case SystemState::booting:
+                return "Booting";
+            case SystemState::runtime:
+                return "Runtime";
+            case SystemState::other:
+                return "Other";
+        }
+        return std::string{"Unknown"};
+    }
+
+    /**
+     * @brief Add a function that gets called when the system state changes.
+     *
+     * @param[in] callback - The function to call
+     */
+    void addSystemStateCallback(SystemStateCallback&& callback)
+    {
+        systemStateCBs.push_back(std::move(callback));
+    }
+
+    /**
+     * @brief Clears all system state change callbacks.
+     */
+    void clearSystemStateCallbacks()
+    {
+        systemStateCBs.clear();
+    }
+
+  protected:
+    /**
+     * @brief The functions to call when the system state changes
+     */
+    std::vector<SystemStateCallback> systemStateCBs;
 };
 
 } // namespace rbmc
