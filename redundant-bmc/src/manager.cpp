@@ -14,10 +14,8 @@ namespace rbmc
 const std::chrono::minutes siblingTimeout{6};
 
 Manager::Manager(sdbusplus::async::context& ctx,
-                 std::unique_ptr<Services>&& services,
-                 std::unique_ptr<Sibling>&& sibling) :
-    ctx(ctx), redundancyInterface(ctx, *this), services(std::move(services)),
-    sibling(std::move(sibling))
+                 std::unique_ptr<Providers>&& providers) :
+    ctx(ctx), redundancyInterface(ctx, *this), providers(std::move(providers))
 {
     try
     {
@@ -53,8 +51,11 @@ Manager::Manager(sdbusplus::async::context& ctx,
 // NOLINTNEXTLINE
 sdbusplus::async::task<> Manager::startup()
 {
-    co_await sdbusplus::async::execution::when_all(services->init(),
-                                                   sibling->init());
+    auto& services = providers->getServices();
+    auto& sibling = providers->getSibling();
+
+    co_await sdbusplus::async::execution::when_all(services.init(),
+                                                   sibling.init());
 
     // If we know the role must be passive, set that now,
     // before starting the heartbeat or waiting for the sibling.
@@ -68,13 +69,13 @@ sdbusplus::async::task<> Manager::startup()
 
     if (!passiveRoleInfo)
     {
-        if (sibling->isBMCPresent())
+        if (sibling.isBMCPresent())
         {
-            co_await sibling->waitForSiblingUp(siblingTimeout);
+            co_await sibling.waitForSiblingUp(siblingTimeout);
 
             if (previousRole == Role::Passive)
             {
-                co_await sibling->waitForSiblingRole();
+                co_await sibling.waitForSiblingRole();
             }
         }
 
@@ -88,14 +89,17 @@ sdbusplus::async::task<> Manager::startup()
 
 void Manager::spawnRoleHandler()
 {
+    auto& services = providers->getServices();
+    auto& sibling = providers->getSibling();
+
     if (redundancyInterface.role() == Role::Active)
     {
-        handler = std::make_unique<ActiveRoleHandler>(ctx, *services, *sibling,
+        handler = std::make_unique<ActiveRoleHandler>(ctx, services, sibling,
                                                       redundancyInterface);
     }
     else if (redundancyInterface.role() == Role::Passive)
     {
-        handler = std::make_unique<PassiveRoleHandler>(ctx, *services, *sibling,
+        handler = std::make_unique<PassiveRoleHandler>(ctx, services, sibling,
                                                        redundancyInterface);
     }
     else
@@ -135,6 +139,9 @@ sdbusplus::async::task<> Manager::doHeartBeat()
 
 role_determination::RoleInfo Manager::determineRole()
 {
+    auto& services = providers->getServices();
+    auto& sibling = providers->getSibling();
+
     using namespace role_determination;
 
     RoleInfo roleInfo{Role::Unknown, RoleReason::unknown};
@@ -143,16 +150,16 @@ role_determination::RoleInfo Manager::determineRole()
     {
         // Note:  If these returned nullopts, the algorithm wouldn't use
         //        them anyway because there would be no heartbeat.
-        auto siblingRole = sibling->getRole().value_or(Role::Unknown);
-        auto siblingProvisioned = sibling->getProvisioned().value_or(false);
-        auto siblingPosition = sibling->getPosition().value_or(0xFF);
+        auto siblingRole = sibling.getRole().value_or(Role::Unknown);
+        auto siblingProvisioned = sibling.getProvisioned().value_or(false);
+        auto siblingPosition = sibling.getPosition().value_or(0xFF);
 
         role_determination::Input input{
-            .bmcPosition = services->getBMCPosition(),
+            .bmcPosition = services.getBMCPosition(),
             .previousRole = previousRole,
             .siblingPosition = siblingPosition,
             .siblingRole = siblingRole,
-            .siblingHeartbeat = sibling->hasHeartbeat(),
+            .siblingHeartbeat = sibling.hasHeartbeat(),
             .siblingProvisioned = siblingProvisioned};
 
         // If an error case forced it to passive last time, don't use
@@ -187,15 +194,16 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
     using namespace role_determination;
 
     // An unprovisioned BMC cannot be active.
-    if (!services->getProvisioned())
+    if (!providers->getServices().getProvisioned())
     {
         co_return RoleInfo{Role::Passive, RoleReason::notProvisioned};
     }
 
     // The sibling service must be up and running.
-    if (!sibling->getInterfacePresent())
+    if (!providers->getSibling().getInterfacePresent())
     {
-        auto state = co_await services->getUnitState(Sibling::unitName);
+        auto state =
+            co_await providers->getServices().getUnitState(Sibling::unitName);
         if (state != "active")
         {
             lg2::info("Sibling service state is {STATE}", "STATE", state);
