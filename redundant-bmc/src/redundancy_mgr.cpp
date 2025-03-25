@@ -9,9 +9,9 @@
 namespace rbmc
 {
 
-RedundancyMgr::RedundancyMgr(sdbusplus::async::context& ctx, Services& services,
-                             Sibling& sibling, RedundancyInterface& iface) :
-    ctx(ctx), services(services), sibling(sibling), redundancyInterface(iface),
+RedundancyMgr::RedundancyMgr(sdbusplus::async::context& ctx,
+                             Providers& providers, RedundancyInterface& iface) :
+    ctx(ctx), providers(providers), redundancyInterface(iface),
     manualDisable(iface.disable_redundancy_override())
 {
     try
@@ -38,6 +38,9 @@ void RedundancyMgr::determineAndSetRedundancy()
 
 redundancy::NoRedundancyReasons RedundancyMgr::getNoRedundancyReasons()
 {
+    auto& sibling = providers.getSibling();
+    auto& services = providers.getServices();
+
     redundancy::Input input{
         .role = redundancyInterface.role(),
         .siblingPresent = sibling.isBMCPresent(),
@@ -127,6 +130,8 @@ void RedundancyMgr::disableRedPropChanged(bool disable)
 
 void RedundancyMgr::initSystemState()
 {
+    auto& services = providers.getServices();
+
     services.addSystemStateCallback(
         std::bind_front(&RedundancyMgr::systemStateChange, this));
 
