@@ -89,17 +89,14 @@ sdbusplus::async::task<> Manager::startup()
 
 void Manager::spawnRoleHandler()
 {
-    auto& services = providers->getServices();
-    auto& sibling = providers->getSibling();
-
     if (redundancyInterface.role() == Role::Active)
     {
-        handler = std::make_unique<ActiveRoleHandler>(ctx, services, sibling,
+        handler = std::make_unique<ActiveRoleHandler>(ctx, *providers,
                                                       redundancyInterface);
     }
     else if (redundancyInterface.role() == Role::Passive)
     {
-        handler = std::make_unique<PassiveRoleHandler>(ctx, services, sibling,
+        handler = std::make_unique<PassiveRoleHandler>(ctx, *providers,
                                                        redundancyInterface);
     }
     else

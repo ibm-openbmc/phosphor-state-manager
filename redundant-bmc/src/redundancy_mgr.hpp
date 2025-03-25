@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include "providers.hpp"
 #include "redundancy.hpp"
 #include "redundancy_interface.hpp"
-#include "services.hpp"
-#include "sibling.hpp"
 
 namespace rbmc
 {
@@ -26,19 +25,18 @@ class RedundancyMgr
      * @brief Constructor
      *
      * @param[in] ctx - The async context object
-     * @param[in] services - The services object
-     * @param[in] sibling - The sibling object
+     * @param[in] providers - The Providers access object
      * @param[in] iface - The redundancy D-Bus interface object
      */
-    RedundancyMgr(sdbusplus::async::context& ctx, Services& services,
-                  Sibling& sibling, RedundancyInterface& iface);
+    RedundancyMgr(sdbusplus::async::context& ctx, Providers& providers,
+                  RedundancyInterface& iface);
 
     /**
      * @brief Destructor
      */
     ~RedundancyMgr()
     {
-        services.clearSystemStateCallbacks();
+        providers.getServices().clearSystemStateCallbacks();
     }
 
     /**
@@ -151,14 +149,9 @@ class RedundancyMgr
     sdbusplus::async::context& ctx;
 
     /**
-     * @brief The services object
+     * @brief Provides the various system interfaces
      */
-    Services& services;
-
-    /**
-     * @brief The Sibling object
-     */
-    Sibling& sibling;
+    Providers& providers;
 
     /**
      * @brief The Redundancy D-Bus interface
