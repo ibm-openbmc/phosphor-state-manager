@@ -12,6 +12,9 @@ const std::chrono::minutes siblingHBTimeout{5};
 // NOLINTNEXTLINE
 sdbusplus::async::task<> ActiveRoleHandler::start()
 {
+    auto& services = providers.getServices();
+    auto& sibling = providers.getSibling();
+
     try
     {
         // NOLINTNEXTLINE
@@ -84,6 +87,7 @@ sdbusplus::async::task<> ActiveRoleHandler::siblingHBStarted()
 
     stopSiblingWatches();
 
+    auto& sibling = providers.getSibling();
     co_await sdbusplus::async::execution::when_all(
         sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState());
 

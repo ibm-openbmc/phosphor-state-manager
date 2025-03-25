@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include "providers.hpp"
 #include "redundancy_interface.hpp"
-#include "services.hpp"
-#include "sibling.hpp"
 
 namespace rbmc
 {
@@ -31,14 +30,12 @@ class RoleHandler
      * @brief Constructor
      *
      * @param[in] ctx - The async context object
-     * @param[in] services - The services object
-     * @param[in] sibling - The sibling object
+     * @param[in] providers - The Providers access object
      * @param[in] iface - The redundancy D-Bus interface object
      */
-    RoleHandler(sdbusplus::async::context& ctx, Services& services,
-                Sibling& sibling, RedundancyInterface& iface) :
-        ctx(ctx), services(services), sibling(sibling),
-        redundancyInterface(iface)
+    RoleHandler(sdbusplus::async::context& ctx, Providers& providers,
+                RedundancyInterface& iface) :
+        ctx(ctx), providers(providers), redundancyInterface(iface)
     {}
 
     /**
@@ -68,14 +65,9 @@ class RoleHandler
     sdbusplus::async::context& ctx;
 
     /**
-     * @brief The services object
+     * @brief Provides the various system interfaces
      */
-    Services& services;
-
-    /**
-     * @brief The Sibling object
-     */
-    Sibling& sibling;
+    Providers& providers;
 
     /**
      * @brief The Redundancy D-Bus interface

@@ -24,13 +24,12 @@ class PassiveRoleHandler : public RoleHandler
      * @brief Constructor
      *
      * @param[in] ctx - The async context object
-     * @param[in] services - The services object
-     * @param[in] sibling - The sibling object
+     * @param[in] providers - The Providers access object
      * @param[in] iface - The redundancy D-Bus interface object
      */
-    PassiveRoleHandler(sdbusplus::async::context& ctx, Services& services,
-                       Sibling& sibling, RedundancyInterface& iface) :
-        RoleHandler(ctx, services, sibling, iface)
+    PassiveRoleHandler(sdbusplus::async::context& ctx, Providers& providers,
+                       RedundancyInterface& iface) :
+        RoleHandler(ctx, providers, iface)
     {}
 
     /**
@@ -40,7 +39,7 @@ class PassiveRoleHandler : public RoleHandler
      */
     ~PassiveRoleHandler() override
     {
-        sibling.clearCallbacks(Role::Passive);
+        providers.getSibling().clearCallbacks(Role::Passive);
     }
 
     /**

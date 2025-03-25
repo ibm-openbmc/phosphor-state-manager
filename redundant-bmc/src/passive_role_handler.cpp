@@ -17,7 +17,7 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
     try
     {
         // NOLINTNEXTLINE
-        co_await services.startUnit(bmcPassiveTarget);
+        co_await providers.getServices().startUnit(bmcPassiveTarget);
     }
     catch (const sdbusplus::exception_t& e)
     {
@@ -58,6 +58,8 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
 
 void PassiveRoleHandler::setupSiblingRedEnabledWatch()
 {
+    auto& sibling = providers.getSibling();
+
     // Mirror the active BMC's RedundancyEnabled value
     auto sibRedEnabled = sibling.getRedundancyEnabled();
     if (sibRedEnabled)
@@ -74,7 +76,8 @@ void PassiveRoleHandler::setupSiblingRedEnabledWatch()
 void PassiveRoleHandler::siblingRedEnabledHandler(bool enable)
 {
     // If the sibling is Active, mirror the property on this BMC.
-    if (sibling.getRole().value_or(Role::Unknown) == Role::Active)
+    if (providers.getSibling().getRole().value_or(Role::Unknown) ==
+        Role::Active)
     {
         redundancyInterface.redundancy_enabled(enable);
     }

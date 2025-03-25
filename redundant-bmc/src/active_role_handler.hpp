@@ -25,14 +25,12 @@ class ActiveRoleHandler : public RoleHandler
      * @brief Constructor
      *
      * @param[in] ctx - The async context object
-     * @param[in] services - The services object
-     * @param[in] sibling - The sibling object
+     * @param[in] providers - The Providers access object
      * @param[in] iface - The redundancy D-Bus interface object
      */
-    ActiveRoleHandler(sdbusplus::async::context& ctx, Services& services,
-                      Sibling& sibling, RedundancyInterface& iface) :
-        RoleHandler(ctx, services, sibling, iface),
-        redMgr(ctx, services, sibling, iface),
+    ActiveRoleHandler(sdbusplus::async::context& ctx, Providers& providers,
+                      RedundancyInterface& iface) :
+        RoleHandler(ctx, providers, iface), redMgr(ctx, providers, iface),
         siblingHBTimer(
             ctx, std::bind_front(&ActiveRoleHandler::siblingHBCritical, this))
     {}
@@ -42,7 +40,7 @@ class ActiveRoleHandler : public RoleHandler
      */
     ~ActiveRoleHandler() override
     {
-        sibling.clearCallbacks(Role::Active);
+        providers.getSibling().clearCallbacks(Role::Active);
     }
 
     /**
@@ -70,6 +68,7 @@ class ActiveRoleHandler : public RoleHandler
      */
     inline void startSiblingWatches()
     {
+        auto& sibling = providers.getSibling();
         sibling.addBMCStateCallback(
             Role::Active,
             std::bind_front(&ActiveRoleHandler::siblingStateChange, this));
@@ -85,6 +84,7 @@ class ActiveRoleHandler : public RoleHandler
     inline void stopSiblingWatches()
     {
         siblingHBTimer.stop();
+        auto& sibling = providers.getSibling();
         sibling.clearBMCStateCallback(Role::Active);
         sibling.clearHeartbeatCallback(Role::Active);
     }
