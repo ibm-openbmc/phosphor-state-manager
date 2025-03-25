@@ -1,11 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #pragma once
 
+#include "providers.hpp"
 #include "redundancy_interface.hpp"
 #include "role_determination.hpp"
 #include "role_handler.hpp"
-#include "services.hpp"
-#include "sibling.hpp"
 
 #include <sdbusplus/async.hpp>
 
@@ -32,12 +31,10 @@ class Manager
      * @brief Constructor
      *
      * @param[in] ctx - The async context object
-     * @param[in] services - The services object to interface with system data.
-     * @param[in] sibling - The sibling access object
+     * @param[in] providers - The Providers access object
      */
     Manager(sdbusplus::async::context& ctx,
-            std::unique_ptr<Services>&& services,
-            std::unique_ptr<Sibling>&& sibling);
+            std::unique_ptr<Providers>&& providers);
 
     /**
      * @brief Handler for the DisableRedundancyOverride
@@ -111,21 +108,14 @@ class Manager
     RedundancyInterface redundancyInterface;
 
     /**
-     * @brief The services object
-     *
-     * Wraps system interfaces.
-     */
-    std::unique_ptr<Services> services;
-
-    /**
      * @brief The role handler class
      */
     std::unique_ptr<RoleHandler> handler;
 
     /**
-     * @brief Object to handle sibling BMC access
+     * @brief Contains the various provider helpers
      */
-    std::unique_ptr<Sibling> sibling;
+    std::unique_ptr<Providers> providers;
 
     /**
      * @brief The previously serialized role value.
