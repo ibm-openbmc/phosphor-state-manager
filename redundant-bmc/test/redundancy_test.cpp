@@ -19,7 +19,8 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         .siblingRole = rbmc::Role::Passive,
         .siblingState = rbmc::BMCState::Ready,
         .codeVersionsMatch = true,
-        .manualDisable = false};
+        .manualDisable = false,
+        .redundancyOffAtRuntimeStart = false};
 
     // Nothing stopping redundancy
     {
@@ -115,6 +116,16 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
         EXPECT_EQ(*reasons.begin(), manuallyDisabled);
+    }
+
+    // Redundancy was off at runtime
+    {
+        auto input = golden;
+        input.redundancyOffAtRuntimeStart = true;
+
+        auto reasons = getNoRedundancyReasons(input);
+        ASSERT_EQ(reasons.size(), 1);
+        EXPECT_EQ(*reasons.begin(), redundancyOffAtRuntimeStart);
     }
 
     // Multiple fails
