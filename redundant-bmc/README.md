@@ -85,6 +85,8 @@ items to see if redundancy can be enabled:
 1. The sibling's 'sibling communication OK' property is true, meaning it is able
    to talk to the active BMC.
 1. The firmware versions are the same on the BMCs.
+1. If attempting to enable any time at runtime, redundancy must have been
+   enabled when runtime was first reached.
 
 ## Scenarios
 

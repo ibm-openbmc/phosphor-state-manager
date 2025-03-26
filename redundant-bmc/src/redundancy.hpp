@@ -29,6 +29,7 @@ struct Input
     BMCState siblingState;
     bool codeVersionsMatch;
     bool manualDisable;
+    bool redundancyOffAtRuntimeStart;
 };
 
 // TODO: Move this to PDI Enums
@@ -48,6 +49,7 @@ enum class NoRedundancyReason
     codeMismatch,
     siblingNotAtReady,
     systemHardwareConfigIssue,
+    redundancyOffAtRuntimeStart,
     other
 };
 

@@ -92,6 +92,60 @@ class RedundancyMgr
     void initSystemState();
 
     /**
+     * @brief Update the 'redundancy off at runtime' data.
+     *
+     * @param[in] valid - If the value is valid or not.
+     * @param[in] off - The value, if redundancy is off or not.
+     */
+    static void setRedundancyOffAtRuntime(bool valid, bool off);
+
+    /**
+     * @brief Returns the 'redundancy off at runtime' values
+     *
+     * @return If value is valid, and what the value is
+     */
+    static std::tuple<bool, bool> getRedundancyOffAtRuntime();
+
+    /**
+     * @brief Says if Redundancy was off at runtime
+     *
+     * If the value isn't valid, then it won't be off.
+     */
+    static bool isRedundancyOffAtRuntime()
+    {
+        auto [valid, off] = getRedundancyOffAtRuntime();
+        return valid && off;
+    }
+
+    /**
+     * @brief Returns if the 'redundancy off at runtime' value is valid.
+     */
+    static bool isRedundancyOffAtRuntimeValid()
+    {
+        auto [valid, _] = getRedundancyOffAtRuntime();
+        return valid;
+    }
+
+    /**
+     * @brief Clears both the valid and value fields
+     *        of 'redundancy off at runtime'.
+     */
+    static void clearRedundancyOffAtRuntime()
+    {
+        setRedundancyOffAtRuntime(false, false);
+    }
+
+    /**
+     * @brief Sets a valid value for 'redundancy off at runtime'.
+     *
+     * @param[in] off - If off or not
+     */
+    static void setRedundancyOffAtRuntimeValue(bool off)
+    {
+        setRedundancyOffAtRuntime(true, off);
+    }
+
+    /**
      * @brief The async context object
      */
     sdbusplus::async::context& ctx;

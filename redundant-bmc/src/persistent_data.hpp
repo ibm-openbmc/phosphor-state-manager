@@ -19,6 +19,7 @@ constexpr auto passiveError = "PassiveDueToError";
 constexpr auto roleReason = "RoleReason";
 constexpr auto noRedDetails = "NoRedundancyDetails";
 constexpr auto disableRed = "DisableRedundancy";
+constexpr auto redundancyOffAtRuntime = "RedundancyOffAtRuntime";
 } // namespace key
 
 namespace util

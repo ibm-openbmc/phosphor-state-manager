@@ -48,7 +48,8 @@ redundancy::NoRedundancyReasons RedundancyMgr::getNoRedundancyReasons()
         .siblingState = sibling.getBMCState().value_or(BMCState::NotReady),
         .codeVersionsMatch =
             services.getFWVersion() == sibling.getFWVersion().value_or(""),
-        .manualDisable = manualDisable};
+        .manualDisable = manualDisable,
+        .redundancyOffAtRuntimeStart = isRedundancyOffAtRuntime()};
 
     auto reasons = redundancy::getNoRedundancyReasons(input);
 
@@ -142,6 +143,13 @@ void RedundancyMgr::initSystemState()
         lg2::error("Could not get system state: {ERROR}", "ERROR", e);
         systemState = SystemState::other;
     }
+
+    // Ensure a value for redundancy off at runtime isn't
+    // still valid if system is off, as may have lost AC.
+    if (systemState == SystemState::off)
+    {
+        clearRedundancyOffAtRuntime();
+    }
 }
 
 void RedundancyMgr::systemStateChange(SystemState newState)
@@ -149,10 +157,62 @@ void RedundancyMgr::systemStateChange(SystemState newState)
     lg2::info("System state change to {NEW}", "NEW",
               Services::getSystemStateName(newState));
 
-    // TODO: Lock in the redundancy-enabled-at-runtime value
+    if (newState == SystemState::off)
+    {
+        clearRedundancyOffAtRuntime();
+    }
+    else if (newState == SystemState::booting)
+    {
+        // TODO: failovers paused, etc
+    }
+    else if (newState == SystemState::runtime)
+    {
+        // Only set if not already valid.  It will need to
+        // go through the Off transition to invalidate it
+        // before it can be set again.
+        if (!isRedundancyOffAtRuntimeValid())
+        {
+            lg2::info(
+                "Locking in runtime redundancy enabled value of {ENABLED}",
+                "ENABLED", redundancyInterface.redundancy_enabled());
+            setRedundancyOffAtRuntimeValue(
+                !redundancyInterface.redundancy_enabled());
+        }
+    }
 
     systemState = newState;
 
     // TODO: on any change recalculate failovers paused
 }
+
+void RedundancyMgr::setRedundancyOffAtRuntime(bool valid, bool off)
+{
+    std::tuple<bool, bool> value{valid, off};
+    try
+    {
+        data::write(data::key::redundancyOffAtRuntime, value);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed serializing RedundancyOffAtRuntime: {ERROR}",
+                   "ERROR", e);
+    }
+}
+
+std::tuple<bool, bool> RedundancyMgr::getRedundancyOffAtRuntime()
+{
+    std::tuple<bool, bool> value{false, false};
+    try
+    {
+        value = data::read<decltype(value)>(data::key::redundancyOffAtRuntime)
+                    .value_or(std::tuple{false, false});
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed trying to obtain RedundancyOffAtRuntime: {ERROR}",
+                   "ERROR", e);
+    }
+    return value;
+}
+
 } // namespace rbmc

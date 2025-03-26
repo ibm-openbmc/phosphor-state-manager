@@ -62,6 +62,11 @@ NoRedundancyReasons getNoRedundancyReasons(const Input& input)
         }
     }
 
+    if (input.redundancyOffAtRuntimeStart)
+    {
+        reasons.insert(redundancyOffAtRuntimeStart);
+    }
+
     return reasons;
 }
 
@@ -106,6 +111,9 @@ std::string getNoRedundancyDescription(NoRedundancyReason reason)
             break;
         case systemHardwareConfigIssue:
             desc = "System hardware configuration issue"s;
+            break;
+        case redundancyOffAtRuntimeStart:
+            desc = "Redundancy was off upon reaching runtime"s;
             break;
         case other:
             desc = "Other";
