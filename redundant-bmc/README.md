@@ -121,6 +121,54 @@ Note that redundancy cannot be enabled at runtime if the system wasn't booted
 with redundancy enabled. A concurrent maintenance operation would be necessary
 in that case.
 
+## Interacting with Data Sync on the Active BMC
+
+### When Enabling Redundancy
+
+Any time redundancy is being enabled on the active BMC, or when the active BMC
+detects that the passive BMC recovered from some interruption even if redundancy
+wasn't disabled on D-Bus yet, the following steps will be taken:
+
+1. Set the `DisableSync` property to false.
+1. Call `StartFullSync` to start the full sync.
+1. Wait for the `FullSyncStatus` property change to `FullSyncCompleted` or
+   `FullSyncFailed`.
+
+If the full sync fails, redundancy will be disabled and `DisableSync` will be
+set to true. Note that if the system ever goes through a transition that causes
+another attempt at enabling redundancy, it won't be prevented and the full sync
+will be attempted again.
+
+### When disabling redundancy
+
+Whenever the active BMC attempts to enable redundancy and it can't for some
+reason, it will set the `DisableSync` property to true to stop background
+syncing if it was occurring.
+
+### Background Sync errors
+
+The `SyncEventsHealth` property says if any background sync operations had
+failures. Since retries are built into the sync daemon, it should take something
+serious for the health property to change to critical, such as:
+
+- rsync daemon on either BMC crashing
+- passive BMC reboot
+- loss of network connectivity
+
+Depending on when a sync happens to occur in relation to the root cause of the
+fail, the property change may be the first indication that something is wrong,
+or it may not change until quite some time later if at all.
+
+To deal with all of this, code will watch for the health property to change to
+critical, and then delay for 5 seconds to allow a sibling heartbeat loss to get
+noticed by the BMC.
+
+After the 5 seconds, if the sibling doesn't have a heartbeat then the code will
+just let the sibling heartbeat monitoring code handle the situation.
+
+However if the sibling still does have a heartbeat, then redundancy will be
+disabled with the reason being a sync failure.
+
 ## Pausing Failovers
 
 Even when redundancy is enabled, there are periods when failovers will not be
