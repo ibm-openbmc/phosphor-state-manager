@@ -20,6 +20,7 @@ constexpr auto roleReason = "RoleReason";
 constexpr auto noRedDetails = "NoRedundancyDetails";
 constexpr auto disableRed = "DisableRedundancy";
 constexpr auto redundancyOffAtRuntime = "RedundancyOffAtRuntime";
+constexpr auto failoversPausedReasons = "FailoversPausedReasons";
 } // namespace key
 
 namespace util

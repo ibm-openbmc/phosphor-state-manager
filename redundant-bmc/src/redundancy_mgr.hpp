@@ -56,6 +56,12 @@ class RedundancyMgr
      */
     void disableRedPropChanged(bool disable);
 
+    /**
+     * @brief Sets the FailoversPaused property based on the current
+     *        state of the system.
+     */
+    void determineAndSetFailoversPaused();
+
   private:
     /**
      * @brief Returns the reasons that redundancy cannnot be

@@ -151,3 +151,32 @@ TEST(RedundancyTest, GetNoRedundancyDescTest)
     EXPECT_EQ(getNoRedundancyDescription(NoRedundancyReason::codeMismatch),
               "Firmware version mismatch");
 }
+
+TEST(RedundancyTest, FailoversPausedTest)
+{
+    namespace fop = rbmc::fop;
+    using enum fop::FailoversPausedReason;
+
+    std::map<rbmc::SystemState, fop::FailoversPausedReasons> testStates{
+        {rbmc::SystemState::off, {}},
+        {rbmc::SystemState::booting, {systemState}},
+        {rbmc::SystemState::runtime, {}},
+        {rbmc::SystemState::other, {systemState}}};
+
+    for (const auto& [state, expectedReasons] : testStates)
+    {
+        fop::Input input{.systemState = state};
+
+        auto reasons = fop::getFailoversPausedReasons(input);
+        EXPECT_EQ(reasons, expectedReasons);
+    }
+}
+
+TEST(RedundancyTest, GetFailoversPausedDescTest)
+{
+    namespace fop = rbmc::fop;
+
+    EXPECT_EQ(fop::getFailoversPausedDescription(
+                  fop::FailoversPausedReason::systemState),
+              "System state is not off or runtime");
+}

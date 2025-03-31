@@ -22,6 +22,16 @@ RedundancyMgr::RedundancyMgr(sdbusplus::async::context& ctx,
     {
         lg2::error("Failed removing NoRedundancyDetails: {ERROR}", "ERROR", e);
     }
+
+    try
+    {
+        data::remove(data::key::failoversPausedReasons);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed removing failoversPausedReasons: {ERROR}", "ERROR",
+                   e);
+    }
 }
 
 // NOLINTNEXTLINE
@@ -34,6 +44,8 @@ void RedundancyMgr::determineAndSetRedundancy()
 
     enableOrDisableRedundancy(getNoRedundancyReasons());
     redundancyDetermined = true;
+
+    determineAndSetFailoversPaused();
 }
 
 redundancy::NoRedundancyReasons RedundancyMgr::getNoRedundancyReasons()
@@ -166,10 +178,6 @@ void RedundancyMgr::systemStateChange(SystemState newState)
     {
         clearRedundancyOffAtRuntime();
     }
-    else if (newState == SystemState::booting)
-    {
-        // TODO: failovers paused, etc
-    }
     else if (newState == SystemState::runtime)
     {
         // Only set if not already valid.  It will need to
@@ -187,7 +195,7 @@ void RedundancyMgr::systemStateChange(SystemState newState)
 
     systemState = newState;
 
-    // TODO: on any change recalculate failovers paused
+    determineAndSetFailoversPaused();
 }
 
 void RedundancyMgr::setRedundancyOffAtRuntime(bool valid, bool off)
@@ -218,6 +226,50 @@ std::tuple<bool, bool> RedundancyMgr::getRedundancyOffAtRuntime()
                    "ERROR", e);
     }
     return value;
+}
+
+void RedundancyMgr::determineAndSetFailoversPaused()
+{
+    fop::Input input{.systemState = systemState.value_or(SystemState::other)};
+
+    auto pausedReasons = fop::getFailoversPausedReasons(input);
+
+    // TODO: Save the reasons to a separate file that can be synced so the
+    // other BMC knows them.  Also put them on D-Bus.  For now, just save the
+    // descriptions in the normal spot for rbmctool.
+
+    std::set<std::string> descs;
+    std::ranges::transform(
+        pausedReasons, std::inserter(descs, descs.begin()),
+        [](const auto& reason) {
+            auto desc = fop::getFailoversPausedDescription(reason);
+            lg2::info("Failovers must be paused because {REASON}", "REASON",
+                      desc);
+            return desc;
+        });
+
+    try
+    {
+        data::write(data::key::failoversPausedReasons, descs);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed saving failovers paused descriptions");
+    }
+
+    if (pausedReasons.empty())
+    {
+        if (redundancyInterface.failovers_paused())
+        {
+            lg2::info("Unpausing failovers");
+            redundancyInterface.failovers_paused(false);
+        }
+    }
+    else
+    {
+        // Already traced above.
+        redundancyInterface.failovers_paused(true);
+    }
 }
 
 } // namespace rbmc
