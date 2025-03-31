@@ -120,3 +120,23 @@ wasn't running.
 Note that redundancy cannot be enabled at runtime if the system wasn't booted
 with redundancy enabled. A concurrent maintenance operation would be necessary
 in that case.
+
+## Pausing Failovers
+
+Even when redundancy is enabled, there are periods when failovers will not be
+allowed. This is considered pausing failovers, and there is a boolean
+FailoversPaused D-Bus property to reflect this state.
+
+Failovers will be paused when:
+
+1. The system is at some state other than off or runtime.
+2. More coming.
+
+When failovers are paused, rbmctool can be used to display the reasons why.
+
+Future work to be done:
+
+- Put the reasons on D-Bus and in Redfish so the HMC can get them.
+- Determine if the other BMC needs the reasons, or just if FOs are paused.
+- When writing the failover code, reject the failover if it is paused, though
+  there still needs to be a method to force it for use by field support.
