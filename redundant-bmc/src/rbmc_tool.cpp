@@ -62,6 +62,24 @@ void printNoRedReasons()
     }
 }
 
+void printFOPReasons()
+{
+    std::cout << "Reasons for failovers paused:\n";
+    auto reasons =
+        data::read<std::set<std::string>>(data::key::failoversPausedReasons)
+            .value_or(std::set<std::string>());
+    if (!reasons.empty())
+    {
+        std::ranges::for_each(reasons, [](auto& reason) {
+            std::cout << std::format("    {}\n", reason);
+        });
+    }
+    else
+    {
+        std::cout << std::format("    Unknown\n");
+    }
+}
+
 // NOLINTBEGIN
 sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
                                              bool extended)
@@ -99,8 +117,9 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
             auto bmcState = co_await getBMCState(services);
             std::cout << std::format("BMC State:           {}\n", bmcState);
 
-            std::cout << std::format("Failovers Paused:    {}\n",
-                                     false); // TODO
+            auto paused = std::get<bool>(props.at("FailoversPaused"));
+            std::cout << std::format("Failovers Paused:    {}\n", paused);
+
             std::cout << std::format("FW version hash:     {}\n",
                                      services.getFWVersion());
             std::cout << std::format("Provisioned:         {}\n",
@@ -116,6 +135,11 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
             if ((role == "Active") && !enabled)
             {
                 printNoRedReasons();
+            }
+
+            if ((role == "Active") && enabled && paused)
+            {
+                printFOPReasons();
             }
         }
     }

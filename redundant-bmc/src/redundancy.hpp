@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include "services.hpp"
+
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
 
@@ -70,4 +72,43 @@ NoRedundancyReasons getNoRedundancyReasons(const Input& input);
 std::string getNoRedundancyDescription(NoRedundancyReason reason);
 
 } // namespace redundancy
+
+// Failovers Paused
+namespace fop
+{
+
+/**
+ * @brief Inputs to the getFailoversPausedReasons function
+ */
+struct Input
+{
+    // TODO: Add more
+    SystemState systemState;
+};
+
+/**
+ * @brief Reasons why failovers have to be paused
+ */
+enum class FailoversPausedReason
+{
+    systemState
+};
+
+using FailoversPausedReasons = std::set<FailoversPausedReason>;
+
+/**
+ * @brief Returns the reasons that failovers must be paused
+ *
+ * @return The reasons.  Empty if there are none.
+ */
+FailoversPausedReasons getFailoversPausedReasons(const Input& input);
+
+/**
+ * @brief Return the string description of the reason
+ *
+ * @return The human readable description.
+ */
+std::string getFailoversPausedDescription(FailoversPausedReason reason);
+
+} // namespace fop
 } // namespace rbmc

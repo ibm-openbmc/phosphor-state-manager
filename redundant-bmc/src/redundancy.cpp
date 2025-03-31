@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "redundancy.hpp"
 
-namespace rbmc::redundancy
+namespace rbmc
+{
+namespace redundancy
 {
 
 NoRedundancyReasons getNoRedundancyReasons(const Input& input)
@@ -122,4 +124,39 @@ std::string getNoRedundancyDescription(NoRedundancyReason reason)
     return desc;
 }
 
-} // namespace rbmc::redundancy
+} // namespace redundancy
+
+namespace fop
+{
+
+FailoversPausedReasons getFailoversPausedReasons(const Input& input)
+{
+    using enum FailoversPausedReason;
+    FailoversPausedReasons reasons;
+
+    if ((input.systemState != SystemState::off) &&
+        (input.systemState != SystemState::runtime))
+    {
+        reasons.insert(systemState);
+    }
+
+    return reasons;
+}
+
+std::string getFailoversPausedDescription(FailoversPausedReason reason)
+{
+    using enum FailoversPausedReason;
+    using namespace std::string_literals;
+    std::string desc;
+
+    switch (reason)
+    {
+        case systemState:
+            desc = "System state is not off or runtime"s;
+            break;
+    }
+    return desc;
+}
+
+} // namespace fop
+} // namespace rbmc
