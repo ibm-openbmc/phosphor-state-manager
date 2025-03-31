@@ -39,6 +39,29 @@ sdbusplus::async::task<std::string> getBMCState(const rbmc::Services& services)
     }
 }
 
+void printNoRedReasons()
+{
+    using NoRedDetails =
+        std::map<rbmc::redundancy::NoRedundancyReason, std::string>;
+    auto details = data::read<NoRedDetails>(data::key::noRedDetails)
+                       .value_or(NoRedDetails{});
+    std::cout << std::format("Reasons for no BMC redundancy:\n");
+    if (!details.empty())
+    {
+        for (const auto& d : std::views::values(details))
+        {
+            std::cout << std::format("    {}\n", d);
+        }
+    }
+    else
+    {
+        // There can be long periods where the active BMC is waiting
+        // for the passive BMC so redundancy can't be checked yet.
+        // As far as rbmctool goes, label them as in a transition.
+        std::cout << std::format("    In transition\n");
+    }
+}
+
 // NOLINTBEGIN
 sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
                                              bool extended)
@@ -92,22 +115,7 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
 
             if ((role == "Active") && !enabled)
             {
-                using NoRedDetails =
-                    std::map<rbmc::redundancy::NoRedundancyReason, std::string>;
-                auto details = data::read<NoRedDetails>(data::key::noRedDetails)
-                                   .value_or(NoRedDetails{});
-                std::cout << std::format("Reasons for no BMC redundancy:\n");
-                if (!details.empty())
-                {
-                    for (const auto& d : std::views::values(details))
-                    {
-                        std::cout << std::format("    {}\n", d);
-                    }
-                }
-                else
-                {
-                    std::cout << std::format("    Unknown\n");
-                }
+                printNoRedReasons();
             }
         }
     }
