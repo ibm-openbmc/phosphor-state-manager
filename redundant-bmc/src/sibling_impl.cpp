@@ -135,7 +135,15 @@ void SiblingImpl::loadFromPropertyMap(
     it = propertyMap.find("FailoversPaused");
     if (it != propertyMap.end())
     {
+        auto old = failoversPaused;
         failoversPaused = std::get<bool>(it->second);
+        if (failoversPaused != old)
+        {
+            for (const auto& callback : std::ranges::views::values(foPausedCBs))
+            {
+                callback(failoversPaused);
+            }
+        }
     }
 
     it = propertyMap.find("BMCState");

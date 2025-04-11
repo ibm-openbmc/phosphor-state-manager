@@ -29,6 +29,8 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
     // Setup the mirroring of the active BMC RedundancyEnabled
     setupSiblingRedEnabledWatch();
 
+    setupSiblingFailoversPausedWatch();
+
     try
     {
         // Only the active needs NoRedundancyDetails persisted.
@@ -73,6 +75,23 @@ void PassiveRoleHandler::setupSiblingRedEnabledWatch()
     });
 }
 
+void PassiveRoleHandler::setupSiblingFailoversPausedWatch()
+{
+    auto& sibling = providers.getSibling();
+
+    // Register for changes
+    sibling.addFailoversPausedCallback(Role::Passive, [this](bool paused) {
+        siblingFailoversPausedHandler(paused);
+    });
+
+    // Handle current value
+    auto sibPaused = sibling.getFailoversPaused();
+    if (sibPaused.has_value())
+    {
+        siblingFailoversPausedHandler(sibPaused.value());
+    }
+}
+
 void PassiveRoleHandler::siblingRedEnabledHandler(bool enable)
 {
     // If the sibling is Active, mirror the property on this BMC.
@@ -80,6 +99,18 @@ void PassiveRoleHandler::siblingRedEnabledHandler(bool enable)
         Role::Active)
     {
         redundancyInterface.redundancy_enabled(enable);
+    }
+}
+
+void PassiveRoleHandler::siblingFailoversPausedHandler(bool paused)
+{
+    // If the sibling is Active, mirror the property on this BMC.
+    // TODO: The passive BMC ill have its own reasons for pausing
+    // failovers that also need to be considered.
+    if (providers.getSibling().getRole().value_or(Role::Unknown) ==
+        Role::Active)
+    {
+        redundancyInterface.failovers_paused(paused);
     }
 }
 

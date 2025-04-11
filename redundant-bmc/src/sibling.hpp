@@ -31,6 +31,7 @@ class Sibling
     using RedundancyEnabledCallback = std::function<void(bool)>;
     using BMCStateCallback = std::function<void(BMCState)>;
     using HeartbeatCallback = std::function<void(bool)>;
+    using FailoversPausedCallback = std::function<void(bool)>;
 
     Sibling() = default;
     virtual ~Sibling() = default;
@@ -133,6 +134,13 @@ class Sibling
     virtual std::optional<bool> getSiblingCommsOK() const = 0;
 
     /**
+     * @brief Returns if the sibling has failovers paused
+     *
+     * @return - If paused, or nullopt if not available
+     */
+    virtual std::optional<bool> getFailoversPaused() const = 0;
+
+    /**
      * @brief Returns if the sibling BMC is plugged in
      *
      * @return bool - if present
@@ -149,6 +157,7 @@ class Sibling
         redEnabledCBs.erase(role);
         clearBMCStateCallback(role);
         clearHeartbeatCallback(role);
+        foPausedCBs.erase(role);
     }
 
     /**
@@ -208,6 +217,18 @@ class Sibling
         heartbeatCBs.emplace(role, std::move(callback));
     }
 
+    /**
+     * @brief Adds a callback function to invoke when the sibling's
+     *        FailoversPaused property changes
+     *
+     * @param[in] role - The role to register with
+     * @param[in] callback - The callback function
+     */
+    void addFailoversPausedCallback(Role role, FailoversPausedCallback callback)
+    {
+        foPausedCBs.emplace(role, std::move(callback));
+    }
+
   protected:
     /**
      * @brief Callbacks for RedundancyEnabled
@@ -223,5 +244,10 @@ class Sibling
      * @brief Callbacks for Heartbeat
      */
     std::map<Role, HeartbeatCallback> heartbeatCBs;
+
+    /**
+     * @brief Callbacks for FailoversPaused
+     */
+    std::map<Role, FailoversPausedCallback> foPausedCBs;
 };
 } // namespace rbmc
