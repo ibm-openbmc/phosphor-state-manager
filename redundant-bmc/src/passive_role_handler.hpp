@@ -61,7 +61,7 @@ class PassiveRoleHandler : public RoleHandler
      * Will mirror the value on this BMC's Redundancy
      * interface if the other BMC is Active.
      */
-    void siblingRedEnabledHandler(bool enable) override;
+    void siblingRedEnabledHandler(bool enable);
 
     /**
      * @brief Setup watching the sibling BMC's
