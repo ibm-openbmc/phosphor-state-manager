@@ -40,7 +40,7 @@ class ActiveRoleHandler : public RoleHandler
      */
     ~ActiveRoleHandler() override
     {
-        providers.getSibling().clearCallbacks(Role::Active);
+        stopSiblingWatches();
     }
 
     /**
@@ -84,9 +84,7 @@ class ActiveRoleHandler : public RoleHandler
     inline void stopSiblingWatches()
     {
         siblingHBTimer.stop();
-        auto& sibling = providers.getSibling();
-        sibling.clearBMCStateCallback(Role::Active);
-        sibling.clearHeartbeatCallback(Role::Active);
+        providers.getSibling().clearCallbacks(Role::Active);
     }
 
     using BMCState =

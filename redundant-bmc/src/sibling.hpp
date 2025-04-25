@@ -155,29 +155,9 @@ class Sibling
     void clearCallbacks(Role role)
     {
         redEnabledCBs.erase(role);
-        clearBMCStateCallback(role);
-        clearHeartbeatCallback(role);
-        foPausedCBs.erase(role);
-    }
-
-    /**
-     * @brief Clears the BMC state callback
-     *
-     * @param[in] role - The role to clear
-     */
-    void clearBMCStateCallback(Role role)
-    {
         bmcStateCBs.erase(role);
-    }
-
-    /**
-     * @brief Clears the heartbeat callback
-     *
-     * @param[in] role - The role to clear
-     */
-    void clearHeartbeatCallback(Role role)
-    {
         heartbeatCBs.erase(role);
+        foPausedCBs.erase(role);
     }
 
     /**
