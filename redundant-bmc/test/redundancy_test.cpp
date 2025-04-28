@@ -20,7 +20,8 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         .siblingState = rbmc::BMCState::Ready,
         .codeVersionsMatch = true,
         .manualDisable = false,
-        .redundancyOffAtRuntimeStart = false};
+        .redundancyOffAtRuntimeStart = false,
+        .syncFailed = false};
 
     // Nothing stopping redundancy
     {
@@ -126,6 +127,16 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
         EXPECT_EQ(*reasons.begin(), redundancyOffAtRuntimeStart);
+    }
+
+    // Sync failed
+    {
+        auto input = golden;
+        input.syncFailed = true;
+
+        auto reasons = getNoRedundancyReasons(input);
+        ASSERT_EQ(reasons.size(), 1);
+        EXPECT_EQ(*reasons.begin(), syncFailed);
     }
 
     // Multiple fails

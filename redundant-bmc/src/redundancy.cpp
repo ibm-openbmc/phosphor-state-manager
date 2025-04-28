@@ -61,6 +61,11 @@ NoRedundancyReasons getNoRedundancyReasons(const Input& input)
             {
                 reasons.insert(siblingNotAtReady);
             }
+
+            if (input.syncFailed)
+            {
+                reasons.insert(syncFailed);
+            }
         }
     }
 
@@ -116,6 +121,9 @@ std::string getNoRedundancyDescription(NoRedundancyReason reason)
             break;
         case redundancyOffAtRuntimeStart:
             desc = "Redundancy was off upon reaching runtime"s;
+            break;
+        case syncFailed:
+            desc = "Data sync failed"s;
             break;
         case other:
             desc = "Other";

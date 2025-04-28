@@ -32,6 +32,7 @@ struct Input
     bool codeVersionsMatch;
     bool manualDisable;
     bool redundancyOffAtRuntimeStart;
+    bool syncFailed;
 };
 
 // TODO: Move this to PDI Enums
@@ -52,6 +53,7 @@ enum class NoRedundancyReason
     siblingNotAtReady,
     systemHardwareConfigIssue,
     redundancyOffAtRuntimeStart,
+    syncFailed,
     other
 };
 
