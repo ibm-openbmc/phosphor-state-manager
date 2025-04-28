@@ -46,6 +46,50 @@ void RedundancyMgr::determineAndSetRedundancy()
     redundancyDetermined = true;
 
     determineAndSetFailoversPaused();
+
+    if (!redundancyInterface.redundancy_enabled())
+    {
+        // Make sure syncs are disabled if redundancy is disabled.
+        ctx.spawn(providers.getSyncInterface().disableBackgroundSync());
+    }
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> RedundancyMgr::determineRedundancyAndSync()
+{
+    syncFailed = false;
+    determineAndSetRedundancy();
+
+    if (redundancyInterface.redundancy_enabled())
+    {
+        try
+        {
+            if (!co_await providers.getSyncInterface().doFullSync())
+            {
+                lg2::error("Disabling redundancy because full sync failed");
+                syncFailed = true;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            lg2::error("D-Bus error during full sync: {ERROR}", "ERROR", e);
+            syncFailed = true;
+        }
+
+        if (syncFailed)
+        {
+            // This will disable redundancy as syncFailed = true
+            determineAndSetRedundancy();
+            syncFailed = false;
+        }
+    }
+}
+
+void RedundancyMgr::handleBackgroundSyncFailed()
+{
+    syncFailed = true;
+    determineAndSetRedundancy();
+    syncFailed = false;
 }
 
 redundancy::NoRedundancyReasons RedundancyMgr::getNoRedundancyReasons()
@@ -117,6 +161,13 @@ void RedundancyMgr::disableRedPropChanged(bool disable)
         throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
     }
 
+    if (providers.getSyncInterface().isFullSyncInProgress())
+    {
+        lg2::error(
+            "Cannot modify DisableRedundancy when full sync is in progress");
+        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+    }
+
     manualDisable = disable;
 
     if (!redundancyDetermined)
@@ -138,7 +189,7 @@ void RedundancyMgr::disableRedPropChanged(bool disable)
         "Revisiting redundancy after manual override of disable to {DISABLE}",
         "DISABLE", disable);
 
-    determineAndSetRedundancy();
+    ctx.spawn(determineRedundancyAndSync());
 }
 
 void RedundancyMgr::initSystemState()
