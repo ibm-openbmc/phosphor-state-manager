@@ -64,7 +64,8 @@ redundancy::NoRedundancyReasons RedundancyMgr::getNoRedundancyReasons()
         .codeVersionsMatch =
             services.getFWVersion() == sibling.getFWVersion().value_or(""),
         .manualDisable = manualDisable,
-        .redundancyOffAtRuntimeStart = isRedundancyOffAtRuntime()};
+        .redundancyOffAtRuntimeStart = isRedundancyOffAtRuntime(),
+        .syncFailed = syncFailed};
 
     auto reasons = redundancy::getNoRedundancyReasons(input);
 
