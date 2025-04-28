@@ -148,6 +148,12 @@ class Sibling
     virtual bool isBMCPresent() = 0;
 
     /**
+     * @brief Pause for the amount of time it would take for a heartbeat
+     *        change to be noticed.
+     */
+    virtual sdbusplus::async::task<> pauseForHeartbeatChange() const = 0;
+
+    /**
      * @brief Clears callbacks held based on role
      *
      * @param[in] role - The role to clear

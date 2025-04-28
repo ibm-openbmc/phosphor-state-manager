@@ -28,6 +28,7 @@ executable(
     'services_impl.cpp',
     'sibling_impl.cpp',
     'sibling_reset_impl.cpp',
+    'sync_interface_impl.cpp',
     dependencies: rbmc_deps,
     install: true,
     install_dir: execinstalldir,
