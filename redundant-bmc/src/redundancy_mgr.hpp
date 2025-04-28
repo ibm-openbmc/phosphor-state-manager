@@ -179,6 +179,11 @@ class RedundancyMgr
      * @brief The current system state value
      */
     std::optional<SystemState> systemState;
+
+    /**
+     * @brief If data sync is in a failed state.
+     */
+    bool syncFailed = false;
 };
 
 } // namespace rbmc
