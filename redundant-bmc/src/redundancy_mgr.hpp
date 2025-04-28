@@ -46,6 +46,13 @@ class RedundancyMgr
     void determineAndSetRedundancy();
 
     /**
+     * @brief Determines redundancy, and if enabled does a full sync
+     *
+     * If the full sync fails, redundancy will be disabled.
+     */
+    sdbusplus::async::task<> determineRedundancyAndSync();
+
+    /**
      * @brief Called when the DisableRedundancyOverride D-Bus property
      *        is updated.
      *
@@ -61,6 +68,11 @@ class RedundancyMgr
      *        state of the system.
      */
     void determineAndSetFailoversPaused();
+
+    /**
+     * @brief Disables redundancy due to a failed sync.
+     */
+    void handleBackgroundSyncFailed();
 
   private:
     /**

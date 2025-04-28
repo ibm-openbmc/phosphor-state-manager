@@ -216,6 +216,12 @@ class SiblingImpl : public Sibling
      */
     sdbusplus::async::task<> waitForBMCSteadyState() const override;
 
+    /**
+     * @brief Pause for the amount of time it would take for a heartbeat
+     *        change to be noticed.
+     */
+    sdbusplus::async::task<> pauseForHeartbeatChange() const override;
+
   private:
     /**
      * @brief Starts a Sibling InterfacesAdded watch
