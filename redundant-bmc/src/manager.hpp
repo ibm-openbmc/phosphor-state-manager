@@ -7,9 +7,12 @@
 #include "role_handler.hpp"
 
 #include <sdbusplus/async.hpp>
+#include <xyz/openbmc_project/Control/Failover/aserver.hpp>
 
 namespace rbmc
 {
+
+using FailoverOptions = std::map<std::string, std::variant<bool>>;
 
 /**
  * @class Manager
@@ -17,10 +20,10 @@ namespace rbmc
  * Manages the high level operations of the redundant
  * BMC functionality.
  */
-class Manager
+class Manager :
+    public sdbusplus::aserver::xyz::openbmc_project::control::Failover<Manager>
 {
   public:
-    Manager() = delete;
     ~Manager() = default;
     Manager(const Manager&) = delete;
     Manager& operator=(const Manager&) = delete;
@@ -45,6 +48,14 @@ class Manager
      * @param[in] disable - The property value
      */
     void disableRedPropChanged(bool disable);
+
+    /**
+     * @brief Implements the StartFailover D-Bus method.
+     *
+     * @param[in] options - The failover options
+     */
+    sdbusplus::async::task<> method_call(start_failover_t /* unused */,
+                                         const FailoverOptions& options);
 
   private:
     /**

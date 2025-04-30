@@ -11,8 +11,14 @@
 namespace rbmc
 {
 
+const std::string failoverPath =
+    std::string{RedundancyInterface::namespace_path::value} + '/' +
+    RedundancyInterface::namespace_path::bmc;
+
 Manager::Manager(sdbusplus::async::context& ctx,
                  std::unique_ptr<Providers>&& providers) :
+    sdbusplus::aserver::xyz::openbmc_project::control::Failover<Manager>(
+        ctx, failoverPath.c_str()),
     ctx(ctx), redundancyInterface(ctx, *this), providers(std::move(providers))
 {
     try
@@ -41,6 +47,9 @@ Manager::Manager(sdbusplus::async::context& ctx,
         lg2::error("Failed trying to obtain previous role error: {ERROR}",
                    "ERROR", e);
     }
+
+    // emit the Failover interfaces added signal
+    emit_added();
 
     ctx.spawn(startup());
 }
@@ -265,6 +274,15 @@ void Manager::disableRedPropChanged(bool disable)
     }
 
     handler->disableRedPropChanged(disable);
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> Manager::method_call(
+    start_failover_t /* unused */, const FailoverOptions& /* options */)
+{
+    // TODO: Implement the failover
+    lg2::error("Failovers are not implemented yet");
+    throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
 }
 
 } // namespace rbmc
