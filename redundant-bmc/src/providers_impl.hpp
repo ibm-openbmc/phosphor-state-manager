@@ -4,6 +4,7 @@
 #include "providers.hpp"
 #include "services_impl.hpp"
 #include "sibling_impl.hpp"
+#include "sync_interface_impl.hpp"
 
 namespace rbmc
 {
@@ -29,7 +30,7 @@ class ProvidersImpl : public Providers
      * @param[in] ctx - The async context object
      */
     explicit ProvidersImpl(sdbusplus::async::context& ctx) :
-        services(ctx), sibling(ctx)
+        services(ctx), sibling(ctx), syncInterface(ctx)
     {}
 
     /**
@@ -48,6 +49,14 @@ class ProvidersImpl : public Providers
         return sibling;
     }
 
+    /**
+     * @brief Returns the SyncInterface provider
+     */
+    SyncInterface& getSyncInterface() override
+    {
+        return syncInterface;
+    }
+
   private:
     /**
      * @brief The Services implementation
@@ -58,6 +67,11 @@ class ProvidersImpl : public Providers
      * @brief The Sibling implementation
      */
     SiblingImpl sibling;
+
+    /**
+     * @brief The SyncInterface implementation
+     */
+    SyncInterfaceImpl syncInterface;
 };
 
 }; // namespace rbmc

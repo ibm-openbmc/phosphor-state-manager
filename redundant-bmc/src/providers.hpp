@@ -3,6 +3,7 @@
 
 #include "services.hpp"
 #include "sibling.hpp"
+#include "sync_interface.hpp"
 
 namespace rbmc
 {
@@ -32,6 +33,11 @@ class Providers
      * @brief Returns the Sibling provider
      */
     virtual Sibling& getSibling() = 0;
+
+    /**
+     * @brief Returns the SyncInterface provider
+     */
+    virtual SyncInterface& getSyncInterface() = 0;
 };
 
 }; // namespace rbmc

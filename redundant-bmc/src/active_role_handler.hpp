@@ -40,7 +40,8 @@ class ActiveRoleHandler : public RoleHandler
      */
     ~ActiveRoleHandler() override
     {
-        providers.getSibling().clearCallbacks(Role::Active);
+        stopSiblingWatches();
+        providers.getSyncInterface().stopSyncHealthWatch(Role::Active);
     }
 
     /**
@@ -84,9 +85,7 @@ class ActiveRoleHandler : public RoleHandler
     inline void stopSiblingWatches()
     {
         siblingHBTimer.stop();
-        auto& sibling = providers.getSibling();
-        sibling.clearBMCStateCallback(Role::Active);
-        sibling.clearHeartbeatCallback(Role::Active);
+        providers.getSibling().clearCallbacks(Role::Active);
     }
 
     using BMCState =
@@ -125,6 +124,33 @@ class ActiveRoleHandler : public RoleHandler
      *        long enough to explicitly disable redundancy.
      */
     void siblingHBCritical();
+
+    /**
+     * @brief Starts watching the data sync health status property
+     */
+    void startSyncHealthWatch()
+    {
+        providers.getSyncInterface().watchSyncHealth(
+            Role::Active,
+            std::bind_front(&ActiveRoleHandler::syncHealthPropertyChanged,
+                            this));
+    }
+
+    /**
+     * @brief Called when the sync health property changes
+     *
+     * Spawns syncHealthCritical() on critical health.
+     *
+     * @param[in] health - The new health value
+     */
+    void syncHealthPropertyChanged(SyncBMCData::SyncEventsHealth health);
+
+    /**
+     * @brief Spawned when the sync health changes to critical
+     *
+     * Redundancy will be disabled if it's a true sync failure.
+     */
+    sdbusplus::async::task<> syncHealthCritical();
 
     /**
      * @brief Redundancy manager object
