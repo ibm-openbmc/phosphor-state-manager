@@ -36,11 +36,13 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
             sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState());
     }
 
-    redMgr.determineAndSetRedundancy();
+    co_await redMgr.determineRedundancyAndSync();
 
     // TODO: Create an error if no redundancy
 
     startSiblingWatches();
+
+    startSyncHealthWatch();
 
     co_return;
 }
@@ -92,11 +94,62 @@ sdbusplus::async::task<> ActiveRoleHandler::siblingHBStarted()
         sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState());
 
     lg2::info("Attempting to enable redundancy now that sibling is back");
-    redMgr.determineAndSetRedundancy();
+    co_await redMgr.determineRedundancyAndSync();
 
     // TODO: full sync, etc
 
     startSiblingWatches();
+
+    co_return;
+}
+
+void ActiveRoleHandler::syncHealthPropertyChanged(
+    SyncBMCData::SyncEventsHealth health)
+{
+    lg2::info("Sync health property changed to {HEALTH}", "HEALTH", health);
+
+    // Don't care about changes if no redundancy.
+    if (!redundancyInterface.redundancy_enabled())
+    {
+        return;
+    }
+
+    if (health == SyncBMCData::SyncEventsHealth::Critical)
+    {
+        ctx.spawn(syncHealthCritical());
+    }
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> ActiveRoleHandler::syncHealthCritical()
+{
+    using namespace std::chrono_literals;
+
+    lg2::info("Disabling background sync because it is failing");
+    co_await providers.getSyncInterface().disableBackgroundSync();
+
+    // A passive BMC reboot should not result in redundancy being
+    // disabled, so wait a bit for the passive BMC's heartbeat
+    // to change.  If it's still running, then this is a valid
+    // sync fail so disable redundancy.  If it isn't running then
+    // then the code that deals with the sibling heartbeat will
+    // deal with it.
+    // TODO: Also do network failure detection.
+    lg2::info("Waiting to see if sibling heartbeat stops");
+    co_await providers.getSibling().pauseForHeartbeatChange();
+
+    if (providers.getSibling().hasHeartbeat())
+    {
+        lg2::error("Disabling redundancy due to critical sync health");
+
+        // This will disable redundancy
+        redMgr.handleBackgroundSyncFailed();
+    }
+    else
+    {
+        lg2::info(
+            "Sync health is critical, but there is also a sibling heartbeat loss");
+    }
 
     co_return;
 }

@@ -148,6 +148,12 @@ class Sibling
     virtual bool isBMCPresent() = 0;
 
     /**
+     * @brief Pause for the amount of time it would take for a heartbeat
+     *        change to be noticed.
+     */
+    virtual sdbusplus::async::task<> pauseForHeartbeatChange() const = 0;
+
+    /**
      * @brief Clears callbacks held based on role
      *
      * @param[in] role - The role to clear
@@ -155,29 +161,9 @@ class Sibling
     void clearCallbacks(Role role)
     {
         redEnabledCBs.erase(role);
-        clearBMCStateCallback(role);
-        clearHeartbeatCallback(role);
-        foPausedCBs.erase(role);
-    }
-
-    /**
-     * @brief Clears the BMC state callback
-     *
-     * @param[in] role - The role to clear
-     */
-    void clearBMCStateCallback(Role role)
-    {
         bmcStateCBs.erase(role);
-    }
-
-    /**
-     * @brief Clears the heartbeat callback
-     *
-     * @param[in] role - The role to clear
-     */
-    void clearHeartbeatCallback(Role role)
-    {
         heartbeatCBs.erase(role);
+        foPausedCBs.erase(role);
     }
 
     /**

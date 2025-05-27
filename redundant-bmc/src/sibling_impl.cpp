@@ -421,4 +421,12 @@ sdbusplus::async::task<> SiblingImpl::waitForBMCSteadyState() const
 // NOLINTEND(clang-analyzer-core.uninitialized.Branch,-warnings-as-errors,
 //           readability-static-accessed-through-instance,-warnings-as-errors)
 
+// NOLINTNEXTLINE
+sdbusplus::async::task<> SiblingImpl::pauseForHeartbeatChange() const
+{
+    using namespace std::chrono_literals;
+    // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+    co_return co_await sdbusplus::async::sleep_for(ctx, 5s);
+}
+
 } // namespace rbmc
