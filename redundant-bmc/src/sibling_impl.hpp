@@ -189,15 +189,15 @@ class SiblingImpl : public Sibling
     }
 
     /**
-     * @brief Returns if the sibling has failovers paused.
+     * @brief Returns if the sibling has failovers allowed.
      *
-     * @return - If paused, or nullopt if not available
+     * @return - If allowed, or nullopt if not available
      */
-    std::optional<bool> getFailoversPaused() const override
+    std::optional<bool> getFailoversAllowed() const override
     {
         if (interfacePresent && heartbeat)
         {
-            return failoversPaused;
+            return failoversAllowed;
         }
 
         return std::nullopt;
@@ -298,9 +298,9 @@ class SiblingImpl : public Sibling
     bool redEnabled = false;
 
     /**
-     * @brief If sibling failovers are paused
+     * @brief If sibling failovers are allowed
      */
-    bool failoversPaused = false;
+    bool failoversAllowed = false;
 
     /**
      * @brief The sibling's BMC state

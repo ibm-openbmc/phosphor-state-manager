@@ -64,10 +64,10 @@ class RedundancyMgr
     void disableRedPropChanged(bool disable);
 
     /**
-     * @brief Sets the FailoversPaused property based on the current
+     * @brief Sets the FailoversAllowed property based on the current
      *        state of the system.
      */
-    void determineAndSetFailoversPaused();
+    void determineAndSetFailoversAllowed();
 
     /**
      * @brief Disables redundancy due to a failed sync.

@@ -163,12 +163,12 @@ TEST(RedundancyTest, GetNoRedundancyDescTest)
               "Firmware version mismatch");
 }
 
-TEST(RedundancyTest, FailoversPausedTest)
+TEST(RedundancyTest, FailoversNotAllowedTest)
 {
-    namespace fop = rbmc::fop;
-    using enum fop::FailoversPausedReason;
+    namespace fona = rbmc::fona;
+    using enum fona::FailoversNotAllowedReason;
 
-    std::map<rbmc::SystemState, fop::FailoversPausedReasons> testStates{
+    std::map<rbmc::SystemState, fona::FailoversNotAllowedReasons> testStates{
         {rbmc::SystemState::off, {}},
         {rbmc::SystemState::booting, {systemState}},
         {rbmc::SystemState::runtime, {}},
@@ -176,18 +176,28 @@ TEST(RedundancyTest, FailoversPausedTest)
 
     for (const auto& [state, expectedReasons] : testStates)
     {
-        fop::Input input{.systemState = state};
+        fona::Input input{.redundancyEnabled = true, .systemState = state};
 
-        auto reasons = fop::getFailoversPausedReasons(input);
+        auto reasons = fona::getFailoversNotAllowedReasons(input);
         EXPECT_EQ(reasons, expectedReasons);
+    }
+
+    // Redundancy disabled
+    {
+        fona::Input input{.redundancyEnabled = false,
+                          .systemState = rbmc::SystemState::off};
+        auto reasons = fona::getFailoversNotAllowedReasons(input);
+        ASSERT_EQ(reasons.size(), 1);
+        EXPECT_EQ(*reasons.begin(),
+                  fona::FailoversNotAllowedReason::redundancyDisabled);
     }
 }
 
-TEST(RedundancyTest, GetFailoversPausedDescTest)
+TEST(RedundancyTest, GetFailoversNotAllowedDescTest)
 {
-    namespace fop = rbmc::fop;
+    namespace fona = rbmc::fona;
 
-    EXPECT_EQ(fop::getFailoversPausedDescription(
-                  fop::FailoversPausedReason::systemState),
+    EXPECT_EQ(fona::getFailoversNotAllowedDescription(
+                  fona::FailoversNotAllowedReason::systemState),
               "System state is not off or runtime");
 }

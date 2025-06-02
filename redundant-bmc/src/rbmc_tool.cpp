@@ -62,11 +62,11 @@ void printNoRedReasons()
     }
 }
 
-void printFOPReasons()
+void printFONotAllowedReasons()
 {
-    std::cout << "Reasons for failovers paused:\n";
+    std::cout << "Reasons failovers are not allowed:\n";
     auto reasons =
-        data::read<std::set<std::string>>(data::key::failoversPausedReasons)
+        data::read<std::set<std::string>>(data::key::failoversNotAllowedReasons)
             .value_or(std::set<std::string>());
     if (!reasons.empty())
     {
@@ -117,8 +117,8 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
             auto bmcState = co_await getBMCState(services);
             std::cout << std::format("BMC State:           {}\n", bmcState);
 
-            auto paused = std::get<bool>(props.at("FailoversPaused"));
-            std::cout << std::format("Failovers Paused:    {}\n", paused);
+            auto allowed = std::get<bool>(props.at("FailoversAllowed"));
+            std::cout << std::format("Failovers Allowed:   {}\n", allowed);
 
             std::cout << std::format("FW version hash:     {}\n",
                                      services.getFWVersion());
@@ -137,9 +137,9 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
                 printNoRedReasons();
             }
 
-            if ((role == "Active") && enabled && paused)
+            if ((role == "Active") && enabled && !allowed)
             {
-                printFOPReasons();
+                printFONotAllowedReasons();
             }
         }
     }
@@ -197,13 +197,13 @@ sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
         auto provisioned = std::get<bool>(props.at("Provisioned"));
         auto commOK = std::get<bool>(props.at("CommunicationOK"));
         auto fwVersion = std::get<std::string>(props.at("FWVersion"));
-        auto paused = std::get<bool>(props.at("FailoversPaused"));
+        auto allowed = std::get<bool>(props.at("FailoversAllowed"));
         auto enabled = std::get<bool>(props.at("RedundancyEnabled"));
 
         std::cout << std::format("BMC Position:        {}\n", pos);
         std::cout << std::format("BMC State:           {}\n", bmcState);
         std::cout << std::format("Redundancy Enabled:  {}\n", enabled);
-        std::cout << std::format("Failovers Paused:    {}\n", paused);
+        std::cout << std::format("Failovers Allowed:   {}\n", allowed);
         std::cout << std::format("Sibling Comm OK:     {}\n", commOK);
         std::cout << std::format("FW version hash:     {}\n", fwVersion);
         std::cout << std::format("Provisioned:         {}\n", provisioned);
