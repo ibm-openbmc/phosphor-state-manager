@@ -26,7 +26,6 @@ struct Input
     bool siblingPresent;
     bool siblingHeartbeat;
     bool siblingProvisioned;
-    bool siblingHasSiblingComm;
     Role siblingRole;
     BMCState siblingState;
     bool codeVersionsMatch;
@@ -48,7 +47,6 @@ enum class NoRedundancyReason
     noSiblingHeartbeat,
     siblingNotProvisioned,
     siblingNotPassive,
-    siblingNoCommunication,
     codeMismatch,
     siblingNotAtReady,
     systemHardwareConfigIssue,

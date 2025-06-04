@@ -47,11 +47,6 @@ NoRedundancyReasons getNoRedundancyReasons(const Input& input)
                 reasons.insert(siblingNotPassive);
             }
 
-            if (!input.siblingHasSiblingComm)
-            {
-                reasons.insert(siblingNoCommunication);
-            }
-
             if (!input.codeVersionsMatch)
             {
                 reasons.insert(codeMismatch);
@@ -106,9 +101,6 @@ std::string getNoRedundancyDescription(NoRedundancyReason reason)
             break;
         case siblingNotPassive:
             desc = "Sibling is not passive"s;
-            break;
-        case siblingNoCommunication:
-            desc = "Sibling has no communication with this BMC"s;
             break;
         case codeMismatch:
             desc = "Firmware version mismatch"s;
