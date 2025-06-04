@@ -15,11 +15,6 @@ RoleInfo determineRole(const Input& input)
         result = {Role::Active, RoleReason::noSiblingHeartbeat};
     }
 
-    else if (input.bmcPosition == input.siblingPosition)
-    {
-        result = {Role::Passive, RoleReason::samePositions};
-    }
-
     else if (!input.siblingProvisioned)
     {
         result = {Role::Active, RoleReason::siblingNotProvisioned};
@@ -71,9 +66,6 @@ std::string getRoleReasonDescription(RoleReason reason)
         case RoleReason::noSiblingHeartbeat:
             desc = "No sibling heartbeat"s;
             break;
-        case RoleReason::samePositions:
-            desc = "Both BMCs have the same position"s;
-            break;
         case RoleReason::siblingNotProvisioned:
             desc = "Sibling is not provisioned"s;
             break;
@@ -109,8 +101,8 @@ std::string getRoleReasonDescription(RoleReason reason)
 bool isErrorReason(RoleReason reason)
 {
     using enum RoleReason;
-    return (reason == samePositions) || (reason == notProvisioned) ||
-           (reason == siblingServiceNotRunning) || (reason == exception);
+    return (reason == notProvisioned) || (reason == siblingServiceNotRunning) ||
+           (reason == exception);
 }
 
 } // namespace rbmc::role_determination

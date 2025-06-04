@@ -85,13 +85,6 @@ class Sibling
     virtual sdbusplus::async::task<> waitForBMCSteadyState() const = 0;
 
     /**
-     * @brief Returns the sibling BMC's position
-     *
-     * @return - The position or nullopt if not available
-     */
-    virtual std::optional<size_t> getPosition() const = 0;
-
-    /**
      * @brief Returns the sibling BMC's state
      *
      * @return - The state or nullopt if not available
