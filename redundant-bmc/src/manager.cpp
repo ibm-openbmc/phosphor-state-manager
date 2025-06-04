@@ -147,12 +147,10 @@ role_determination::RoleInfo Manager::determineRole()
         //        them anyway because there would be no heartbeat.
         auto siblingRole = sibling.getRole().value_or(Role::Unknown);
         auto siblingProvisioned = sibling.getProvisioned().value_or(false);
-        auto siblingPosition = sibling.getPosition().value_or(0xFF);
 
         role_determination::Input input{
             .bmcPosition = services.getBMCPosition(),
             .previousRole = previousRole,
-            .siblingPosition = siblingPosition,
             .siblingRole = siblingRole,
             .siblingHeartbeat = sibling.hasHeartbeat(),
             .siblingProvisioned = siblingProvisioned};
