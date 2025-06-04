@@ -316,13 +316,12 @@ sdbusplus::async::task<> SiblingImpl::watchNameOwnerChanged()
     co_return;
 }
 
-// NOLINTBEGIN
-sdbusplus::async::task<> SiblingImpl::waitForSiblingUp(
-    const std::chrono::seconds& timeout)
-// NOLINTEND
+// NOLINTNEXTLINE
+sdbusplus::async::task<> SiblingImpl::waitForSiblingUp()
 {
     using namespace std::chrono_literals;
     auto start = std::chrono::steady_clock::now();
+    std::chrono::minutes timeout{6};
     auto waiting = false;
 
     while ((!interfacePresent || !heartbeat) &&
@@ -331,7 +330,7 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingUp(
         if (!waiting)
         {
             lg2::info(
-                "Waiting up to {TIME}s for sibling interface and/or heartbeat: "
+                "Waiting up to {TIME} minutes for sibling interface and/or heartbeat: "
                 "Present = {PRES}, Heartbeat = {HB}",
                 "TIME", timeout.count(), "PRES", interfacePresent, "HB",
                 heartbeat);

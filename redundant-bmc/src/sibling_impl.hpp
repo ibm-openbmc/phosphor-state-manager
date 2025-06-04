@@ -65,13 +65,12 @@ class SiblingImpl : public Sibling
     sdbusplus::async::task<> init() override;
 
     /**
-     * @brief Waits up to 'timeout' for the sibling interface to
+     * @brief Waits up to 6 minutes for the sibling interface to
      *        be on D-Bus and have the heartbeat property active.
      *
      * @return - The task object
      */
-    sdbusplus::async::task<> waitForSiblingUp(
-        const std::chrono::seconds& timeout) override;
+    sdbusplus::async::task<> waitForSiblingUp() override;
 
     /**
      * @brief Waits for the sibling role to change, assuming that the
