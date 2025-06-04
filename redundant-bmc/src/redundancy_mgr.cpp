@@ -102,7 +102,6 @@ redundancy::NoRedundancyReasons RedundancyMgr::getNoRedundancyReasons()
         .siblingPresent = sibling.isBMCPresent(),
         .siblingHeartbeat = sibling.hasHeartbeat(),
         .siblingProvisioned = sibling.getProvisioned().value_or(false),
-        .siblingHasSiblingComm = sibling.getSiblingCommsOK().value_or(false),
         .siblingRole = sibling.getRole().value_or(Role::Unknown),
         .siblingState = sibling.getBMCState().value_or(BMCState::NotReady),
         .codeVersionsMatch =

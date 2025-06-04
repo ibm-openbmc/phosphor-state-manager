@@ -80,8 +80,6 @@ items to see if redundancy can be enabled:
 1. Redundancy hasn't been manually disabled with the D-bus property that does
    so.
 1. The sibling BMC has been provisioned.
-1. The sibling's 'sibling communication OK' property is true, meaning it is able
-   to talk to the active BMC.
 1. The firmware versions are the same on the BMCs.
 1. If attempting to enable any time at runtime, redundancy must have been
    enabled when runtime was first reached.
