@@ -11,8 +11,6 @@
 namespace rbmc
 {
 
-const std::chrono::minutes siblingTimeout{6};
-
 Manager::Manager(sdbusplus::async::context& ctx,
                  std::unique_ptr<Providers>&& providers) :
     ctx(ctx), redundancyInterface(ctx, *this), providers(std::move(providers))
@@ -71,7 +69,7 @@ sdbusplus::async::task<> Manager::startup()
     {
         if (sibling.isBMCPresent())
         {
-            co_await sibling.waitForSiblingUp(siblingTimeout);
+            co_await sibling.waitForSiblingUp();
 
             if (previousRole == Role::Passive)
             {

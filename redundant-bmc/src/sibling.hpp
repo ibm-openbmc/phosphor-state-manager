@@ -64,13 +64,12 @@ class Sibling
     virtual bool hasHeartbeat() const = 0;
 
     /**
-     * @brief Waits up to 'timeout' for the sibling interface to
+     * @brief Waits up to 6 minutes for the sibling interface to
      *        be on D-Bus and have the heartbeat property active.
      *
      * @return - The task object
      */
-    virtual sdbusplus::async::task<> waitForSiblingUp(
-        const std::chrono::seconds& timeout) = 0;
+    virtual sdbusplus::async::task<> waitForSiblingUp() = 0;
 
     /**
      * @brief Waits for the sibling role to change, assuming that the
