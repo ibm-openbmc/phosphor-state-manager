@@ -120,13 +120,6 @@ class Sibling
     virtual std::optional<std::string> getFWVersion() const = 0;
 
     /**
-     * @brief Returns the sibling BMC's commsOK value
-     *
-     * @return - The value, or nullopt if not available
-     */
-    virtual std::optional<bool> getSiblingCommsOK() const = 0;
-
-    /**
      * @brief Returns if the sibling has failovers allowed
      *
      * @return - If allowed, or nullopt if not available

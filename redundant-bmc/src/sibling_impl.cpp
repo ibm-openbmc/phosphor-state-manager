@@ -161,12 +161,6 @@ void SiblingImpl::loadFromPropertyMap(
         role = std::get<Role>(it->second);
     }
 
-    it = propertyMap.find("CommunicationOK");
-    if (it != propertyMap.end())
-    {
-        commsOK = std::get<bool>(it->second);
-    }
-
     it = propertyMap.find("Heartbeat");
     if (it != propertyMap.end())
     {

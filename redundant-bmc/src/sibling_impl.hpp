@@ -159,21 +159,6 @@ class SiblingImpl : public Sibling
     }
 
     /**
-     * @brief Returns the sibling BMC's commsOK value
-     *
-     * @return - The value, or nullopt if not available
-     */
-    std::optional<bool> getSiblingCommsOK() const override
-    {
-        if (interfacePresent && heartbeat)
-        {
-            return commsOK;
-        }
-
-        return std::nullopt;
-    }
-
-    /**
      * @brief Returns if the sibling has failovers allowed.
      *
      * @return - If allowed, or nullopt if not available
@@ -291,11 +276,6 @@ class SiblingImpl : public Sibling
      * @brief The sibling's role
      */
     Role role = Role::Unknown;
-
-    /**
-     * @brief If the sibling can talk to this BMC
-     */
-    bool commsOK = false;
 
     /**
      * @brief If the sibling heartbeat is active.

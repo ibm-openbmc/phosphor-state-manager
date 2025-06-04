@@ -15,7 +15,6 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         .siblingPresent = true,
         .siblingHeartbeat = true,
         .siblingProvisioned = true,
-        .siblingHasSiblingComm = true,
         .siblingRole = rbmc::Role::Passive,
         .siblingState = rbmc::BMCState::Ready,
         .codeVersionsMatch = true,
@@ -79,16 +78,6 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         EXPECT_EQ(*reasons.begin(), siblingNotPassive);
     }
 
-    // Sibling can't talk to this BMC
-    {
-        auto input = golden;
-        input.siblingHasSiblingComm = false;
-
-        auto reasons = getNoRedundancyReasons(input);
-        ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(), siblingNoCommunication);
-    }
-
     // FW versions don't match
     {
         auto input = golden;
@@ -142,17 +131,15 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
     // Multiple fails
     {
         auto input = golden;
-        input.codeVersionsMatch = false;               // codeMismatch
-        input.siblingState = rbmc::BMCState::Quiesced; // siblingHealth
-        input.siblingHasSiblingComm = false;           // systemHealth
-        input.siblingRole = rbmc::Role::Unknown;       // siblingHealth
+        input.codeVersionsMatch = false;
+        input.siblingState = rbmc::BMCState::Quiesced;
+        input.siblingRole = rbmc::Role::Unknown;
 
         auto reasons = getNoRedundancyReasons(input);
 
-        EXPECT_EQ(reasons.size(), 4);
+        EXPECT_EQ(reasons.size(), 3);
         EXPECT_TRUE(std::ranges::contains(reasons, codeMismatch));
         EXPECT_TRUE(std::ranges::contains(reasons, siblingNotAtReady));
-        EXPECT_TRUE(std::ranges::contains(reasons, siblingNoCommunication));
         EXPECT_TRUE(std::ranges::contains(reasons, siblingNotPassive));
     }
 }
