@@ -193,14 +193,12 @@ sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
         auto bmcState = BMCState::convertBMCStateToString(
             std::get<BMCState::BMCState>(props.at("BMCState")));
         bmcState = bmcState.substr(bmcState.find_last_of('.') + 1);
-        auto pos = std::get<size_t>(props.at("BMCPosition"));
         auto provisioned = std::get<bool>(props.at("Provisioned"));
         auto commOK = std::get<bool>(props.at("CommunicationOK"));
         auto fwVersion = std::get<std::string>(props.at("FWVersion"));
         auto allowed = std::get<bool>(props.at("FailoversAllowed"));
         auto enabled = std::get<bool>(props.at("RedundancyEnabled"));
 
-        std::cout << std::format("BMC Position:        {}\n", pos);
         std::cout << std::format("BMC State:           {}\n", bmcState);
         std::cout << std::format("Redundancy Enabled:  {}\n", enabled);
         std::cout << std::format("Failovers Allowed:   {}\n", allowed);
