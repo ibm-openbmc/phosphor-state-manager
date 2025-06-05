@@ -25,12 +25,12 @@ RedundancyMgr::RedundancyMgr(sdbusplus::async::context& ctx,
 
     try
     {
-        data::remove(data::key::failoversPausedReasons);
+        data::remove(data::key::failoversNotAllowedReasons);
     }
     catch (const std::exception& e)
     {
-        lg2::error("Failed removing failoversPausedReasons: {ERROR}", "ERROR",
-                   e);
+        lg2::error("Failed removing failoversNotAllowedReasons: {ERROR}",
+                   "ERROR", e);
     }
 }
 
@@ -45,7 +45,7 @@ void RedundancyMgr::determineAndSetRedundancy()
     enableOrDisableRedundancy(getNoRedundancyReasons());
     redundancyDetermined = true;
 
-    determineAndSetFailoversPaused();
+    determineAndSetFailoversAllowed();
 
     if (!redundancyInterface.redundancy_enabled())
     {
@@ -247,7 +247,7 @@ void RedundancyMgr::systemStateChange(SystemState newState)
 
     systemState = newState;
 
-    determineAndSetFailoversPaused();
+    determineAndSetFailoversAllowed();
 }
 
 void RedundancyMgr::setRedundancyOffAtRuntime(bool valid, bool off)
@@ -280,47 +280,47 @@ std::tuple<bool, bool> RedundancyMgr::getRedundancyOffAtRuntime()
     return value;
 }
 
-void RedundancyMgr::determineAndSetFailoversPaused()
+void RedundancyMgr::determineAndSetFailoversAllowed()
 {
-    fop::Input input{.systemState = systemState.value_or(SystemState::other)};
+    fona::Input input{
+        .redundancyEnabled = redundancyInterface.redundancy_enabled(),
+        .systemState = systemState.value_or(SystemState::other)};
 
-    auto pausedReasons = fop::getFailoversPausedReasons(input);
+    auto notAllowedReasons = fona::getFailoversNotAllowedReasons(input);
 
-    // TODO: Save the reasons to a separate file that can be synced so the
-    // other BMC knows them.  Also put them on D-Bus.  For now, just save the
+    // TODO: Put the reasons on D-Bus. For now, just save the
     // descriptions in the normal spot for rbmctool.
 
     std::set<std::string> descs;
     std::ranges::transform(
-        pausedReasons, std::inserter(descs, descs.begin()),
+        notAllowedReasons, std::inserter(descs, descs.begin()),
         [](const auto& reason) {
-            auto desc = fop::getFailoversPausedDescription(reason);
-            lg2::info("Failovers must be paused because {REASON}", "REASON",
-                      desc);
+            auto desc = fona::getFailoversNotAllowedDescription(reason);
+            lg2::info("Failovers not allowed because {REASON}", "REASON", desc);
             return desc;
         });
 
     try
     {
-        data::write(data::key::failoversPausedReasons, descs);
+        data::write(data::key::failoversNotAllowedReasons, descs);
     }
     catch (const std::exception& e)
     {
-        lg2::error("Failed saving failovers paused descriptions");
+        lg2::error("Failed saving failovers not allowed descriptions");
     }
 
-    if (pausedReasons.empty())
+    if (notAllowedReasons.empty())
     {
-        if (redundancyInterface.failovers_paused())
+        if (!redundancyInterface.failovers_allowed())
         {
-            lg2::info("Unpausing failovers");
-            redundancyInterface.failovers_paused(false);
+            lg2::info("Changing failovers to allowed");
+            redundancyInterface.failovers_allowed(true);
         }
     }
     else
     {
         // Already traced above.
-        redundancyInterface.failovers_paused(true);
+        redundancyInterface.failovers_allowed(false);
     }
 }
 

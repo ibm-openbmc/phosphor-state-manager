@@ -132,16 +132,17 @@ void SiblingImpl::loadFromPropertyMap(
         }
     }
 
-    it = propertyMap.find("FailoversPaused");
+    it = propertyMap.find("FailoversAllowed");
     if (it != propertyMap.end())
     {
-        auto old = failoversPaused;
-        failoversPaused = std::get<bool>(it->second);
-        if (failoversPaused != old)
+        auto old = failoversAllowed;
+        failoversAllowed = std::get<bool>(it->second);
+        if (failoversAllowed != old)
         {
-            for (const auto& callback : std::ranges::views::values(foPausedCBs))
+            for (const auto& callback :
+                 std::ranges::views::values(foAllowedCBs))
             {
-                callback(failoversPaused);
+                callback(failoversAllowed);
             }
         }
     }

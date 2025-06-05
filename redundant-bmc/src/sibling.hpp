@@ -31,7 +31,7 @@ class Sibling
     using RedundancyEnabledCallback = std::function<void(bool)>;
     using BMCStateCallback = std::function<void(BMCState)>;
     using HeartbeatCallback = std::function<void(bool)>;
-    using FailoversPausedCallback = std::function<void(bool)>;
+    using FailoversAllowedCallback = std::function<void(bool)>;
 
     Sibling() = default;
     virtual ~Sibling() = default;
@@ -134,11 +134,11 @@ class Sibling
     virtual std::optional<bool> getSiblingCommsOK() const = 0;
 
     /**
-     * @brief Returns if the sibling has failovers paused
+     * @brief Returns if the sibling has failovers allowed
      *
-     * @return - If paused, or nullopt if not available
+     * @return - If allowed, or nullopt if not available
      */
-    virtual std::optional<bool> getFailoversPaused() const = 0;
+    virtual std::optional<bool> getFailoversAllowed() const = 0;
 
     /**
      * @brief Returns if the sibling BMC is plugged in
@@ -163,7 +163,7 @@ class Sibling
         redEnabledCBs.erase(role);
         bmcStateCBs.erase(role);
         heartbeatCBs.erase(role);
-        foPausedCBs.erase(role);
+        foAllowedCBs.erase(role);
     }
 
     /**
@@ -205,14 +205,15 @@ class Sibling
 
     /**
      * @brief Adds a callback function to invoke when the sibling's
-     *        FailoversPaused property changes
+     *        FailoversAllowed property changes
      *
      * @param[in] role - The role to register with
      * @param[in] callback - The callback function
      */
-    void addFailoversPausedCallback(Role role, FailoversPausedCallback callback)
+    void addFailoversAllowedCallback(Role role,
+                                     FailoversAllowedCallback callback)
     {
-        foPausedCBs.emplace(role, std::move(callback));
+        foAllowedCBs.emplace(role, std::move(callback));
     }
 
   protected:
@@ -232,8 +233,8 @@ class Sibling
     std::map<Role, HeartbeatCallback> heartbeatCBs;
 
     /**
-     * @brief Callbacks for FailoversPaused
+     * @brief Callbacks for FailoversAllowed
      */
-    std::map<Role, FailoversPausedCallback> foPausedCBs;
+    std::map<Role, FailoversAllowedCallback> foAllowedCBs;
 };
 } // namespace rbmc

@@ -75,42 +75,44 @@ std::string getNoRedundancyDescription(NoRedundancyReason reason);
 
 } // namespace redundancy
 
-// Failovers Paused
-namespace fop
+// Failovers not allowed
+namespace fona
 {
 
 /**
- * @brief Inputs to the getFailoversPausedReasons function
+ * @brief Inputs to the getFailoversNotAllowedReasons function
  */
 struct Input
 {
     // TODO: Add more
+    bool redundancyEnabled;
     SystemState systemState;
 };
 
 /**
- * @brief Reasons why failovers have to be paused
+ * @brief Reasons why failovers aren't allowed
  */
-enum class FailoversPausedReason
+enum class FailoversNotAllowedReason
 {
+    redundancyDisabled,
     systemState
 };
 
-using FailoversPausedReasons = std::set<FailoversPausedReason>;
+using FailoversNotAllowedReasons = std::set<FailoversNotAllowedReason>;
 
 /**
- * @brief Returns the reasons that failovers must be paused
+ * @brief Returns the reasons that failovers aren't allowed
  *
  * @return The reasons.  Empty if there are none.
  */
-FailoversPausedReasons getFailoversPausedReasons(const Input& input);
+FailoversNotAllowedReasons getFailoversNotAllowedReasons(const Input& input);
 
 /**
  * @brief Return the string description of the reason
  *
  * @return The human readable description.
  */
-std::string getFailoversPausedDescription(FailoversPausedReason reason);
+std::string getFailoversNotAllowedDescription(FailoversNotAllowedReason reason);
 
-} // namespace fop
+} // namespace fona
 } // namespace rbmc
