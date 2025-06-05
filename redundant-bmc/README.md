@@ -169,22 +169,22 @@ just let the sibling heartbeat monitoring code handle the situation.
 However if the sibling still does have a heartbeat, then redundancy will be
 disabled with the reason being a sync failure.
 
-## Pausing Failovers
+## Allowing Failovers
 
 Even when redundancy is enabled, there are periods when failovers will not be
-allowed. This is considered pausing failovers, and there is a boolean
-FailoversPaused D-Bus property to reflect this state.
+allowed. The `FailoversAllowed` D-Bus project reflects this state.
 
-Failovers will be paused when:
+Failovers aren't allowed when:
 
-1. The system is at some state other than off or runtime.
-2. More coming.
+1. Redundancy is disabled.
+2. The system is at some state other than off or runtime.
+3. More coming.
 
-When failovers are paused, rbmctool can be used to display the reasons why.
+When failovers aren't allowed, rbmctool can be used to display the reasons why.
 
 Future work to be done:
 
 - Put the reasons on D-Bus and in Redfish so the HMC can get them.
-- Determine if the other BMC needs the reasons, or just if FOs are paused.
-- When writing the failover code, reject the failover if it is paused, though
-  there still needs to be a method to force it for use by field support.
+- Determine if the other BMC needs the reasons, or just if FOs aren't allowed.
+- When writing the failover code, reject the failover if it isn't allowed,
+  though there still needs to be a method to force it for use by field support.

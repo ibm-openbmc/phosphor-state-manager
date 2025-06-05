@@ -134,13 +134,20 @@ std::string getNoRedundancyDescription(NoRedundancyReason reason)
 
 } // namespace redundancy
 
-namespace fop
+namespace fona
 {
 
-FailoversPausedReasons getFailoversPausedReasons(const Input& input)
+FailoversNotAllowedReasons getFailoversNotAllowedReasons(const Input& input)
 {
-    using enum FailoversPausedReason;
-    FailoversPausedReasons reasons;
+    using enum FailoversNotAllowedReason;
+    FailoversNotAllowedReasons reasons;
+
+    if (!input.redundancyEnabled)
+    {
+        reasons.insert(redundancyDisabled);
+        // No need to look for more reasons
+        return reasons;
+    }
 
     if ((input.systemState != SystemState::off) &&
         (input.systemState != SystemState::runtime))
@@ -151,9 +158,9 @@ FailoversPausedReasons getFailoversPausedReasons(const Input& input)
     return reasons;
 }
 
-std::string getFailoversPausedDescription(FailoversPausedReason reason)
+std::string getFailoversNotAllowedDescription(FailoversNotAllowedReason reason)
 {
-    using enum FailoversPausedReason;
+    using enum FailoversNotAllowedReason;
     using namespace std::string_literals;
     std::string desc;
 
@@ -162,9 +169,12 @@ std::string getFailoversPausedDescription(FailoversPausedReason reason)
         case systemState:
             desc = "System state is not off or runtime"s;
             break;
+        case redundancyDisabled:
+            desc = "Redundancy is disabled"s;
+            break;
     }
     return desc;
 }
 
-} // namespace fop
+} // namespace fona
 } // namespace rbmc

@@ -65,18 +65,18 @@ class PassiveRoleHandler : public RoleHandler
 
     /**
      * @brief Setup watching the sibling BMC's
-     *        FailoversPaused D-Bus property.
+     *        FailoversAllowed D-Bus property.
      */
-    void setupSiblingFailoversPausedWatch();
+    void setupSiblingFailoversAllowedWatch();
 
     /**
-     * @brief Handler for the FailoversPaused property
+     * @brief Handler for the FailoversAllowed property
      *        on the sibling's D-Bus interface changing.
      *
      * Will mirror the value on this BMC's Redundancy
      * interface if the other BMC is Active.
      */
-    void siblingFailoversPausedHandler(bool paused);
+    void siblingFailoversAllowedHandler(bool allowed);
 
     /**
      * @brief Handler for the DisableRedundancyOverride
