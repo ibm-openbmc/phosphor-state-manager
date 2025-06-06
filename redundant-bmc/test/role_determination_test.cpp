@@ -15,7 +15,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     {
         Input input{.bmcPosition = 0,
                     .previousRole = Unknown,
-                    .siblingPosition = 1,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
                     .siblingProvisioned = true};
@@ -29,7 +28,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     {
         Input input{.bmcPosition = 1,
                     .previousRole = Unknown,
-                    .siblingPosition = 0,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
                     .siblingProvisioned = true};
@@ -43,7 +41,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     {
         Input input{.bmcPosition = 1,
                     .previousRole = Unknown,
-                    .siblingPosition = 0,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = false,
                     .siblingProvisioned = true};
@@ -54,26 +51,10 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                   "No sibling heartbeat");
     }
 
-    // Both BMCs report the same position
-    {
-        Input input{.bmcPosition = 0,
-                    .previousRole = Unknown,
-                    .siblingPosition = 0,
-                    .siblingRole = Unknown,
-                    .siblingHeartbeat = true,
-                    .siblingProvisioned = true};
-
-        RoleInfo info{Passive, samePositions};
-        EXPECT_EQ(determineRole(input), info);
-        EXPECT_EQ(getRoleReasonDescription(info.reason),
-                  "Both BMCs have the same position");
-    }
-
     // Sibling not provisioned
     {
         Input input{.bmcPosition = 1,
                     .previousRole = Unknown,
-                    .siblingPosition = 0,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
                     .siblingProvisioned = false};
@@ -88,7 +69,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     {
         Input input{.bmcPosition = 0,
                     .previousRole = Unknown,
-                    .siblingPosition = 1,
                     .siblingRole = Active,
                     .siblingHeartbeat = true,
                     .siblingProvisioned = true};
@@ -103,7 +83,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     {
         Input input{.bmcPosition = 1,
                     .previousRole = Unknown,
-                    .siblingPosition = 0,
                     .siblingRole = Passive,
                     .siblingHeartbeat = true,
                     .siblingProvisioned = true};
@@ -118,7 +97,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     {
         Input input{.bmcPosition = 0,
                     .previousRole = Passive,
-                    .siblingPosition = 1,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
                     .siblingProvisioned = true};
@@ -134,7 +112,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
     {
         Input input{.bmcPosition = 1,
                     .previousRole = Active,
-                    .siblingPosition = 0,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
                     .siblingProvisioned = true};

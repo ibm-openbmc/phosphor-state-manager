@@ -99,13 +99,7 @@ sdbusplus::async::task<std::string> SiblingImpl::getServiceName()
 void SiblingImpl::loadFromPropertyMap(
     const SiblingImpl::PropertyMap& propertyMap)
 {
-    auto it = propertyMap.find("BMCPosition");
-    if (it != propertyMap.end())
-    {
-        bmcPosition = std::get<size_t>(it->second);
-    }
-
-    it = propertyMap.find("FWVersion");
+    auto it = propertyMap.find("FWVersion");
     if (it != propertyMap.end())
     {
         fwVersion = std::get<std::string>(it->second);
@@ -165,12 +159,6 @@ void SiblingImpl::loadFromPropertyMap(
     if (it != propertyMap.end())
     {
         role = std::get<Role>(it->second);
-    }
-
-    it = propertyMap.find("CommunicationOK");
-    if (it != propertyMap.end())
-    {
-        commsOK = std::get<bool>(it->second);
     }
 
     it = propertyMap.find("Heartbeat");

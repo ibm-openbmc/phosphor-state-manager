@@ -84,21 +84,6 @@ class SiblingImpl : public Sibling
     sdbusplus::async::task<> waitForSiblingRole() override;
 
     /**
-     * @brief Returns the sibling BMC's position
-     *
-     * @return - The position or nullopt if not available
-     */
-    std::optional<size_t> getPosition() const override
-    {
-        if (interfacePresent && heartbeat)
-        {
-            return bmcPosition;
-        }
-
-        return std::nullopt;
-    }
-
-    /**
      * @brief Returns the sibling BMC's state
      *
      * @return - The state or nullopt if not available
@@ -168,21 +153,6 @@ class SiblingImpl : public Sibling
         if (interfacePresent && heartbeat)
         {
             return fwVersion;
-        }
-
-        return std::nullopt;
-    }
-
-    /**
-     * @brief Returns the sibling BMC's commsOK value
-     *
-     * @return - The value, or nullopt if not available
-     */
-    std::optional<bool> getSiblingCommsOK() const override
-    {
-        if (interfacePresent && heartbeat)
-        {
-            return commsOK;
         }
 
         return std::nullopt;
@@ -278,11 +248,6 @@ class SiblingImpl : public Sibling
     bool initialized = false;
 
     /**
-     * @brief The sibling's BMC position
-     */
-    size_t bmcPosition = 0;
-
-    /**
      * @brief The sibling's FW version string
      */
     std::string fwVersion;
@@ -311,11 +276,6 @@ class SiblingImpl : public Sibling
      * @brief The sibling's role
      */
     Role role = Role::Unknown;
-
-    /**
-     * @brief If the sibling can talk to this BMC
-     */
-    bool commsOK = false;
 
     /**
      * @brief If the sibling heartbeat is active.

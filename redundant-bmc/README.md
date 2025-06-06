@@ -27,8 +27,6 @@ The current rules for role determination are:
 
 1. If the sibling BMC doesn't have a heartbeat, choose active. It could be the
    sibling isn't even present.
-1. If the sibling BMC's position matches this BMC's position, choose passive.
-   This is an error case.
 1. If the sibling isn't provisioned, choose active.
 1. If the sibling is already passive, choose active.
 1. If the sibling is already active, choose passive.
@@ -82,8 +80,6 @@ items to see if redundancy can be enabled:
 1. Redundancy hasn't been manually disabled with the D-bus property that does
    so.
 1. The sibling BMC has been provisioned.
-1. The sibling's 'sibling communication OK' property is true, meaning it is able
-   to talk to the active BMC.
 1. The firmware versions are the same on the BMCs.
 1. If attempting to enable any time at runtime, redundancy must have been
    enabled when runtime was first reached.

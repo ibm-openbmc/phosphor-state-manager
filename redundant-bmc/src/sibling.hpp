@@ -85,13 +85,6 @@ class Sibling
     virtual sdbusplus::async::task<> waitForBMCSteadyState() const = 0;
 
     /**
-     * @brief Returns the sibling BMC's position
-     *
-     * @return - The position or nullopt if not available
-     */
-    virtual std::optional<size_t> getPosition() const = 0;
-
-    /**
      * @brief Returns the sibling BMC's state
      *
      * @return - The state or nullopt if not available
@@ -125,13 +118,6 @@ class Sibling
      * @return - The version, or nullopt if not available
      */
     virtual std::optional<std::string> getFWVersion() const = 0;
-
-    /**
-     * @brief Returns the sibling BMC's commsOK value
-     *
-     * @return - The value, or nullopt if not available
-     */
-    virtual std::optional<bool> getSiblingCommsOK() const = 0;
 
     /**
      * @brief Returns if the sibling has failovers allowed
