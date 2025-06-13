@@ -3,11 +3,26 @@
 
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
+#include <xyz/openbmc_project/Software/Version/common.hpp>
+#include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
+#include <xyz/openbmc_project/State/BMC/common.hpp>
+#include <xyz/openbmc_project/State/Decorator/Heartbeat/common.hpp>
 
 #include <ranges>
 
 namespace rbmc
 {
+
+using RedIntf = sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy;
+using VersionIntf = sdbusplus::common::xyz::openbmc_project::software::Version;
+using BMCStateIntf = sdbusplus::common::xyz::openbmc_project::state::BMC;
+using HBIntf =
+    sdbusplus::common::xyz::openbmc_project::state::decorator::Heartbeat;
+
+SiblingImpl::SiblingImpl(sdbusplus::async::context& ctx) :
+    ctx(ctx), objectPath(std::string{RedIntf::namespace_path::value} + '/' +
+                         RedIntf::namespace_path::sibling_bmc)
+{}
 
 bool SiblingImpl::isBMCPresent()
 {
@@ -37,37 +52,13 @@ sdbusplus::async::task<> SiblingImpl::init()
 
     if (!serviceName.empty())
     {
-        // Sibling interface is there, so start the NameOwnerChanged
-        // watch and read the initial property values.
-        interfacePresent = true;
         ctx.spawn(watchNameOwnerChanged());
 
-        try
-        {
-            auto sibling = sdbusplus::async::proxy()
-                               .service(serviceName)
-                               .path(objectPath)
-                               .interface(redundancy_ns::Sibling::interface);
-            auto props = co_await sibling.get_all_properties<
-                redundancy_ns::Sibling::PropertiesVariant>(ctx);
-
-            loadFromPropertyMap(props);
-        }
-        catch (const sdbusplus::exception_t& e)
-        {
-            lg2::error("Failed reading sibling properties: {ERROR}", "ERROR",
-                       e);
-            interfacePresent = false;
-        }
-    }
-    else
-    {
-        // Sibling interface not on D-Bus.
-        interfacePresent = false;
+        co_await initProperties();
     }
 
     lg2::info("In Sibling init, interface present is {PRESENT}", "PRESENT",
-              interfacePresent);
+              getInterfacePresent());
 
     initialized = true;
 }
@@ -77,15 +68,15 @@ sdbusplus::async::task<std::string> SiblingImpl::getServiceName()
 {
     using ObjectMapper =
         sdbusplus::client::xyz::openbmc_project::ObjectMapper<>;
+    std::vector<std::string> interface{RedIntf::interface};
 
     try
     {
-        auto mapper = ObjectMapper(ctx)
+        auto object = co_await ObjectMapper(ctx)
                           .service(ObjectMapper::default_service)
-                          .path(ObjectMapper::instance_path);
+                          .path(ObjectMapper::instance_path)
+                          .get_object(objectPath, interface);
 
-        std::vector<std::string> interface{redundancy_ns::Sibling::interface};
-        auto object = co_await mapper.get_object(objectPath, interface);
         co_return object.begin()->first;
     }
     catch (const sdbusplus::exception_t&)
@@ -94,34 +85,22 @@ sdbusplus::async::task<std::string> SiblingImpl::getServiceName()
     co_return std::string{};
 }
 
-// namespace util
-
-void SiblingImpl::loadFromPropertyMap(
+void SiblingImpl::loadRedundancyProps(
     const SiblingImpl::PropertyMap& propertyMap)
 {
-    auto it = propertyMap.find("FWVersion");
-    if (it != propertyMap.end())
-    {
-        fwVersion = std::get<std::string>(it->second);
-    }
+    redundancy.present = true;
 
-    it = propertyMap.find("Provisioned");
+    auto it = propertyMap.find("RedundancyEnabled");
     if (it != propertyMap.end())
     {
-        provisioned = std::get<bool>(it->second);
-    }
-
-    it = propertyMap.find("RedundancyEnabled");
-    if (it != propertyMap.end())
-    {
-        auto old = redEnabled;
-        redEnabled = std::get<bool>(it->second);
-        if (redEnabled != old)
+        auto old = redundancy.redundancyEnabled;
+        redundancy.redundancyEnabled = std::get<bool>(it->second);
+        if (redundancy.redundancyEnabled != old)
         {
             for (const auto& callback :
                  std::ranges::views::values(redEnabledCBs))
             {
-                callback(redEnabled);
+                callback(redundancy.redundancyEnabled);
             }
         }
     }
@@ -129,28 +108,14 @@ void SiblingImpl::loadFromPropertyMap(
     it = propertyMap.find("FailoversAllowed");
     if (it != propertyMap.end())
     {
-        auto old = failoversAllowed;
-        failoversAllowed = std::get<bool>(it->second);
-        if (failoversAllowed != old)
+        auto old = redundancy.failoversAllowed;
+        redundancy.failoversAllowed = std::get<bool>(it->second);
+        if (redundancy.failoversAllowed != old)
         {
             for (const auto& callback :
                  std::ranges::views::values(foAllowedCBs))
             {
-                callback(failoversAllowed);
-            }
-        }
-    }
-
-    it = propertyMap.find("BMCState");
-    if (it != propertyMap.end())
-    {
-        auto old = bmcState;
-        bmcState = std::get<BMCState>(it->second);
-        if (bmcState != old)
-        {
-            for (const auto& callback : std::ranges::views::values(bmcStateCBs))
-            {
-                callback(bmcState);
+                callback(redundancy.failoversAllowed);
             }
         }
     }
@@ -158,20 +123,48 @@ void SiblingImpl::loadFromPropertyMap(
     it = propertyMap.find("Role");
     if (it != propertyMap.end())
     {
-        role = std::get<Role>(it->second);
+        redundancy.role = std::get<Role>(it->second);
     }
+}
 
-    it = propertyMap.find("Heartbeat");
+void SiblingImpl::loadVersionProps(const SiblingImpl::PropertyMap& propertyMap)
+{
+    version.present = true;
+
+    auto it = propertyMap.find("Version");
     if (it != propertyMap.end())
     {
-        auto old = heartbeat;
-        heartbeat = std::get<bool>(it->second);
-        if (old != heartbeat)
+        version.version = std::get<std::string>(it->second);
+    }
+}
+
+void SiblingImpl::loadStateProps(const SiblingImpl::PropertyMap& propertyMap)
+{
+    bmcState.present = true;
+
+    auto it = propertyMap.find("CurrentBMCState");
+    if (it != propertyMap.end())
+    {
+        bmcState.state = std::get<BMCState>(it->second);
+    }
+}
+
+void SiblingImpl::loadHeartbeatProps(
+    const SiblingImpl::PropertyMap& propertyMap)
+{
+    heartbeat.present = true;
+
+    auto it = propertyMap.find("Active");
+    if (it != propertyMap.end())
+    {
+        auto old = heartbeat.active;
+        heartbeat.active = std::get<bool>(it->second);
+        if (heartbeat.active != old)
         {
             for (const auto& callback :
                  std::ranges::views::values(heartbeatCBs))
             {
-                callback(heartbeat);
+                callback(heartbeat.active);
             }
         }
     }
@@ -183,45 +176,38 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded()
     namespace rules = sdbusplus::bus::match::rules;
     sdbusplus::async::match match(ctx,
                                   rules::interfacesAddedAtPath(objectPath));
-
     while (!ctx.stop_requested())
     {
         auto [_, interfaces] =
             co_await match
                 .next<sdbusplus::message::object_path, InterfaceMap>();
 
-        auto it = interfaces.find(redundancy_ns::Sibling::interface);
-        if (it != interfaces.end())
+        std::ranges::for_each(interfaces, [this](const auto& entry) {
+            loadFromPropertyMap(entry.first, entry.second);
+        });
+
+        // If first time seen, wait for the service name to get into
+        // the mapper and then start the nameOwnerChanged watch.
+        if (serviceName.empty())
         {
-            lg2::info("Sibling D-Bus interface added");
-            loadFromPropertyMap(it->second);
-            interfacePresent = true;
+            const size_t mapperRetries = 200;
+            size_t count = 0;
 
-            // If first time seen, wait for the service name to get into
-            // the mapper and then start the nameOwnerChanged watch.
-            if (serviceName.empty())
+            do
             {
-                const size_t mapperRetries = 200;
-                size_t count = 0;
+                using namespace std::chrono_literals;
+                co_await sdbusplus::async::sleep_for(ctx, 100ms);
+                serviceName = co_await getServiceName();
+                lg2::info("After interfacesAdded, sibling service is {SERVICE}",
+                          "SERVICE", serviceName);
+            } while (serviceName.empty() && (count++ < mapperRetries));
 
-                do
-                {
-                    using namespace std::chrono_literals;
-                    co_await sdbusplus::async::sleep_for(ctx, 100ms);
-                    serviceName = co_await getServiceName();
-                    lg2::info(
-                        "After interfacesAdded, sibling service is {SERVICE}",
-                        "SERVICE", serviceName);
-                } while (serviceName.empty() && (count++ < mapperRetries));
-
-                if (!serviceName.empty())
-                {
-                    ctx.spawn(watchNameOwnerChanged());
-                }
+            if (!serviceName.empty())
+            {
+                ctx.spawn(watchNameOwnerChanged());
             }
         }
     }
-    co_return;
 }
 
 // NOLINTNEXTLINE
@@ -237,50 +223,55 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved()
             co_await match.next<sdbusplus::message::object_path,
                                 std::vector<std::string>>();
 
-        if (std::ranges::contains(interfaces,
-                                  redundancy_ns::Sibling::interface))
+        if (std::ranges::contains(interfaces, RedIntf::interface))
         {
-            lg2::info("Sibling D-Bus interface removed");
-            interfacePresent = false;
+            redundancy.present = false;
+        }
+        if (std::ranges::contains(interfaces, VersionIntf::interface))
+        {
+            redundancy.present = false;
+        }
+        if (std::ranges::contains(interfaces, BMCStateIntf::interface))
+        {
+            bmcState.present = false;
+        }
+        if (std::ranges::contains(interfaces, HBIntf::interface))
+        {
+            heartbeat.present = false;
 
-            auto old = heartbeat;
-            heartbeat = false;
-            if (old != heartbeat)
+            auto old = heartbeat.active;
+            heartbeat.active = false;
+            if (old != heartbeat.active)
             {
                 for (const auto& callback :
                      std::ranges::views::values(heartbeatCBs))
                 {
-                    callback(heartbeat);
+                    callback(heartbeat.active);
                 }
             }
         }
     }
-
-    co_return;
 }
 
 // NOLINTNEXTLINE
 sdbusplus::async::task<> SiblingImpl::watchPropertyChanged()
 {
-    namespace rules = sdbusplus::bus::match::rules;
     sdbusplus::async::match match(
-        ctx, rules::propertiesChanged(objectPath,
-                                      redundancy_ns::Sibling::interface));
+        ctx, std::format("type='signal',member='PropertiesChanged',path='{}'",
+                         objectPath));
 
     while (!ctx.stop_requested())
     {
         auto [iface,
               propertyMap] = co_await match.next<std::string, PropertyMap>();
 
-        for (const auto& [name, value] : propertyMap)
+        for (const auto& name : std::views::keys(propertyMap))
         {
             lg2::info("Sibling property {PROP} changed", "PROP", name);
         }
 
-        loadFromPropertyMap(propertyMap);
+        loadFromPropertyMap(iface, propertyMap);
     }
-
-    co_return;
 }
 
 // NOLINTNEXTLINE
@@ -297,11 +288,58 @@ sdbusplus::async::task<> SiblingImpl::watchNameOwnerChanged()
         if (!oldOwner.empty() && newOwner.empty())
         {
             lg2::info("Sibling D-Bus name lost");
-            interfacePresent = false;
-            heartbeat = false;
+            setInterfacesNotPresent();
         }
     }
-    co_return;
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> SiblingImpl::initProperties()
+{
+    auto sibling = sdbusplus::async::proxy()
+                       .service(serviceName)
+                       .path(RedIntf::namespace_path::value)
+                       .interface("org.freedesktop.DBus.ObjectManager");
+    try
+    {
+        auto objects =
+            co_await sibling.call<ManagedObjects>(ctx, "GetManagedObjects");
+
+        auto object = objects.find(objectPath);
+        if (object != objects.end())
+        {
+            std::ranges::for_each(
+                object->second, [this](const auto& interface) {
+                    loadFromPropertyMap(interface.first, interface.second);
+                });
+        }
+    }
+    catch (const sdbusplus::exception_t&)
+    {
+        // Not on D-Bus yet
+        setInterfacesNotPresent();
+    }
+}
+
+void SiblingImpl::loadFromPropertyMap(const std::string& interface,
+                                      const PropertyMap& propertyMap)
+{
+    if (interface == RedIntf::interface)
+    {
+        loadRedundancyProps(propertyMap);
+    }
+    else if (interface == BMCStateIntf::interface)
+    {
+        loadStateProps(propertyMap);
+    }
+    else if (interface == VersionIntf::interface)
+    {
+        loadVersionProps(propertyMap);
+    }
+    else if (interface == HBIntf::interface)
+    {
+        loadHeartbeatProps(propertyMap);
+    }
 }
 
 // NOLINTNEXTLINE
@@ -312,7 +350,7 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingUp()
     std::chrono::minutes timeout{6};
     auto waiting = false;
 
-    while ((!interfacePresent || !heartbeat) &&
+    while ((!getInterfacePresent() || !hasHeartbeat()) &&
            ((std::chrono::steady_clock::now() - start) < timeout))
     {
         if (!waiting)
@@ -320,8 +358,8 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingUp()
             lg2::info(
                 "Waiting up to {TIME} minutes for sibling interface and/or heartbeat: "
                 "Present = {PRES}, Heartbeat = {HB}",
-                "TIME", timeout.count(), "PRES", interfacePresent, "HB",
-                heartbeat);
+                "TIME", timeout.count(), "PRES", getInterfacePresent(), "HB",
+                heartbeat.active);
             waiting = true;
         }
 
@@ -330,9 +368,7 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingUp()
 
     lg2::info(
         "Done waiting for sibling. Interface present = {PRES}, heartbeat = {HB}",
-        "PRES", interfacePresent, "HB", heartbeat);
-
-    co_return;
+        "PRES", getInterfacePresent(), "HB", heartbeat.active);
 }
 
 // NOLINTNEXTLINE
@@ -364,12 +400,10 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingRole()
 
         co_await sdbusplus::async::sleep_for(ctx, 500ms);
     }
-
-    co_return;
 }
 
-// NOLINTBEGIN(clang-analyzer-core.uninitialized.Branch,-warnings-as-errors,
-//             readability-static-accessed-through-instance,-warnings-as-errors)
+// NOLINTBEGIN(clang-analyzer-core.uninitialized.Branch,
+//             readability-static-accessed-through-instance)
 sdbusplus::async::task<> SiblingImpl::waitForBMCSteadyState() const
 {
     using namespace std::chrono_literals;
@@ -387,7 +421,7 @@ sdbusplus::async::task<> SiblingImpl::waitForBMCSteadyState() const
         return (state == BMCState::Ready) || (state == BMCState::Quiesced);
     };
 
-    while (!steadyState(bmcState) &&
+    while (!steadyState(bmcState.state) &&
            ((std::chrono::steady_clock::now() - start) < timeout))
     {
         if (!waiting)
@@ -402,12 +436,10 @@ sdbusplus::async::task<> SiblingImpl::waitForBMCSteadyState() const
     }
 
     lg2::info("Done waiting for sibling steady state. State = {STATE}", "STATE",
-              bmcState);
-
-    co_return;
+              bmcState.state);
 }
-// NOLINTEND(clang-analyzer-core.uninitialized.Branch,-warnings-as-errors,
-//           readability-static-accessed-through-instance,-warnings-as-errors)
+// NOLINTEND(clang-analyzer-core.uninitialized.Branch,
+//           readability-static-accessed-through-instance)
 
 // NOLINTNEXTLINE
 sdbusplus::async::task<> SiblingImpl::pauseForHeartbeatChange() const
