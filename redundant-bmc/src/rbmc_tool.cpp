@@ -7,19 +7,24 @@
 
 #include <CLI/CLI.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
-#include <xyz/openbmc_project/State/BMC/Redundancy/Sibling/client.hpp>
+#include <xyz/openbmc_project/Software/Version/client.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
+#include <xyz/openbmc_project/State/Decorator/Heartbeat/client.hpp>
 
 #include <format>
 #include <iostream>
 
-using Sibling =
-    sdbusplus::client::xyz::openbmc_project::state::bmc::redundancy::Sibling<>;
 using Redundancy =
     sdbusplus::client::xyz::openbmc_project::state::bmc::Redundancy<>;
 using BMCState = sdbusplus::client::xyz::openbmc_project::state::BMC<>;
 using Role = Redundancy::Role;
+using Heartbeat =
+    sdbusplus::client::xyz::openbmc_project::state::decorator::Heartbeat<>;
+using Version = sdbusplus::client::xyz::openbmc_project::software::Version<>;
+
+constexpr auto siblingService =
+    "xyz.openbmc_project.State.BMC.Redundancy.Sibling";
 
 // NOLINTNEXTLINE
 sdbusplus::async::task<std::string> getBMCState(const rbmc::Services& services)
@@ -89,22 +94,17 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
         sdbusplus::message::object_path{Redundancy::namespace_path::value} /
         Redundancy::namespace_path::bmc;
 
-    auto redundancy = sdbusplus::async::proxy()
-                          .service("xyz.openbmc_project.State.BMC.Redundancy")
-                          .path(path.str)
-                          .interface(Redundancy::interface);
-
     std::cout << "Local BMC\n";
     std::cout << "-----------------------------\n";
 
     try
     {
-        auto props =
-            co_await redundancy
-                .get_all_properties<Redundancy::PropertiesVariant>(ctx);
+        auto props = co_await Redundancy(ctx)
+                         .service(Redundancy::interface)
+                         .path(path.str)
+                         .properties();
 
-        auto role =
-            Redundancy::convertRoleToString(std::get<Role>(props.at("Role")));
+        auto role = Redundancy::convertRoleToString(props.role);
         // Strip off the sdbusplus prefix to get the final part, e.g. 'Active'.
         role = role.substr(role.find_last_of('.') + 1);
         std::cout << std::format("Role:                {}\n", role);
@@ -113,16 +113,16 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
         std::cout << std::format("BMC Position:        {}\n",
                                  services.getBMCPosition());
 
-        auto enabled = std::get<bool>(props.at("RedundancyEnabled"));
-        std::cout << std::format("Redundancy Enabled:  {}\n", enabled);
+        std::cout << std::format("Redundancy Enabled:  {}\n",
+                                 props.redundancy_enabled);
 
         if (extended)
         {
             auto bmcState = co_await getBMCState(services);
             std::cout << std::format("BMC State:           {}\n", bmcState);
 
-            auto allowed = std::get<bool>(props.at("FailoversAllowed"));
-            std::cout << std::format("Failovers Allowed:   {}\n", allowed);
+            std::cout << std::format("Failovers Allowed:   {}\n",
+                                     props.failovers_allowed);
 
             std::cout << std::format("FW version hash:     {}\n",
                                      services.getFWVersion());
@@ -136,12 +136,13 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
                         .value_or("No reason found"));
             }
 
-            if ((role == "Active") && !enabled)
+            if ((role == "Active") && !props.redundancy_enabled)
             {
                 printNoRedReasons();
             }
 
-            if ((role == "Active") && enabled && !allowed)
+            if ((role == "Active") && props.redundancy_enabled &&
+                !props.failovers_allowed)
             {
                 printFONotAllowedReasons();
             }
@@ -156,36 +157,35 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
     co_return;
 }
 
-// NOLINTBEGIN
+// NOLINTNEXTLINE
 sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
                                                bool extended)
-// NOLINTEND
 {
-    std::string path = std::string{Sibling::namespace_path::value} + '/' +
-                       Sibling::namespace_path::bmc;
-    auto sibling =
-        sdbusplus::async::proxy()
-            .service("xyz.openbmc_project.State.BMC.Redundancy.Sibling")
-            .path(path)
-            .interface(Sibling::interface);
+    auto path =
+        sdbusplus::message::object_path{Redundancy::namespace_path::value} /
+        Redundancy::namespace_path::sibling_bmc;
 
     std::cout << "Sibling BMC\n";
     std::cout << "-----------------------------\n";
 
     try
     {
-        auto props =
-            co_await sibling.get_all_properties<Sibling::PropertiesVariant>(
-                ctx);
-
-        if (!std::get<bool>(props.at("Heartbeat")))
+        auto hbActive = co_await Heartbeat(ctx)
+                            .service(siblingService)
+                            .path(path.str)
+                            .active();
+        if (!hbActive)
         {
             std::cout << "No sibling heartbeat\n";
             co_return;
         }
 
-        auto role =
-            Redundancy::convertRoleToString(std::get<Role>(props.at("Role")));
+        auto rProps = co_await Redundancy(ctx)
+                          .service(siblingService)
+                          .path(path.str)
+                          .properties();
+
+        auto role = Redundancy::convertRoleToString(rProps.role);
         role = role.substr(role.find_last_of('.') + 1);
         std::cout << std::format("Role:                {}\n", role);
 
@@ -194,27 +194,32 @@ sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
             co_return;
         }
 
-        auto bmcState = BMCState::convertBMCStateToString(
-            std::get<BMCState::BMCState>(props.at("BMCState")));
-        bmcState = bmcState.substr(bmcState.find_last_of('.') + 1);
-        auto provisioned = std::get<bool>(props.at("Provisioned"));
-        auto fwVersion = std::get<std::string>(props.at("FWVersion"));
-        auto allowed = std::get<bool>(props.at("FailoversAllowed"));
-        auto enabled = std::get<bool>(props.at("RedundancyEnabled"));
+        auto fwVersion = co_await Version(ctx)
+                             .service(siblingService)
+                             .path(path.str)
+                             .version();
 
+        auto state = co_await BMCState(ctx)
+                         .service(siblingService)
+                         .path(path.str)
+                         .current_bmc_state();
+
+        auto bmcState = BMCState::convertBMCStateToString(state);
+        bmcState = bmcState.substr(bmcState.find_last_of('.') + 1);
+
+        std::cout << std::format("Redundancy Enabled:  {}\n",
+                                 rProps.redundancy_enabled);
+        std::cout << std::format("Failovers Allowed:   {}\n",
+                                 rProps.failovers_allowed);
         std::cout << std::format("BMC State:           {}\n", bmcState);
-        std::cout << std::format("Redundancy Enabled:  {}\n", enabled);
-        std::cout << std::format("Failovers Allowed:   {}\n", allowed);
         std::cout << std::format("FW version hash:     {}\n", fwVersion);
-        std::cout << std::format("Provisioned:         {}\n", provisioned);
+        std::cout << std::format("Provisioned:         {}\n", true); // TODO
     }
     catch (const sdbusplus::exception_t& e)
     {
-        std::cout << "Cannot get to Sibling interface on D-Bus: " << e.what()
+        std::cout << "Cannot get to a sibling interface on D-Bus: " << e.what()
                   << "\n";
     }
-
-    co_return;
 }
 
 // NOLINTNEXTLINE
