@@ -85,9 +85,13 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
                                              bool extended)
 // NOLINTEND
 {
+    auto path =
+        sdbusplus::message::object_path{Redundancy::namespace_path::value} /
+        Redundancy::namespace_path::bmc;
+
     auto redundancy = sdbusplus::async::proxy()
                           .service("xyz.openbmc_project.State.BMC.Redundancy")
-                          .path(Redundancy::instance_path)
+                          .path(path.str)
                           .interface(Redundancy::interface);
 
     std::cout << "Local BMC\n";
