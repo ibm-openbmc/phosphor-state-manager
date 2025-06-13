@@ -165,6 +165,29 @@ just let the sibling heartbeat monitoring code handle the situation.
 However if the sibling still does have a heartbeat, then redundancy will be
 disabled with the reason being a sync failure.
 
+## Interacting with the sync daemon on the Passive BMC
+
+Similar to the active BMC, the passive BMC also has to issue a full sync.
+
+It will start the full sync, which also starts the background sync, using the
+same sequence as the active BMC when:
+
+- The `RedundancyEnabled` property from the active BMC changes to true
+- The active BMC heartbeat starts:
+  - If redundancy is not enabled at this point, nothing will happen.
+
+Background sync will be stopped when:
+
+- The `RedundancyEnabled` property changes to false
+- The active BMC heartbeat stops.
+- The `SyncEventsHealth` property changes to critical.
+
+If background sync hits a failure and the health changes to critical, redundancy
+will not be disabled. The sync will explicitly stopped and then it would just be
+restarted next time a full sync is done. It will do the same 5 second wait the
+active BMC does to see if the heartbeat has stopped, meaning most likely the
+active BMC either died or was rebooted.
+
 ## Allowing Failovers
 
 Even when redundancy is enabled, there are periods when failovers will not be

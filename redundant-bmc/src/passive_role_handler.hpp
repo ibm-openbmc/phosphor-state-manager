@@ -40,6 +40,7 @@ class PassiveRoleHandler : public RoleHandler
     ~PassiveRoleHandler() override
     {
         providers.getSibling().clearCallbacks(Role::Passive);
+        providers.getSyncInterface().stopSyncHealthWatch(Role::Passive);
     }
 
     /**
@@ -88,6 +89,67 @@ class PassiveRoleHandler : public RoleHandler
      * @param[in] disable - The new disable value.
      */
     void disableRedPropChanged(bool disable) override;
+
+    /**
+     * @brief Setup watching the sibling BMC's heartbeat
+     */
+    inline void setupSiblingHBWatch()
+    {
+        providers.getSibling().addHeartbeatCallback(
+            Role::Passive, [this](bool hb) { siblingHBChange(hb); });
+    }
+
+    /**
+     * @brief Kicks off a full sync if conditions are right.
+     *
+     * Otherwise, stops the background sync.
+     */
+    sdbusplus::async::task<> tryFullSync();
+
+    /**
+     * @brief Does a full sync and then enables the sync health watch
+     *
+     * If a full sync has already been done since sync was last stopped,
+     * it will skip it.
+     **/
+    sdbusplus::async::task<> startSync();
+
+    /**
+     * @brief Stops background syncing
+     */
+    sdbusplus::async::task<> stopSync();
+
+    /**
+     * @brief Called when the sibling BMC heartbeat changes.
+     *
+     * Will try to start or stop syncing as appropriate.
+     */
+    void siblingHBChange(bool hb);
+
+    /**
+     * @brief Called when the sync health property changes
+     *
+     * Spawns syncHealthCritical() on critical health.
+     *
+     * @param[in] health - The new health value
+     */
+    void syncHealthPropertyChanged(SyncBMCData::SyncEventsHealth health);
+
+    /**
+     * @brief Spawned when the sync health changes to critical
+     *        to stop background sync if it was running.
+     */
+    sdbusplus::async::task<> syncHealthCritical();
+
+    /**
+     * @brief Tracks if a full sync has already been done since
+     *        the last time sync was stopped.
+     *
+     * This makes it easier to deal with both the heartbeat and
+     * enabled properties being used as a sync trigger.  It can
+     * then just try on each one.
+     */
+    bool fullSyncDone{false};
 };
 
 } // namespace rbmc
