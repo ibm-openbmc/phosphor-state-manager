@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #pragma once
 #include <sdbusplus/async.hpp>
-#include <xyz/openbmc_project/State/BMC/Redundancy/Sibling/client.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
 
@@ -11,8 +10,7 @@ namespace rbmc
 /**
  * @class Sibling
  *
- * Provides information about the Sibling BMC, getting it from
- * xyz.openbmc_project.State.BMC.Redundancy.Sibling.
+ * Provides information about the Sibling BMC.
  *
  * Will only provide data value when that Sibling interface is
  * present with the heartbeat property true, meaning the code

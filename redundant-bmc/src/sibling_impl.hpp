@@ -5,9 +5,6 @@
 namespace rbmc
 {
 
-namespace redundancy_ns =
-    sdbusplus::common::xyz::openbmc_project::state::bmc::redundancy;
-
 /**
  * @class SiblingImpl
  *
@@ -18,13 +15,13 @@ namespace redundancy_ns =
 class SiblingImpl : public Sibling
 {
   public:
-    using PropertyMap =
-        std::unordered_map<std::string,
-                           redundancy_ns::Sibling::PropertiesVariant>;
+    using PropertyVariant =
+        std::variant<std::string, bool, Role, size_t, BMCState>;
+    using PropertyMap = std::unordered_map<std::string, PropertyVariant>;
     using InterfaceMap = std::map<std::string, PropertyMap>;
-    using SiblingNP = redundancy_ns::Sibling::namespace_path;
+    using ManagedObjects =
+        std::map<sdbusplus::message::object_path, InterfaceMap>;
 
-    SiblingImpl() = delete;
     ~SiblingImpl() override = default;
     SiblingImpl(const SiblingImpl&) = delete;
     SiblingImpl& operator=(const SiblingImpl&) = delete;
@@ -36,17 +33,15 @@ class SiblingImpl : public Sibling
      *
      * @param[in] ctx - The async context object
      */
-    explicit SiblingImpl(sdbusplus::async::context& ctx) :
-        ctx(ctx),
-        objectPath(std::string{SiblingNP::value} + '/' + SiblingNP::bmc)
-    {}
+    explicit SiblingImpl(sdbusplus::async::context& ctx);
 
     /**
-     * @brief Returns if the Sibling interface is on D-Bus
+     * @brief Returns if the Sibling interfaces are on D-Bus
      */
     bool getInterfacePresent() const override
     {
-        return interfacePresent;
+        return version.present && redundancy.present && bmcState.present &&
+               heartbeat.present;
     }
 
     /**
@@ -54,7 +49,7 @@ class SiblingImpl : public Sibling
      */
     bool hasHeartbeat() const override
     {
-        return heartbeat;
+        return heartbeat.active;
     }
 
     /**
@@ -89,9 +84,9 @@ class SiblingImpl : public Sibling
      */
     std::optional<BMCState> getBMCState() const override
     {
-        if (interfacePresent && heartbeat)
+        if (getInterfacePresent() && hasHeartbeat())
         {
-            return bmcState;
+            return bmcState.state;
         }
 
         return std::nullopt;
@@ -104,9 +99,9 @@ class SiblingImpl : public Sibling
      */
     std::optional<Role> getRole() const override
     {
-        if (interfacePresent && heartbeat)
+        if (getInterfacePresent() && hasHeartbeat())
         {
-            return role;
+            return redundancy.role;
         }
 
         return std::nullopt;
@@ -119,9 +114,9 @@ class SiblingImpl : public Sibling
      */
     std::optional<bool> getRedundancyEnabled() const override
     {
-        if (interfacePresent && heartbeat)
+        if (getInterfacePresent() && hasHeartbeat())
         {
-            return redEnabled;
+            return redundancy.redundancyEnabled;
         }
 
         return std::nullopt;
@@ -134,9 +129,10 @@ class SiblingImpl : public Sibling
      */
     std::optional<bool> getProvisioned() const override
     {
-        if (interfacePresent && heartbeat)
+        if (getInterfacePresent() && hasHeartbeat())
         {
-            return provisioned;
+            // TBD which interface to use.
+            return true;
         }
 
         return std::nullopt;
@@ -149,9 +145,9 @@ class SiblingImpl : public Sibling
      */
     std::optional<std::string> getFWVersion() const override
     {
-        if (interfacePresent && heartbeat)
+        if (getInterfacePresent() && hasHeartbeat())
         {
-            return fwVersion;
+            return version.version;
         }
 
         return std::nullopt;
@@ -164,9 +160,9 @@ class SiblingImpl : public Sibling
      */
     std::optional<bool> getFailoversAllowed() const override
     {
-        if (interfacePresent && heartbeat)
+        if (getInterfacePresent() && hasHeartbeat())
         {
-            return failoversAllowed;
+            return redundancy.failoversAllowed;
         }
 
         return std::nullopt;
@@ -208,16 +204,63 @@ class SiblingImpl : public Sibling
     sdbusplus::async::task<> watchNameOwnerChanged();
 
     /**
-     * @brief Starts a Sibling PropertyChanged watch
+     * @brief Starts a PropertyChanged watch for all interfaces
      */
     sdbusplus::async::task<> watchPropertyChanged();
 
     /**
-     * @brief Sets data members with whatever is in the property map
+     * @brief Sets initial values for all properties
+     */
+    sdbusplus::async::task<> initProperties();
+
+    /**
+     * @brief Sets redundancy data members with whatever is in the property map
      *
      * @param[in] propertyMap - The property name -> value map
      */
-    void loadFromPropertyMap(const PropertyMap& propertyMap);
+    void loadRedundancyProps(const PropertyMap& propertyMap);
+
+    /**
+     * @brief Sets version data members with whatever is in the property map
+     *
+     * @param[in] propertyMap - The property name -> value map
+     */
+    void loadVersionProps(const PropertyMap& propertyMap);
+
+    /**
+     * @brief Sets state data members with whatever is in the property map
+     *
+     * @param[in] propertyMap - The property name -> value map
+     */
+    void loadStateProps(const PropertyMap& propertyMap);
+
+    /**
+     * @brief Sets heartbeat data members with whatever is in the property map
+     *
+     * @param[in] propertyMap - The property name -> value map
+     */
+    void loadHeartbeatProps(const PropertyMap& propertyMap);
+
+    /**
+     * @brief Sets data members with whatever is in the property map
+     *
+     * @param[in] interface - The interface name
+     * @param[in] propertyMap - The property name -> value map
+     */
+    void loadFromPropertyMap(const std::string& interface,
+                             const PropertyMap& propertyMap);
+
+    /**
+     * @brief Sets all interfaces to not present
+     */
+    void setInterfacesNotPresent()
+    {
+        redundancy.present = false;
+        bmcState.present = false;
+        version.present = false;
+        heartbeat.present = false;
+        heartbeat.active = false;
+    }
 
     /**
      * @brief Gets the sibling D-Bus service name from the mapper
@@ -237,49 +280,55 @@ class SiblingImpl : public Sibling
     std::string serviceName;
 
     /**
-     * @brief If the Sibling interface is on D-Bus
-     */
-    bool interfacePresent = false;
-
-    /**
      * @brief If init() has been called
      */
     bool initialized = false;
 
-    /**
-     * @brief The sibling's FW version string
-     */
-    std::string fwVersion;
+    struct Version
+    {
+        bool present = false;
+        std::string version;
+    };
 
     /**
-     * @brief The sibling's provisioning status
+     * @brief Version presence and value
      */
-    bool provisioned = false;
+    Version version;
+
+    struct Redundancy
+    {
+        bool present = false;
+        Role role = Role::Unknown;
+        bool redundancyEnabled = false;
+        bool failoversAllowed = false;
+    };
 
     /**
-     * @brief The sibling's redundancy enabled field
+     * @brief Redundancy presence and values
      */
-    bool redEnabled = false;
+    Redundancy redundancy;
+
+    struct State
+    {
+        bool present = false;
+        BMCState state = BMCState::NotReady;
+    };
 
     /**
-     * @brief If sibling failovers are allowed
+     * @brief State presence and value
      */
-    bool failoversAllowed = false;
+    State bmcState;
+
+    struct Heartbeat
+    {
+        bool present = false;
+        bool active = false;
+    };
 
     /**
-     * @brief The sibling's BMC state
+     * @brief Heartbeat presence and value
      */
-    BMCState bmcState{};
-
-    /**
-     * @brief The sibling's role
-     */
-    Role role = Role::Unknown;
-
-    /**
-     * @brief If the sibling heartbeat is active.
-     */
-    bool heartbeat = false;
+    Heartbeat heartbeat;
 
     /**
      * @brief The D-Bus object path for the sibling.
