@@ -8,11 +8,14 @@
 namespace rbmc
 {
 
+const std::string objectPath =
+    std::string{RedundancyInterface::namespace_path::value} + '/' +
+    RedundancyInterface::namespace_path::bmc;
+
 RedundancyInterface::RedundancyInterface(sdbusplus::async::context& ctx,
                                          Manager& manager) :
     sdbusplus::aserver::xyz::openbmc_project::state::bmc::Redundancy<
-        RedundancyInterface>(ctx,
-                             RedundancyInterface::Redundancy::instance_path),
+        RedundancyInterface>(ctx, objectPath.c_str()),
     manager(manager)
 {
     try
