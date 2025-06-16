@@ -153,8 +153,6 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
         std::cout << "Cannot get to Redundancy interface on D-Bus: " << e.what()
                   << "\n";
     }
-
-    co_return;
 }
 
 // NOLINTNEXTLINE
@@ -231,7 +229,6 @@ sdbusplus::async::task<> displayInfo(sdbusplus::async::context& ctx,
     std::cout << "\n";
     co_await displaySiblingBMCInfo(ctx, extended);
     std::cout << "\n";
-    co_return;
 }
 
 void resetSiblingBMC()
@@ -245,7 +242,7 @@ void resetSiblingBMC()
     catch (const std::exception& e)
     {
         lg2::error("Failed asserting sibling reset: {ERROR}", "ERROR", e);
-        return;
+        exit(EXIT_FAILURE);
     }
 
     using namespace std::chrono_literals;
@@ -258,6 +255,43 @@ void resetSiblingBMC()
     catch (const std::exception& e)
     {
         lg2::error("Failed releasing sibling reset: {ERROR}", "ERROR", e);
+        exit(EXIT_FAILURE);
+    }
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> modifyRedundancyOverride(
+    sdbusplus::async::context& ctx, bool disable)
+{
+    auto path =
+        sdbusplus::message::object_path{Redundancy::namespace_path::value} /
+        Redundancy::namespace_path::bmc;
+
+    try
+    {
+        // Use lg2 so it shows up in the journal as coming from rbmctool.
+        lg2::info("Setting disable redundancy override to {DISABLED}",
+                  "DISABLED", disable);
+
+        co_await Redundancy(ctx)
+            .service(Redundancy::interface)
+            .path(path.str)
+            .disable_redundancy_override(disable);
+    }
+    catch (const sdbusplus::exception_t& e)
+    {
+        if (std::string{"xyz.openbmc_project.Common.Error.Unavailable"} ==
+            e.name())
+        {
+            std::cout
+                << "Error: Setting cannot be modified now (see journal for details)\n";
+        }
+        else
+        {
+            std::cout << "Unexpected error: " << e.what() << '\n';
+        }
+
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -267,13 +301,32 @@ int main(int argc, char** argv)
     bool info{};
     bool extended{};
     bool resetSibling{};
+    bool disableRedundancy{};
+    bool enableRedundancy{};
     sdbusplus::async::context ctx;
 
-    auto* flag = app.add_flag("-d", info, "Display RBMC Information");
-    app.add_flag("-e", extended, "Add extended RBMC details to the display")
+    auto* displayGroup = app.add_option_group("Display RBMC information");
+    auto* flag =
+        displayGroup->add_flag("-d", info, "Display basic RBMC information");
+    displayGroup->add_flag("-e", extended, "Add in extended details")
         ->needs(flag);
 
-    app.add_flag("--reset-sibling", resetSibling, "Reset the sibling BMC");
+    auto* overrideGroup =
+        app.add_option_group("Modify the redundancy override");
+    auto* disable = overrideGroup->add_flag(
+        "-s, --set-disable-redundancy-override", disableRedundancy,
+        "Set override to disable redundancy");
+
+    overrideGroup
+        ->add_flag("-c, --clear-disable-redundancy-override", enableRedundancy,
+                   "Clear override to disable redundancy")
+        ->excludes(disable);
+
+    auto* resetGroup = app.add_option_group("Reset sibling BMC");
+    resetGroup->add_flag("--reset-sibling", resetSibling,
+                         "Reset the sibling BMC");
+
+    app.require_option(1);
 
     CLI11_PARSE(app, argc, argv);
 
@@ -284,6 +337,14 @@ int main(int argc, char** argv)
     else if (resetSibling)
     {
         resetSiblingBMC();
+    }
+    else if (disableRedundancy)
+    {
+        ctx.spawn(modifyRedundancyOverride(ctx, true));
+    }
+    else if (enableRedundancy)
+    {
+        ctx.spawn(modifyRedundancyOverride(ctx, false));
     }
     else
     {
