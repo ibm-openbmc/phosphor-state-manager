@@ -84,6 +84,7 @@ struct Input
 {
     // TODO: Add more
     bool redundancyEnabled;
+    bool fullSyncComplete;
     SystemState systemState;
 };
 
@@ -93,6 +94,7 @@ struct Input
 enum class FailoversNotAllowedReason
 {
     redundancyDisabled,
+    fullSyncNotComplete,
     systemState
 };
 
