@@ -141,6 +141,11 @@ FailoversNotAllowedReasons getFailoversNotAllowedReasons(const Input& input)
         return reasons;
     }
 
+    if (!input.fullSyncComplete)
+    {
+        reasons.insert(fullSyncNotComplete);
+    }
+
     if ((input.systemState != SystemState::off) &&
         (input.systemState != SystemState::runtime))
     {
@@ -160,6 +165,9 @@ std::string getFailoversNotAllowedDescription(FailoversNotAllowedReason reason)
     {
         case systemState:
             desc = "System state is not off or runtime"s;
+            break;
+        case fullSyncNotComplete:
+            desc = "A full sync hasn't been completed"s;
             break;
         case redundancyDisabled:
             desc = "Redundancy is disabled"s;

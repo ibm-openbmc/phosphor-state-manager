@@ -19,6 +19,8 @@ sdbusplus::async::task<bool> SyncInterfaceImpl::doFullSync()
 
     try
     {
+        fullSyncComplete = false;
+
         co_await lookupService();
 
         auto sync = SyncBMCData(ctx)
@@ -74,7 +76,8 @@ sdbusplus::async::task<bool> SyncInterfaceImpl::doFullSync()
     lg2::info("Full sync completed with status {STATUS}", "STATUS", status);
 
     fullSyncInProgress = false;
-    co_return status == SyncStatus::FullSyncCompleted;
+    fullSyncComplete = status == SyncStatus::FullSyncCompleted;
+    co_return fullSyncComplete;
 }
 
 // NOLINTNEXTLINE

@@ -163,7 +163,9 @@ TEST(RedundancyTest, FailoversNotAllowedTest)
 
     for (const auto& [state, expectedReasons] : testStates)
     {
-        fona::Input input{.redundancyEnabled = true, .systemState = state};
+        fona::Input input{.redundancyEnabled = true,
+                          .fullSyncComplete = true,
+                          .systemState = state};
 
         auto reasons = fona::getFailoversNotAllowedReasons(input);
         EXPECT_EQ(reasons, expectedReasons);
@@ -172,11 +174,23 @@ TEST(RedundancyTest, FailoversNotAllowedTest)
     // Redundancy disabled
     {
         fona::Input input{.redundancyEnabled = false,
+                          .fullSyncComplete = true,
                           .systemState = rbmc::SystemState::off};
         auto reasons = fona::getFailoversNotAllowedReasons(input);
         ASSERT_EQ(reasons.size(), 1);
         EXPECT_EQ(*reasons.begin(),
                   fona::FailoversNotAllowedReason::redundancyDisabled);
+    }
+
+    // Full sync not complete
+    {
+        fona::Input input{.redundancyEnabled = true,
+                          .fullSyncComplete = false,
+                          .systemState = rbmc::SystemState::off};
+        auto reasons = fona::getFailoversNotAllowedReasons(input);
+        ASSERT_EQ(reasons.size(), 1);
+        EXPECT_EQ(*reasons.begin(),
+                  fona::FailoversNotAllowedReason::fullSyncNotComplete);
     }
 }
 
