@@ -197,7 +197,9 @@ Failovers aren't allowed when:
 
 1. Redundancy is disabled.
 2. The system is at some state other than off or runtime.
-3. More coming.
+3. `RedundancyEnabled` has changed to true but a full sync hasn't been
+   completed.
+4. More coming.
 
 When failovers aren't allowed, rbmctool can be used to display the reasons why.
 

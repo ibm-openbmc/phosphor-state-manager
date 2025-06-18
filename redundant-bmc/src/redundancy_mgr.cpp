@@ -51,6 +51,8 @@ void RedundancyMgr::determineAndSetRedundancy()
     {
         // Make sure syncs are disabled if redundancy is disabled.
         ctx.spawn(providers.getSyncInterface().disableBackgroundSync());
+
+        providers.getSyncInterface().clearFullSyncComplete();
     }
 }
 
@@ -81,6 +83,11 @@ sdbusplus::async::task<> RedundancyMgr::determineRedundancyAndSync()
             // This will disable redundancy as syncFailed = true
             determineAndSetRedundancy();
             syncFailed = false;
+        }
+        else
+        {
+            // Full sync is done so recalculate FailoversAllowed
+            determineAndSetFailoversAllowed();
         }
     }
 }
@@ -283,6 +290,7 @@ void RedundancyMgr::determineAndSetFailoversAllowed()
 {
     fona::Input input{
         .redundancyEnabled = redundancyInterface.redundancy_enabled(),
+        .fullSyncComplete = providers.getSyncInterface().isFullSyncComplete(),
         .systemState = systemState.value_or(SystemState::other)};
 
     auto notAllowedReasons = fona::getFailoversNotAllowedReasons(input);

@@ -45,6 +45,23 @@ class SyncInterface
         return fullSyncInProgress;
     }
 
+    /**
+     * @brief Says if a full sync has been completed since
+     *        redundancy was most recently enabled.
+     */
+    inline bool isFullSyncComplete() const
+    {
+        return fullSyncComplete;
+    }
+
+    /**
+     * @brief Clears the full sync complete indication
+     */
+    inline void clearFullSyncComplete()
+    {
+        fullSyncComplete = false;
+    }
+
     using SyncHealthCallback =
         std::function<void(SyncBMCData::SyncEventsHealth)>;
 
@@ -78,6 +95,12 @@ class SyncInterface
      * @brief If doFullSync is in the middle of doing a sync
      */
     bool fullSyncInProgress = false;
+
+    /**
+     * @brief If a full sync has successfully been completed
+     *        this go around of redundancy being enabled.
+     */
+    bool fullSyncComplete = false;
 
     /**
      * @brief The health status callback functions
