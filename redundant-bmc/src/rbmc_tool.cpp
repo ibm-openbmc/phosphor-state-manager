@@ -6,7 +6,7 @@
 #include "sibling_reset_impl.hpp"
 
 #include <CLI/CLI.hpp>
-#include <xyz/openbmc_project/ObjectMapper/client.hpp>
+#include <xyz/openbmc_project/Control/Failover/client.hpp>
 #include <xyz/openbmc_project/Software/Version/client.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
@@ -19,6 +19,7 @@ using Redundancy =
     sdbusplus::client::xyz::openbmc_project::state::bmc::Redundancy<>;
 using BMCState = sdbusplus::client::xyz::openbmc_project::state::BMC<>;
 using Role = Redundancy::Role;
+using Failover = sdbusplus::client::xyz::openbmc_project::control::Failover<>;
 using Heartbeat =
     sdbusplus::client::xyz::openbmc_project::state::decorator::Heartbeat<>;
 using Version = sdbusplus::client::xyz::openbmc_project::software::Version<>;
@@ -295,6 +296,53 @@ sdbusplus::async::task<> modifyRedundancyOverride(
     }
 }
 
+// NOLINTNEXTLINE
+sdbusplus::async::task<> startFailover(sdbusplus::async::context& ctx,
+                                       bool force)
+{
+    using FailoverOptions = std::map<std::string, std::variant<bool>>;
+    FailoverOptions options;
+
+    try
+    {
+        if (force)
+        {
+            lg2::info("Initiating forced failover");
+            options.emplace(
+                Failover::convertOptionsToString(Failover::Options::Force),
+                force);
+        }
+        else
+        {
+            lg2::info("Initiating failover");
+        }
+
+        auto path =
+            sdbusplus::message::object_path{Redundancy::namespace_path::value} /
+            Redundancy::namespace_path::bmc;
+
+        co_await Failover(ctx)
+            .service(Redundancy::interface)
+            .path(path.str)
+            .start_failover(options);
+    }
+    catch (const sdbusplus::exception_t& e)
+    {
+        if (std::string{"xyz.openbmc_project.Common.Error.Unavailable"} ==
+            e.name())
+        {
+            std::cout
+                << "Error: Failover cannot be started now (see journal for details)\n";
+        }
+        else
+        {
+            std::cout << "Unexpected error: " << e.what() << '\n';
+        }
+
+        exit(EXIT_FAILURE);
+    }
+}
+
 int main(int argc, char** argv)
 {
     CLI::App app{"RBMC Tool"};
@@ -303,6 +351,8 @@ int main(int argc, char** argv)
     bool resetSibling{};
     bool disableRedundancy{};
     bool enableRedundancy{};
+    bool failover{};
+    bool forceFailover{};
     sdbusplus::async::context ctx;
 
     auto* displayGroup = app.add_option_group("Display RBMC information");
@@ -326,6 +376,14 @@ int main(int argc, char** argv)
     resetGroup->add_flag("--reset-sibling", resetSibling,
                          "Reset the sibling BMC");
 
+    auto* failoverGroup = app.add_option_group("Starting failovers");
+    auto* fo =
+        failoverGroup->add_flag("-f, --failover", failover, "Start a failover");
+    failoverGroup
+        ->add_flag("-r, --force-failover", forceFailover,
+                   "Start a forced failover. Only for emergencies.")
+        ->excludes(fo);
+
     app.require_option(1);
 
     CLI11_PARSE(app, argc, argv);
@@ -345,6 +403,10 @@ int main(int argc, char** argv)
     else if (enableRedundancy)
     {
         ctx.spawn(modifyRedundancyOverride(ctx, false));
+    }
+    else if (failover || forceFailover)
+    {
+        ctx.spawn(startFailover(ctx, forceFailover));
     }
     else
     {
