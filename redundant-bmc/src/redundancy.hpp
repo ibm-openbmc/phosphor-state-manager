@@ -144,7 +144,8 @@ enum class Reason
     fullSyncInProgress,
     failoversNotAllowed,
     siblingDeadButRedundancyNotEnabled,
-    notAtReady
+    notAtReady,
+    bmcNotPassive
 };
 
 /**
