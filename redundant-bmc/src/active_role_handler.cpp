@@ -154,4 +154,15 @@ sdbusplus::async::task<> ActiveRoleHandler::syncHealthCritical()
     co_return;
 }
 
+// NOLINTNEXTLINE
+auto ActiveRoleHandler::getFailoverBlockedReason(
+    [[maybe_unused]] const FailoverOptions& options)
+    -> sdbusplus::async::task<fo_blocked::Reason>
+{
+    // At some point in the future we may allow triggering
+    // a failover from the active BMC, but not at the moment.
+    lg2::error("Active BMC cannot trigger a failover now");
+    co_return fo_blocked::Reason::bmcNotPassive;
+}
+
 } // namespace rbmc
