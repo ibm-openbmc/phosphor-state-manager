@@ -202,3 +202,103 @@ TEST(RedundancyTest, GetFailoversNotAllowedDescTest)
                   fona::FailoversNotAllowedReason::systemState),
               "System state is not off or runtime");
 }
+
+TEST(RedundancyTest, FailoverBlockedTest)
+{
+    rbmc::fo_blocked::Input golden{
+        .siblingHeartbeat = true,
+        .siblingState = rbmc::BMCState::Ready,
+        .redundancyEnabled = true,
+        .syncInProgress = false,
+        .state = rbmc::BMCState::Ready,
+        .failoversNotAllowed = false,
+        .forceOption = false,
+        .lastKnownRedundancyEnabled = true};
+
+    EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(golden),
+              rbmc::fo_blocked::Reason::none);
+
+    // Redundancy not enabled
+    {
+        auto input = golden;
+        input.redundancyEnabled = false;
+        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::redundancyNotEnabled);
+    }
+
+    // Failovers not allowed
+    {
+        auto input = golden;
+        input.failoversNotAllowed = true;
+        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::failoversNotAllowed);
+    }
+
+    // Failovers not allowed, but forced
+    {
+        auto input = golden;
+        input.failoversNotAllowed = true;
+        input.forceOption = true;
+        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::none);
+    }
+
+    // Failovers not allowed, but sibling is Quiesced
+    {
+        auto input = golden;
+        input.failoversNotAllowed = true;
+        input.siblingState = rbmc::BMCState::Quiesced;
+        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::none);
+    }
+
+    // Redundancy not enabled
+    {
+        auto input = golden;
+        input.syncInProgress = true;
+        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::fullSyncInProgress);
+    }
+
+    // Sibling not responding, but redundancy was enabled
+    {
+        auto input = golden;
+        input.siblingHeartbeat = false;
+        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::none);
+    }
+
+    // Sibling not responding, redundancy was enabled and failovers not allowed
+    {
+        auto input = golden;
+        input.siblingHeartbeat = false;
+        input.failoversNotAllowed = true;
+        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::none);
+    }
+
+    // Sibling not responding, redundancy was enabled, but this BMC in Quiesced.
+    {
+        auto input = golden;
+        input.siblingHeartbeat = false;
+        input.state = rbmc::BMCState::Quiesced;
+        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::notAtReady);
+    }
+
+    // Sibling not responding, but redundancy wasn't enabled
+    {
+        auto input = golden;
+        input.siblingHeartbeat = false;
+        input.lastKnownRedundancyEnabled = false;
+        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::siblingDeadButRedundancyNotEnabled);
+    }
+}
+
+TEST(RedundancyTest, GetNoFailoverDescTest)
+{
+    EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedDescription(
+                  rbmc::fo_blocked::Reason::redundancyNotEnabled),
+              "Redundancy is not enabled");
+}

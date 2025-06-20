@@ -188,7 +188,16 @@ restarted next time a full sync is done. It will do the same 5 second wait the
 active BMC does to see if the heartbeat has stopped, meaning most likely the
 active BMC either died or was rebooted.
 
-## Allowing Failovers
+## Failovers
+
+A failover is when redundancy is enabled and the passive BMC takes over as the
+active BMC, and the original active BMC becomes passive. Redundancy may or may
+not be re-enabled afterwards, depending on if something is preventing it or not.
+
+The failover is always driven by the original passive BMC, which then takes over
+as active.
+
+### Allowing Failovers
 
 Even when redundancy is enabled, there are periods when failovers will not be
 allowed. The `FailoversAllowed` D-Bus project reflects this state.
@@ -209,3 +218,18 @@ Future work to be done:
 - Determine if the other BMC needs the reasons, or just if FOs aren't allowed.
 - When writing the failover code, reject the failover if it isn't allowed,
   though there still needs to be a method to force it for use by field support.
+
+### Rejecting a failover request
+
+When the call is made to start the failover on the passive BMC, it will reject
+the request if any of the following are true.
+
+1. Redundancy isn't enabled.
+1. FailoversAllowed is false. Exceptions are:
+   - The `force` option was passed into the `StartFailover` method.
+   - The active BMC is in the `Quiesced` state.
+1. A full sync on the passive BMC is in progress.
+1. The active BMC has no heartbeat and redundancy wasn't last known to be
+   enabled. If it was last known to be enabled, a failover is allowed so that
+   the remaining BMC can become active.
+1. The passive BMC is not in the `Ready` state.
