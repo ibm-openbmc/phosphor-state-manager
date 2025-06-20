@@ -224,6 +224,7 @@ Future work to be done:
 When the call is made to start the failover on the passive BMC, it will reject
 the request if any of the following are true.
 
+1. A failover is imminent or already in progress.
 1. Redundancy isn't enabled.
 1. FailoversAllowed is false. Exceptions are:
    - The `force` option was passed into the `StartFailover` method.

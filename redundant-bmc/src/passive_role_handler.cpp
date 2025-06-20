@@ -5,11 +5,46 @@
 
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/Common/error.hpp>
+#include <xyz/openbmc_project/Control/Failover/common.hpp>
 
 namespace rbmc
 {
 
 constexpr auto bmcPassiveTarget = "obmc-bmc-passive.target";
+
+using Failover = sdbusplus::common::xyz::openbmc_project::control::Failover;
+
+namespace util
+{
+
+/**
+ * @brief Look for the specified failover option in the
+ *   contents of the Options parameter from the StartFailover method.
+ *
+ * @tparam - The type of the option's value.
+ * @param[in] option - The option to look for
+ * @param[in] options - The options that were passed into StartFailover
+ *
+ * @return std::optional<type> - The value, or nullopt if not present
+ */
+template <typename T>
+std::optional<T> getFailoverOption(Failover::Options option,
+                                   const FailoverOptions& options)
+{
+    std::optional<T> value;
+    auto it = options.find(Failover::convertOptionsToString(option));
+    if (it != options.end())
+    {
+        if (const T* o = std::get_if<T>(&it->second); o != nullptr)
+        {
+            value = *o;
+        }
+    }
+
+    return value;
+}
+
+} // namespace util
 
 // NOLINTNEXTLINE
 sdbusplus::async::task<> PassiveRoleHandler::start()
@@ -237,6 +272,46 @@ void PassiveRoleHandler::siblingHBChange(bool hb)
     {
         ctx.spawn(stopSync());
     }
+}
+
+// NOLINTNEXTLINE
+auto PassiveRoleHandler::getFailoverBlockedReason(
+    const FailoverOptions& options)
+    -> sdbusplus::async::task<fo_blocked::Reason>
+{
+    auto force =
+        util::getFailoverOption<bool>(Failover::Options::Force, options)
+            .value_or(false);
+
+    BMCState bmcState{BMCState::NotReady};
+
+    try
+    {
+        bmcState = co_await providers.getServices().getBMCState();
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("The call to get the BMC state failed: {ERROR}", "ERROR", e);
+    }
+
+    auto& sibling = providers.getSibling();
+
+    fo_blocked::Input input{
+        .siblingHeartbeat = sibling.hasHeartbeat(),
+        .siblingState = sibling.getBMCState().value_or(BMCState::NotReady),
+        .redundancyEnabled = sibling.getRedundancyEnabled().value_or(false),
+        .syncInProgress = providers.getSyncInterface().isFullSyncInProgress(),
+        .state = bmcState,
+        .failoversNotAllowed = !redundancyInterface.failovers_allowed(),
+        .forceOption = force,
+
+        // If the active BMC were to completely die, its last known value of
+        // RedundancyEnabled will still have been mirrored to the passive.
+        // This will be used to know if a failover is still OK without live
+        // data from the active BMC.
+        .lastKnownRedundancyEnabled = redundancyInterface.redundancy_enabled()};
+
+    co_return fo_blocked::getFailoverBlockedReason(input);
 }
 
 } // namespace rbmc

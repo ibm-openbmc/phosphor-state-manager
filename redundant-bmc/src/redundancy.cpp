@@ -278,6 +278,9 @@ std::string getFailoverBlockedDescription(Reason reason)
         case Reason::notAtReady:
             desc = "This BMC is not at Ready state"s;
             break;
+        case Reason::bmcNotPassive:
+            desc = "This BMC is not passive"s;
+            break;
     }
     return desc;
 }
