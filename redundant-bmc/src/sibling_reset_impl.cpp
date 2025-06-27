@@ -12,7 +12,7 @@ namespace rbmc
 
 const std::string gpioName = "sibling-bmc-reset";
 
-SiblingResetImpl::SiblingResetImpl()
+SiblingResetImpl::SiblingResetImpl(sdbusplus::async::context& ctx) : ctx(ctx)
 {
     resetLine = gpiod::find_line(gpioName);
     if (!resetLine)
@@ -63,5 +63,28 @@ void SiblingResetImpl::releaseReset()
     resetLine.request(config, 0);
     resetLine.release();
 }
+
+// NOLINTBEGIN(clang-analyzer-core.uninitialized.Branch)
+// NOLINTNEXTLINE(readability-static-accessed-through-instance)
+sdbusplus::async::task<> SiblingResetImpl::toggleReset()
+{
+    if (!resetLine)
+    {
+        throw std::runtime_error("Could not find sibling reset GPIO");
+    }
+
+    lg2::info("Toggling sibling reset GPIO");
+
+    resetLine.request(config, 1);
+
+    using namespace std::chrono_literals;
+
+    co_await sdbusplus::async::sleep_for(ctx, 1ms);
+
+    resetLine.set_value(0);
+
+    resetLine.release();
+}
+// NOLINTEND(clang-analyzer-core.uninitialized.Branch)
 
 } // namespace rbmc

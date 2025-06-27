@@ -232,30 +232,18 @@ sdbusplus::async::task<> displayInfo(sdbusplus::async::context& ctx,
     std::cout << "\n";
 }
 
-void resetSiblingBMC()
+// NOLINTNEXTLINE
+sdbusplus::async::task<> resetSiblingBMC(sdbusplus::async::context& ctx)
 {
-    rbmc::SiblingResetImpl reset;
+    rbmc::SiblingResetImpl reset{ctx};
 
     try
     {
-        reset.assertReset();
+        co_await reset.toggleReset();
     }
     catch (const std::exception& e)
     {
         lg2::error("Failed asserting sibling reset: {ERROR}", "ERROR", e);
-        exit(EXIT_FAILURE);
-    }
-
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(50ms);
-
-    try
-    {
-        reset.releaseReset();
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error("Failed releasing sibling reset: {ERROR}", "ERROR", e);
         exit(EXIT_FAILURE);
     }
 }
@@ -394,7 +382,7 @@ int main(int argc, char** argv)
     }
     else if (resetSibling)
     {
-        resetSiblingBMC();
+        ctx.spawn(resetSiblingBMC(ctx));
     }
     else if (disableRedundancy)
     {

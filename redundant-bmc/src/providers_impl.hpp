@@ -4,6 +4,7 @@
 #include "providers.hpp"
 #include "services_impl.hpp"
 #include "sibling_impl.hpp"
+#include "sibling_reset_impl.hpp"
 #include "sync_interface_impl.hpp"
 
 namespace rbmc
@@ -30,7 +31,7 @@ class ProvidersImpl : public Providers
      * @param[in] ctx - The async context object
      */
     explicit ProvidersImpl(sdbusplus::async::context& ctx) :
-        services(ctx), sibling(ctx), syncInterface(ctx)
+        services(ctx), sibling(ctx), syncInterface(ctx), siblingReset(ctx)
     {}
 
     /**
@@ -57,6 +58,14 @@ class ProvidersImpl : public Providers
         return syncInterface;
     }
 
+    /**
+     * @brief Returns the SiblingReset provider
+     */
+    SiblingReset& getSiblingReset() override
+    {
+        return siblingReset;
+    }
+
   private:
     /**
      * @brief The Services implementation
@@ -72,6 +81,11 @@ class ProvidersImpl : public Providers
      * @brief The SyncInterface implementation
      */
     SyncInterfaceImpl syncInterface;
+
+    /**
+     * @brief The SiblingReset implementation
+     */
+    SiblingResetImpl siblingReset;
 };
 
 }; // namespace rbmc
