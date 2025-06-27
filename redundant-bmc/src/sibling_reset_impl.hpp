@@ -26,7 +26,7 @@ class SiblingResetImpl : public SiblingReset
     /**
      * @brief Constructor
      */
-    SiblingResetImpl();
+    SiblingResetImpl(sdbusplus::async::context& ctx);
 
     /**
      * @brief Asserts the reset.
@@ -42,7 +42,17 @@ class SiblingResetImpl : public SiblingReset
      */
     void releaseReset() override;
 
+    /**
+     * @brief Toggles the GPIO to do the full reset
+     */
+    sdbusplus::async::task<> toggleReset() override;
+
   private:
+    /**
+     * @brief The async context object
+     */
+    sdbusplus::async::context& ctx;
+
     /**
      * @brief The GPIO config for requesting a line.
      */
