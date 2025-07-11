@@ -277,9 +277,31 @@ void Manager::disableRedPropChanged(bool disable)
 }
 
 // NOLINTNEXTLINE
-sdbusplus::async::task<> Manager::method_call(
-    start_failover_t /* unused */, const FailoverOptions& /* options */)
+sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
+                                              const FailoverOptions& options)
 {
+    if (!handler)
+    {
+        lg2::error("Failover not allowed because it is too early");
+        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+    }
+
+    if (redundancyInterface.failover_imminent() || failover_in_progress())
+    {
+        lg2::error(
+            "Failover not allowed because a failover is already imminent or in progress ");
+        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+    }
+
+    // Do more in depth checking of system state
+    auto reason = co_await handler->getFailoverBlockedReason(options);
+    if (reason != fo_blocked::Reason::none)
+    {
+        lg2::error("Failover is blocked because: {REASON}", "REASON",
+                   fo_blocked::getFailoverBlockedDescription(reason));
+        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+    }
+
     // TODO: Implement the failover
     lg2::error("Failovers are not implemented yet");
     throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();

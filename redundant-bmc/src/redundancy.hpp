@@ -115,4 +115,55 @@ FailoversNotAllowedReasons getFailoversNotAllowedReasons(const Input& input);
 std::string getFailoversNotAllowedDescription(FailoversNotAllowedReason reason);
 
 } // namespace fona
+
+namespace fo_blocked
+{
+
+/**
+ * @brief Inputs to the is failover blocked  function
+ */
+struct Input
+{
+    bool siblingHeartbeat;
+    BMCState siblingState;
+    bool redundancyEnabled;
+    bool syncInProgress;
+    BMCState state;
+    bool failoversNotAllowed;
+    bool forceOption;
+    bool lastKnownRedundancyEnabled;
+};
+
+/**
+ * @brief Reasons why a failover is blocked
+ */
+enum class Reason
+{
+    none,
+    redundancyNotEnabled,
+    fullSyncInProgress,
+    failoversNotAllowed,
+    siblingDeadButRedundancyNotEnabled,
+    notAtReady,
+    bmcNotPassive
+};
+
+/**
+ * @brief Returns the reason a failover is blocked by the passive BMC
+ *
+ * @param[in] input - The current system states that will be checked.
+ *
+ * @return Reason::none if blocked, else the reason it is.
+ */
+Reason getFailoverBlockedReason(const Input& input);
+
+/**
+ * @brief Return the string description of the reason
+ *
+ * @return The human readable description.
+ */
+std::string getFailoverBlockedDescription(Reason reason);
+
+} // namespace fo_blocked
+
 } // namespace rbmc

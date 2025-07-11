@@ -12,8 +12,6 @@
 namespace rbmc
 {
 
-using FailoverOptions = std::map<std::string, std::variant<bool>>;
-
 /**
  * @class Manager
  *

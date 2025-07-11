@@ -2,7 +2,10 @@
 #pragma once
 
 #include "providers.hpp"
+#include "redundancy.hpp"
 #include "redundancy_interface.hpp"
+
+using FailoverOptions = std::map<std::string, std::variant<bool>>;
 
 namespace rbmc
 {
@@ -51,6 +54,19 @@ class RoleHandler
      * @param[in] disable - The new disable value.
      */
     virtual void disableRedPropChanged(bool disable) = 0;
+
+    /**
+     * @brief Called when a failover is requested, this will return
+     *        Reason::none if a failover is allowed right now, or the
+     *        reason that it isn't.
+     *
+     * @param[in] options - The options passed into the StartFailover
+     *                      D-Bus method.
+     *
+     * @return Reason::none if failover is OK, else the reason it isn't.
+     */
+    virtual sdbusplus::async::task<fo_blocked::Reason> getFailoverBlockedReason(
+        const FailoverOptions& options) = 0;
 
   protected:
     /**
