@@ -206,7 +206,7 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
     {
         auto state =
             co_await providers->getServices().getUnitState(Sibling::unitName);
-        if (state != "active")
+        if ((state != "active") && (state != "activating"))
         {
             lg2::info("Sibling service state is {STATE}", "STATE", state);
             co_return RoleInfo{Role::Passive,
