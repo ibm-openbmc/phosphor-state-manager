@@ -286,7 +286,8 @@ sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
         throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
     }
 
-    if (redundancyInterface.failover_imminent() || failover_in_progress())
+    if (redundancyInterface.failover_imminent() ||
+        redundancyInterface.failover_in_progress())
     {
         lg2::error(
             "Failover not allowed because a failover is already imminent or in progress ");
