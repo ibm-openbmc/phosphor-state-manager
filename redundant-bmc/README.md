@@ -21,6 +21,13 @@ anymore and so would default to active based on its position, and BMC 1 was
 active last time and would default to just restoring its role. Letting BMC 1 go
 first in this case would ensure BMC 0 remains passive.
 
+### Holding off BMC Ready
+
+A service file linked into multi-user.target that polls for the active and
+passive systemd targets to complete will prevent the system from reaching the
+BMC ready state before the role has been determined. On the active BMC this
+would also wait for all of the active applications to be started.
+
 ## Role Determination Rules
 
 The current rules for role determination are:

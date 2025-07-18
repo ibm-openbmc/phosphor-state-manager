@@ -26,6 +26,7 @@ unit_files = [
     'phosphor-create-chassis-poweron-log@.service',
     'phosphor-set-chassis-transition-to-on@.service',
     'phosphor-set-chassis-transition-to-off@.service',
+    'phosphor-wait-for-active-passive-target.service',
 ]
 
 fs = import('fs')
