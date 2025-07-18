@@ -43,3 +43,6 @@ executable(
     dependencies: [rbmc_deps, CLI11],
     install: true,
 )
+
+scripts = ['scripts/wait-for-active-passive-target.sh']
+install_data(scripts, install_mode: 'rwxr-xr-x', install_dir: execinstalldir)

@@ -1,0 +1,11 @@
+[Unit]
+Description=Wait for obmc-bmc-active or obmc-bmc-passive target to be started
+After=xyz.openbmc_project.State.BMC.Redundancy.service
+
+[Service]
+ExecStart=/usr/libexec/phosphor-state-manager/wait-for-active-passive-target.sh
+Type=oneshot
+Restart=no
+
+[Install]
+RequiredBy=multi-user.target
