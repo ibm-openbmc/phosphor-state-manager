@@ -475,4 +475,12 @@ auto ServicesImpl::getBMCState() const -> sdbusplus::async::task<
     co_return co_await stateMgr.current_bmc_state();
 }
 
+// NOLINTNEXTLINE
+sdbusplus::async::task<> ServicesImpl::doFailoverImminentDelay() const
+{
+    lg2::info("Delaying for 10s for failover imminent notification");
+    // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+    co_await sdbusplus::async::sleep_for(ctx, std::chrono::seconds{10});
+}
+
 } // namespace rbmc

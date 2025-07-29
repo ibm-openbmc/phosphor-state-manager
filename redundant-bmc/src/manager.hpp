@@ -107,6 +107,12 @@ class Manager :
     void spawnRoleHandler();
 
     /**
+     * @brief Drives the failover from passive to active when
+     *        this BMC is the starting passive one.
+     */
+    sdbusplus::async::task<> doFailoverFromPassive();
+
+    /**
      * @brief The async context object
      */
     sdbusplus::async::context& ctx;

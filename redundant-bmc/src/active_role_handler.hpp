@@ -76,6 +76,15 @@ class ActiveRoleHandler : public RoleHandler
     sdbusplus::async::task<fo_blocked::Reason> getFailoverBlockedReason(
         const FailoverOptions& options) override;
 
+    /**
+     * @brief Sets FailoversAllowed to false with the reason set to
+     *        'failover in progress'.
+     */
+    inline void clearFailoversAllowedDuringFailover()
+    {
+        redMgr.clearFailoversAllowedDuringFailover();
+    }
+
   private:
     /**
      * @brief Starts the Sibling property watches/callbacks

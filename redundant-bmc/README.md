@@ -215,7 +215,8 @@ Failovers aren't allowed when:
 2. The system is at some state other than off or runtime.
 3. `RedundancyEnabled` has changed to true but a full sync hasn't been
    completed.
-4. More coming.
+4. A failover is in progress.
+5. More coming.
 
 When failovers aren't allowed, rbmctool can be used to display the reasons why.
 
@@ -241,3 +242,21 @@ the request if any of the following are true.
    enabled. If it was last known to be enabled, a failover is allowed so that
    the remaining BMC can become active.
 1. The passive BMC is not in the `Ready` state.
+
+### Failover Sequence
+
+The failover sequence is:
+
+1. The `StartFailover` D-Bus method is called on the passive BMC daemon.
+1. The passive BMC checks to make sure
+   [it doesn't need to reject the request](#rejecting-a-failover-request). If it
+   does an error is returned via D-Bus.
+1. The passive BMC disables background syncs.
+1. The passive BMC sets its `FailoverImminent` property to true, and then waits
+   for 10 seconds to allow the other BMC to prepare for the failover assuming it
+   is alive.
+1. The passive BMC clears `FailoverImment` and sets `FailoverInProgress`.
+1. The passive BMC toggles the reset on the sibling BMC to reboot it.
+1. The passive BMC now switches its role to Active.
+1. The new active BMC sets `FailoversAllowed` to false.
+1. TODO: Remaining steps

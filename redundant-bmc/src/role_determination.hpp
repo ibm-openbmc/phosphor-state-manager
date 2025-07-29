@@ -39,7 +39,8 @@ enum class RoleReason
     positionNonzero,
     notProvisioned,
     siblingServiceNotRunning,
-    exception
+    exception,
+    failover
 };
 
 /**

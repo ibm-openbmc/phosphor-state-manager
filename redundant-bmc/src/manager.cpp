@@ -303,9 +303,65 @@ sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
         throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
     }
 
-    // TODO: Implement the failover
-    lg2::error("Failovers are not implemented yet");
-    throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+    if (redundancyInterface.role() == Role::Passive)
+    {
+        // TODO: Uncomment: ctx.spawn(doFailoverFromPassive());
+        // And delete these 2 lines
+        lg2::error("Failovers are not implemented yet");
+        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+    }
+    else
+    {
+        // Shouldn't get here, would have failed in getFailoverBlockedReason
+        lg2::info("StartFailover on active BMC not supported yet");
+        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+    }
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> Manager::doFailoverFromPassive()
+{
+    lg2::info("Starting failover");
+
+    // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+    co_await providers->getSyncInterface().disableBackgroundSync();
+
+    // Stop handling as a passive BMC. This BMC no longer needs to
+    // watch for any changes from the one we're about to reset.
+    handler.reset();
+
+    redundancyInterface.failover_imminent(true);
+
+    // Wait to give the sibling a chance to react to seeing
+    // failover imminent before continuing.
+    co_await providers->getServices().doFailoverImminentDelay();
+
+    redundancyInterface.failover_imminent(false);
+
+    lg2::info("Setting failover in progress");
+    redundancyInterface.failover_in_progress(true);
+
+    // TODO: Save failover in progress indication in filesystem
+    // so we'll know to be active if rebooted in the middle of this.
+
+    // Reset the active so it can come back as passive.
+    // If this were to throw, let it restart the app.
+    co_await providers->getSiblingReset().toggleReset();
+
+    lg2::info("Claiming active role");
+    updateRole(role_determination::RoleInfo{
+        Role::Active, role_determination::RoleReason::failover});
+
+    auto* active = new ActiveRoleHandler(ctx, *providers, redundancyInterface);
+    handler.reset(active);
+
+    active->clearFailoversAllowedDuringFailover();
+    // At this point:
+    // - RedundancyEnabled = true
+    // - FailoverInProgress = true
+    // - FailoversAllowed = false
+
+    // TODO: Finish failover
 }
 
 } // namespace rbmc

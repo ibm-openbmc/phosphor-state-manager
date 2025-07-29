@@ -93,6 +93,9 @@ std::string getRoleReasonDescription(RoleReason reason)
         case RoleReason::exception:
             desc = "Exception thrown while determining role"s;
             break;
+        case RoleReason::failover:
+            desc = "Failover"s;
+            break;
     }
 
     return desc;
