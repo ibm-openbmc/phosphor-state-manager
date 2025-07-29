@@ -104,6 +104,13 @@ class Services
     virtual SystemState getSystemState() const = 0;
 
     /**
+     * @brief Execute the 'failover imminent' delay to the other BMC
+     *        has a warning that a failover is imminent and that it will
+     *        be reset.
+     */
+    virtual sdbusplus::async::task<> doFailoverImminentDelay() const = 0;
+
+    /**
      * @brief Returns the string name for the system state enum
      *
      * @param[in] state - The state enum

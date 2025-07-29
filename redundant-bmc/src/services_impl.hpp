@@ -97,6 +97,13 @@ class ServicesImpl : public Services
         sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState>
         getBMCState() const override;
 
+    /**
+     * @brief Execute the 'failover imminent' delay to the other BMC
+     *        has a warning that a failover is imminent and that it will
+     *        be reset.
+     */
+    sdbusplus::async::task<> doFailoverImminentDelay() const override;
+
   private:
     /**
      * @brief Returns the D-Bus object path for the unit in the
