@@ -143,6 +143,13 @@ FailoversNotAllowedReasons getFailoversNotAllowedReasons(const Input& input)
         return reasons;
     }
 
+    if (input.failoverInProgress)
+    {
+        reasons.insert(failoverInProgress);
+        // No need to look for more reasons
+        return reasons;
+    }
+
     if (!input.fullSyncComplete)
     {
         reasons.insert(fullSyncNotComplete);
@@ -170,6 +177,9 @@ std::string getFailoversNotAllowedDescription(FailoversNotAllowedReason reason)
             break;
         case fullSyncNotComplete:
             desc = "A full sync hasn't been completed"s;
+            break;
+        case failoverInProgress:
+            desc = "A failover is in progress"s;
             break;
         case redundancyDisabled:
             desc = "Redundancy is disabled"s;

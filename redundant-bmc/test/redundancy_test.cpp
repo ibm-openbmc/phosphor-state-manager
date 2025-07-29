@@ -165,6 +165,7 @@ TEST(RedundancyTest, FailoversNotAllowedTest)
     {
         fona::Input input{.redundancyEnabled = true,
                           .fullSyncComplete = true,
+                          .failoverInProgress = false,
                           .systemState = state};
 
         auto reasons = fona::getFailoversNotAllowedReasons(input);
@@ -175,6 +176,7 @@ TEST(RedundancyTest, FailoversNotAllowedTest)
     {
         fona::Input input{.redundancyEnabled = false,
                           .fullSyncComplete = true,
+                          .failoverInProgress = false,
                           .systemState = rbmc::SystemState::off};
         auto reasons = fona::getFailoversNotAllowedReasons(input);
         ASSERT_EQ(reasons.size(), 1);
@@ -186,11 +188,24 @@ TEST(RedundancyTest, FailoversNotAllowedTest)
     {
         fona::Input input{.redundancyEnabled = true,
                           .fullSyncComplete = false,
+                          .failoverInProgress = false,
                           .systemState = rbmc::SystemState::off};
         auto reasons = fona::getFailoversNotAllowedReasons(input);
         ASSERT_EQ(reasons.size(), 1);
         EXPECT_EQ(*reasons.begin(),
                   fona::FailoversNotAllowedReason::fullSyncNotComplete);
+    }
+
+    // Failover in progress
+    {
+        fona::Input input{.redundancyEnabled = true,
+                          .fullSyncComplete = true,
+                          .failoverInProgress = true,
+                          .systemState = rbmc::SystemState::off};
+        auto reasons = fona::getFailoversNotAllowedReasons(input);
+        ASSERT_EQ(reasons.size(), 1);
+        EXPECT_EQ(*reasons.begin(),
+                  fona::FailoversNotAllowedReason::failoverInProgress);
     }
 }
 

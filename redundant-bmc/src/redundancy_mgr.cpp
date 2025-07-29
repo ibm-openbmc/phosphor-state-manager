@@ -291,6 +291,7 @@ void RedundancyMgr::determineAndSetFailoversAllowed()
     fona::Input input{
         .redundancyEnabled = redundancyInterface.redundancy_enabled(),
         .fullSyncComplete = providers.getSyncInterface().isFullSyncComplete(),
+        .failoverInProgress = failoverInProgress,
         .systemState = systemState.value_or(SystemState::other)};
 
     auto notAllowedReasons = fona::getFailoversNotAllowedReasons(input);
@@ -329,6 +330,12 @@ void RedundancyMgr::determineAndSetFailoversAllowed()
         // Already traced above.
         redundancyInterface.failovers_allowed(false);
     }
+}
+
+void RedundancyMgr::clearFailoversAllowedDuringFailover()
+{
+    failoverInProgress = true;
+    determineAndSetFailoversAllowed();
 }
 
 } // namespace rbmc
