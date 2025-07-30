@@ -280,17 +280,17 @@ void Manager::disableRedPropChanged(bool disable)
 sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
                                               const FailoverOptions& options)
 {
-    if (!handler)
-    {
-        lg2::error("Failover not allowed because it is too early");
-        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
-    }
-
     if (redundancyInterface.failover_imminent() ||
         redundancyInterface.failover_in_progress())
     {
         lg2::error(
             "Failover not allowed because a failover is already imminent or in progress ");
+        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+    }
+
+    if (!handler)
+    {
+        lg2::error("Failover not allowed because it is too early");
         throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
     }
 
@@ -305,10 +305,7 @@ sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
 
     if (redundancyInterface.role() == Role::Passive)
     {
-        // TODO: Uncomment: ctx.spawn(doFailoverFromPassive());
-        // And delete these 2 lines
-        lg2::error("Failovers are not implemented yet");
-        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+        ctx.spawn(doFailoverFromPassive());
     }
     else
     {
@@ -342,7 +339,8 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive()
     redundancyInterface.failover_in_progress(true);
 
     // TODO: Save failover in progress indication in filesystem
-    // so we'll know to be active if rebooted in the middle of this.
+    // so it can be used to know that this BMC should be active
+    // if rebooted in the middle of this.
 
     // Reset the active so it can come back as passive.
     // If this were to throw, let it restart the app.
@@ -356,12 +354,20 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive()
     handler.reset(active);
 
     active->clearFailoversAllowedDuringFailover();
-    // At this point:
-    // - RedundancyEnabled = true
-    // - FailoverInProgress = true
-    // - FailoversAllowed = false
 
-    // TODO: Finish failover
+    // TODO: Grab local bus.  Not needed if it would be linked
+    // into the active target instead.
+
+    co_await active->failoverStartActiveTarget();
+
+    co_await active->failoverWaitForSibling();
+
+    lg2::info("Clearing failover in progress");
+    redundancyInterface.failover_in_progress(false);
+
+    // TODO, remove failover-in-progress indication in filesystem
+
+    co_await active->failoverDetermineRedundancy();
 }
 
 } // namespace rbmc

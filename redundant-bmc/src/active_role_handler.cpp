@@ -166,4 +166,55 @@ auto ActiveRoleHandler::getFailoverBlockedReason(
     co_return fo_blocked::Reason::bmcNotPassive;
 }
 
+// NOLINTNEXTLINE
+sdbusplus::async::task<> ActiveRoleHandler::failoverStartActiveTarget()
+{
+    try
+    {
+        co_await providers.getServices().startUnit(bmcActiveTarget);
+    }
+    catch (const sdbusplus::exception_t& e)
+    {
+        // TODO: error log
+        lg2::error(
+            "Failed while starting BMC active target during failover: {ERROR}",
+            "ERROR", e);
+    }
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> ActiveRoleHandler::failoverWaitForSibling()
+{
+    // Wait a bit to ensure the sibling reset is detected before we
+    // start waiting for it to come back. After the active target
+    // has real code in it that runs longer than a few seconds,
+    // this could be removed.
+    co_await providers.getSibling().pauseForHeartbeatChange();
+
+    // Wait for the sibling heartbeat to come back
+    co_await providers.getSibling().waitForSiblingUp();
+
+    // Wait for the sibling to get to a steady state so redundancy can
+    // be determined.
+    co_await providers.getSibling().waitForBMCSteadyState();
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> ActiveRoleHandler::failoverDetermineRedundancy()
+{
+    // Reset full sync complete so failovers allowed will
+    // stay off until the full sync is done.
+    providers.getSyncInterface().clearFullSyncComplete();
+
+    // Tell redMgr failover is complete so it won't block
+    // failovers allowed.
+    redMgr.clearFailoverInProgress();
+
+    // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+    co_await redMgr.determineRedundancyAndSync();
+
+    startSiblingWatches();
+    startSyncHealthWatch();
+}
+
 } // namespace rbmc
