@@ -85,6 +85,29 @@ class ActiveRoleHandler : public RoleHandler
         redMgr.clearFailoversAllowedDuringFailover();
     }
 
+    /**
+     * @brief Start the obmc-bmc-active systemd target and wait
+     *        for it to complete.
+     *
+     * All active services will have been started when this returns.
+     */
+    sdbusplus::async::task<> failoverStartActiveTarget();
+
+    /**
+     * @brief Waits for the sibling to come back online after it was
+     *        reset during a failover.
+     */
+    sdbusplus::async::task<> failoverWaitForSibling();
+
+    /**
+     * @brief Determines redundancy and failovers allowed after the
+     *        new passive BMC has come back up (or timed out)
+     *        during the failover.
+     *
+     * If redundancy is enabled, will issue a full sync.
+     */
+    sdbusplus::async::task<> failoverDetermineRedundancy();
+
   private:
     /**
      * @brief Starts the Sibling property watches/callbacks
