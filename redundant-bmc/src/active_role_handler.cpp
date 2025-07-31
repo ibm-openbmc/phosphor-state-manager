@@ -94,6 +94,7 @@ sdbusplus::async::task<> ActiveRoleHandler::siblingHBStarted()
         sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState());
 
     lg2::info("Attempting to enable redundancy now that sibling is back");
+    providers.getSyncInterface().clearFullSyncComplete();
     co_await redMgr.determineRedundancyAndSync();
 
     // TODO: full sync, etc
