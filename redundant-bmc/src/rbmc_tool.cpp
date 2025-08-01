@@ -13,7 +13,7 @@
 #include <xyz/openbmc_project/State/Decorator/Heartbeat/client.hpp>
 
 #include <format>
-#include <iostream>
+#include <print>
 
 using Redundancy =
     sdbusplus::client::xyz::openbmc_project::state::bmc::Redundancy<>;
@@ -26,6 +26,17 @@ using Version = sdbusplus::client::xyz::openbmc_project::software::Version<>;
 
 constexpr auto siblingService =
     "xyz.openbmc_project.State.BMC.Redundancy.Sibling";
+
+template <typename T>
+void printParam(std::string_view key, const T& value)
+{
+    std::println("{:21}{}", key, value);
+}
+
+void printReason(std::string_view reason)
+{
+    std::println("    {}", reason);
+}
 
 // NOLINTNEXTLINE
 sdbusplus::async::task<std::string> getBMCState(const rbmc::Services& services)
@@ -51,12 +62,12 @@ void printNoRedReasons()
         std::map<rbmc::redundancy::NoRedundancyReason, std::string>;
     auto details = data::read<NoRedDetails>(data::key::noRedDetails)
                        .value_or(NoRedDetails{});
-    std::cout << std::format("Reasons for no BMC redundancy:\n");
+    std::println("Reasons for no BMC redundancy:");
     if (!details.empty())
     {
         for (const auto& d : std::views::values(details))
         {
-            std::cout << std::format("    {}\n", d);
+            printReason(d);
         }
     }
     else
@@ -64,25 +75,25 @@ void printNoRedReasons()
         // There can be long periods where the active BMC is waiting
         // for the passive BMC so redundancy can't be checked yet.
         // As far as rbmctool goes, label them as in a transition.
-        std::cout << std::format("    In transition\n");
+        printReason("In transition");
     }
 }
 
 void printFONotAllowedReasons()
 {
-    std::cout << "Reasons failovers are not allowed:\n";
+    std::println("Reasons failovers are not allowed:");
     auto reasons =
         data::read<std::set<std::string>>(data::key::failoversNotAllowedReasons)
             .value_or(std::set<std::string>());
     if (!reasons.empty())
     {
         std::ranges::for_each(reasons, [](auto& reason) {
-            std::cout << std::format("    {}\n", reason);
+            printReason(reason);
         });
     }
     else
     {
-        std::cout << std::format("    Unknown\n");
+        printReason("Unknown");
     }
 }
 
@@ -95,8 +106,8 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
         sdbusplus::message::object_path{Redundancy::namespace_path::value} /
         Redundancy::namespace_path::bmc;
 
-    std::cout << "Local BMC\n";
-    std::cout << "-----------------------------\n";
+    std::println("Local BMC");
+    std::println("-----------------------------");
 
     try
     {
@@ -108,33 +119,26 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
         auto role = Redundancy::convertRoleToString(props.role);
         // Strip off the sdbusplus prefix to get the final part, e.g. 'Active'.
         role = role.substr(role.find_last_of('.') + 1);
-        std::cout << std::format("Role:                {}\n", role);
+        printParam("Role:", role);
 
         rbmc::ServicesImpl services{ctx};
-        std::cout << std::format("BMC Position:        {}\n",
-                                 services.getBMCPosition());
+        printParam("BMC Position:", services.getBMCPosition());
 
-        std::cout << std::format("Redundancy Enabled:  {}\n",
-                                 props.redundancy_enabled);
+        printParam("Redundancy Enabled:", props.redundancy_enabled);
 
         if (extended)
         {
             auto bmcState = co_await getBMCState(services);
-            std::cout << std::format("BMC State:           {}\n", bmcState);
+            printParam("BMC State:", bmcState);
+            printParam("Failovers Allowed:", props.failovers_allowed);
+            printParam("FW Version Hash:", services.getFWVersion());
+            printParam("Provisioned:", services.getProvisioned());
 
-            std::cout << std::format("Failovers Allowed:   {}\n",
-                                     props.failovers_allowed);
-
-            std::cout << std::format("FW version hash:     {}\n",
-                                     services.getFWVersion());
-            std::cout << std::format("Provisioned:         {}\n",
-                                     services.getProvisioned());
             if (role != "Unknown")
             {
-                std::cout << std::format(
-                    "Role Reason:         {}\n",
-                    data::read<std::string>(data::key::roleReason)
-                        .value_or("No reason found"));
+                printParam("Role Reason:",
+                           data::read<std::string>(data::key::roleReason)
+                               .value_or("No reason found"));
             }
 
             if ((role == "Active") && !props.redundancy_enabled)
@@ -151,8 +155,8 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
     }
     catch (const std::exception& e)
     {
-        std::cout << "Cannot get to Redundancy interface on D-Bus: " << e.what()
-                  << "\n";
+        std::println("Cannot get to Redundancy interface on D-Bus: {}",
+                     e.what());
     }
 }
 
@@ -164,8 +168,8 @@ sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
         sdbusplus::message::object_path{Redundancy::namespace_path::value} /
         Redundancy::namespace_path::sibling_bmc;
 
-    std::cout << "Sibling BMC\n";
-    std::cout << "-----------------------------\n";
+    std::println("Sibling BMC");
+    std::println("-----------------------------");
 
     try
     {
@@ -175,7 +179,7 @@ sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
                             .active();
         if (!hbActive)
         {
-            std::cout << "No sibling heartbeat\n";
+            std::println("No sibling heartbeat");
             co_return;
         }
 
@@ -186,7 +190,7 @@ sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
 
         auto role = Redundancy::convertRoleToString(rProps.role);
         role = role.substr(role.find_last_of('.') + 1);
-        std::cout << std::format("Role:                {}\n", role);
+        printParam("Role:", role);
 
         if (!extended)
         {
@@ -206,18 +210,16 @@ sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
         auto bmcState = BMCState::convertBMCStateToString(state);
         bmcState = bmcState.substr(bmcState.find_last_of('.') + 1);
 
-        std::cout << std::format("Redundancy Enabled:  {}\n",
-                                 rProps.redundancy_enabled);
-        std::cout << std::format("Failovers Allowed:   {}\n",
-                                 rProps.failovers_allowed);
-        std::cout << std::format("BMC State:           {}\n", bmcState);
-        std::cout << std::format("FW version hash:     {}\n", fwVersion);
-        std::cout << std::format("Provisioned:         {}\n", true); // TODO
+        printParam("Redundancy Enabled:", rProps.redundancy_enabled);
+        printParam("Failovers Allowed:", rProps.failovers_allowed);
+        printParam("BMC State:", bmcState);
+        printParam("FW Version Hash:", fwVersion);
+        printParam("Provisioned:", true); // TODO
     }
     catch (const sdbusplus::exception_t& e)
     {
-        std::cout << "Cannot get to a sibling interface on D-Bus: " << e.what()
-                  << "\n";
+        std::println("Cannot get to a sibling interface on D-Bus: {}",
+                     e.what());
     }
 }
 
@@ -225,11 +227,11 @@ sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
 sdbusplus::async::task<> displayInfo(sdbusplus::async::context& ctx,
                                      bool extended)
 {
-    std::cout << "\n";
+    std::println();
     co_await displayLocalBMCInfo(ctx, extended);
-    std::cout << "\n";
+    std::println();
     co_await displaySiblingBMCInfo(ctx, extended);
-    std::cout << "\n";
+    std::println();
 }
 
 // NOLINTNEXTLINE
@@ -272,12 +274,12 @@ sdbusplus::async::task<> modifyRedundancyOverride(
         if (std::string{"xyz.openbmc_project.Common.Error.Unavailable"} ==
             e.name())
         {
-            std::cout
-                << "Error: Setting cannot be modified now (see journal for details)\n";
+            std::println(
+                "Error: Setting cannot be modified now (see journal for details)");
         }
         else
         {
-            std::cout << "Unexpected error: " << e.what() << '\n';
+            std::println("Unexpected error: {}", e.what());
         }
 
         exit(EXIT_FAILURE);
@@ -319,12 +321,12 @@ sdbusplus::async::task<> startFailover(sdbusplus::async::context& ctx,
         if (std::string{"xyz.openbmc_project.Common.Error.Unavailable"} ==
             e.name())
         {
-            std::cout
-                << "Error: Failover cannot be started now (see journal for details)\n";
+            std::println(
+                "Error: Failover cannot be started now (see journal for details)");
         }
         else
         {
-            std::cout << "Unexpected error: " << e.what() << '\n';
+            std::println("Unexpected error: {}", e.what());
         }
 
         exit(EXIT_FAILURE);
@@ -398,7 +400,7 @@ int main(int argc, char** argv)
     }
     else
     {
-        std::cout << app.help();
+        std::println("{}", app.help());
     }
 
     ctx.spawn(
