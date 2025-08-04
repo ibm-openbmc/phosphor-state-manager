@@ -17,7 +17,9 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Unknown,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
-                    .siblingProvisioned = true};
+                    .siblingProvisioned = true,
+                    .failoverInProgress = false,
+                    .siblingFailoverInProgress = false};
 
         RoleInfo info{Active, positionZero};
         EXPECT_EQ(determineRole(input), info);
@@ -30,7 +32,9 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Unknown,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
-                    .siblingProvisioned = true};
+                    .siblingProvisioned = true,
+                    .failoverInProgress = false,
+                    .siblingFailoverInProgress = false};
         RoleInfo info{Passive, positionNonzero};
         EXPECT_EQ(determineRole(input), info);
         EXPECT_EQ(getRoleReasonDescription(info.reason),
@@ -43,7 +47,9 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Unknown,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = false,
-                    .siblingProvisioned = true};
+                    .siblingProvisioned = true,
+                    .failoverInProgress = false,
+                    .siblingFailoverInProgress = false};
 
         RoleInfo info{Active, noSiblingHeartbeat};
         EXPECT_EQ(determineRole(input), info);
@@ -57,7 +63,9 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Unknown,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
-                    .siblingProvisioned = false};
+                    .siblingProvisioned = false,
+                    .failoverInProgress = false,
+                    .siblingFailoverInProgress = false};
 
         RoleInfo info{Active, siblingNotProvisioned};
         EXPECT_EQ(determineRole(input), info);
@@ -71,7 +79,9 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Unknown,
                     .siblingRole = Active,
                     .siblingHeartbeat = true,
-                    .siblingProvisioned = true};
+                    .siblingProvisioned = true,
+                    .failoverInProgress = false,
+                    .siblingFailoverInProgress = false};
 
         RoleInfo info{Passive, siblingActive};
         EXPECT_EQ(determineRole(input), info);
@@ -85,7 +95,9 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Unknown,
                     .siblingRole = Passive,
                     .siblingHeartbeat = true,
-                    .siblingProvisioned = true};
+                    .siblingProvisioned = true,
+                    .failoverInProgress = false,
+                    .siblingFailoverInProgress = false};
 
         RoleInfo info{Active, siblingPassive};
         EXPECT_EQ(determineRole(input), info);
@@ -99,7 +111,9 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Passive,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
-                    .siblingProvisioned = true};
+                    .siblingProvisioned = true,
+                    .failoverInProgress = false,
+                    .siblingFailoverInProgress = false};
 
         // Preserve passive
         RoleInfo info{Passive, resumePrevious};
@@ -114,13 +128,51 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Active,
                     .siblingRole = Unknown,
                     .siblingHeartbeat = true,
-                    .siblingProvisioned = true};
+                    .siblingProvisioned = true,
+                    .failoverInProgress = false,
+                    .siblingFailoverInProgress = false};
 
         // Preserve active
         RoleInfo info{Active, resumePrevious};
         EXPECT_EQ(determineRole(input), info);
         EXPECT_EQ(getRoleReasonDescription(info.reason),
                   "Resuming previous role");
+    }
+
+    // Simulate a reboot in the middle of a failover on
+    // the active BMC - failover in progress = true.
+    {
+        Input input{.bmcPosition = 1,
+                    .previousRole = Active,
+                    .siblingRole = Unknown,
+                    .siblingHeartbeat = true,
+                    .siblingProvisioned = true,
+                    .failoverInProgress = true,
+                    .siblingFailoverInProgress = false};
+
+        RoleInfo info{Active, failoverInProgress};
+        EXPECT_EQ(determineRole(input), info);
+        EXPECT_EQ(getRoleReasonDescription(info.reason),
+                  "Newly active from failover");
+    }
+
+    // Simulate a passive BMC coming back from a failover
+    // when the new active BMC was rebooted and just came back.
+    // With siblingFailoverInProgress set it won't resume
+    // previous role of active.
+    {
+        Input input{.bmcPosition = 0,
+                    .previousRole = Active,
+                    .siblingRole = Unknown,
+                    .siblingHeartbeat = true,
+                    .siblingProvisioned = true,
+                    .failoverInProgress = false,
+                    .siblingFailoverInProgress = true};
+
+        RoleInfo info{Passive, siblingFailoverInProgress};
+        EXPECT_EQ(determineRole(input), info);
+        EXPECT_EQ(getRoleReasonDescription(info.reason),
+                  "Sibling was driving a failover");
     }
 }
 

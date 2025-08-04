@@ -48,6 +48,24 @@ Manager::Manager(sdbusplus::async::context& ctx,
                    "ERROR", e);
     }
 
+    try
+    {
+        // Restore FailoverInProgress on D-Bus
+        auto failoverInProgress =
+            data::read<bool>(data::key::failoverInProgress).value_or(false);
+        if (failoverInProgress)
+        {
+            lg2::info("Failover was previously in progress");
+        }
+
+        redundancyInterface.failover_in_progress(failoverInProgress);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed trying to obtain failover-in-progress: {ERROR}",
+                   "ERROR", e);
+    }
+
     // emit the Failover interfaces added signal
     emit_added();
 
@@ -89,9 +107,38 @@ sdbusplus::async::task<> Manager::startup()
         updateRole(determineRole());
     }
 
-    spawnRoleHandler();
+    co_await postStartupClearFOInProgress();
 
-    co_return;
+    spawnRoleHandler();
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> Manager::postStartupClearFOInProgress()
+{
+    if (!redundancyInterface.failover_in_progress())
+    {
+        co_return;
+    }
+
+    // If true, this property is used by both BMCs to determine their roles.
+    // This BMC will have already used it.  Check the other BMC already has
+    // as well and then it can be set to false and removed from the persistent
+    // data.
+
+    lg2::info(
+        "Waiting for sibling to get role and then clearing failover in progress");
+
+    co_await providers->getSibling().waitForSiblingRole();
+
+    redundancyInterface.failover_in_progress(false);
+    try
+    {
+        data::remove(data::key::failoverInProgress);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed removing failover-in-progress: {ERROR}", "ERROR", e);
+    }
 }
 
 void Manager::spawnRoleHandler()
@@ -156,13 +203,17 @@ role_determination::RoleInfo Manager::determineRole()
         //        them anyway because there would be no heartbeat.
         auto siblingRole = sibling.getRole().value_or(Role::Unknown);
         auto siblingProvisioned = sibling.getProvisioned().value_or(false);
+        auto siblingFailoverInProgress =
+            sibling.getFailoverInProgress().value_or(false);
 
         role_determination::Input input{
             .bmcPosition = services.getBMCPosition(),
             .previousRole = previousRole,
             .siblingRole = siblingRole,
             .siblingHeartbeat = sibling.hasHeartbeat(),
-            .siblingProvisioned = siblingProvisioned};
+            .siblingProvisioned = siblingProvisioned,
+            .failoverInProgress = redundancyInterface.failover_in_progress(),
+            .siblingFailoverInProgress = siblingFailoverInProgress};
 
         // If an error case forced it to passive last time, don't use
         // the previous role in the determination so that we don't try
@@ -338,13 +389,22 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive()
     lg2::info("Setting failover in progress");
     redundancyInterface.failover_in_progress(true);
 
-    // TODO: Save failover in progress indication in filesystem
-    // so it can be used to know that this BMC should be active
-    // if rebooted in the middle of this.
-
     // Reset the active so it can come back as passive.
     // If this were to throw, let it restart the app.
     co_await providers->getSiblingReset().toggleReset();
+
+    try
+    {
+        // Now that its past the reset, save the failover in progress
+        // indication in case this BMC is rebooted before the failover
+        // is done.
+        data::write(data::key::failoverInProgress, true);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed serializing failover-in-progress: {ERROR}", "ERROR",
+                   e);
+    }
 
     lg2::info("Claiming active role");
     updateRole(role_determination::RoleInfo{
@@ -365,7 +425,14 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive()
     lg2::info("Clearing failover in progress");
     redundancyInterface.failover_in_progress(false);
 
-    // TODO, remove failover-in-progress indication in filesystem
+    try
+    {
+        data::remove(data::key::failoverInProgress);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed removing failover-in-progress: {ERROR}", "ERROR", e);
+    }
 
     co_await active->failoverDetermineRedundancy();
 }

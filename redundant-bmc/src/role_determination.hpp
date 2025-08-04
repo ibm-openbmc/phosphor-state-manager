@@ -22,6 +22,8 @@ struct Input
     Role siblingRole;
     bool siblingHeartbeat;
     bool siblingProvisioned;
+    bool failoverInProgress;
+    bool siblingFailoverInProgress;
 };
 
 /**
@@ -40,7 +42,9 @@ enum class RoleReason
     notProvisioned,
     siblingServiceNotRunning,
     exception,
-    failover
+    failover,
+    failoverInProgress,
+    siblingFailoverInProgress
 };
 
 /**

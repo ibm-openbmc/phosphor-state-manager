@@ -120,6 +120,12 @@ void SiblingImpl::loadRedundancyProps(
         }
     }
 
+    it = propertyMap.find("FailoverInProgress");
+    if (it != propertyMap.end())
+    {
+        redundancy.failoverInProgress = std::get<bool>(it->second);
+    }
+
     it = propertyMap.find("Role");
     if (it != propertyMap.end())
     {

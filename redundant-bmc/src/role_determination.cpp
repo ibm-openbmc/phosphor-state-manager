@@ -30,6 +30,16 @@ RoleInfo determineRole(const Input& input)
         result = {Role::Passive, RoleReason::siblingActive};
     }
 
+    else if (input.failoverInProgress)
+    {
+        result = {Role::Active, RoleReason::failoverInProgress};
+    }
+
+    else if (input.siblingFailoverInProgress)
+    {
+        result = {Role::Passive, RoleReason::siblingFailoverInProgress};
+    }
+
     else if (input.previousRole == Role::Active)
     {
         result = {Role::Active, RoleReason::resumePrevious};
@@ -89,6 +99,12 @@ std::string getRoleReasonDescription(RoleReason reason)
             break;
         case RoleReason::siblingServiceNotRunning:
             desc = "Sibling BMC service is not running"s;
+            break;
+        case RoleReason::failoverInProgress:
+            desc = "Newly active from failover";
+            break;
+        case RoleReason::siblingFailoverInProgress:
+            desc = "Sibling was driving a failover";
             break;
         case RoleReason::exception:
             desc = "Exception thrown while determining role"s;

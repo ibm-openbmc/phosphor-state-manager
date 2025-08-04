@@ -124,6 +124,13 @@ class Sibling
     virtual std::optional<bool> getFailoversAllowed() const = 0;
 
     /**
+     * @brief Returns if the sibling has a failover in progress
+     *
+     * @return - If allowed, or nullopt if not available
+     */
+    virtual std::optional<bool> getFailoverInProgress() const = 0;
+
+    /**
      * @brief Returns if the sibling BMC is plugged in
      *
      * @return bool - if present

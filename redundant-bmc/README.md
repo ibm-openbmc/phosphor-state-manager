@@ -37,6 +37,9 @@ The current rules for role determination are:
 1. If the sibling isn't provisioned, choose active.
 1. If the sibling is already passive, choose active.
 1. If the sibling is already active, choose passive.
+1. If there was previously a failover in progress, choose active. See
+   [below for more details](#reboots-in-the-middle-of-a-failover).
+1. If the sibling has a failover in progress, choose passive.
 1. If the previous role isn't unknown, choose that assuming it wasn't passive
    just due to an error.
 1. Finally, if this BMC's position is zero choose active, otherwise passive.
@@ -269,3 +272,22 @@ The failover sequence is:
 1. The new active BMC evaluates if redundancy can still be enabled, and if so it
    issues a full sync. Otherwise it sets `RedundancyEnabled` to false.
 1. When the full sync is complete, `FailoversAllowed` is now set to true.
+
+### Reboots in the middle of a failover
+
+If the new active BMC is rebooted in the middle of a failover while the other
+BMC is somewhere in its reboot, the roles should be preserved with the new
+active BMC staying active.
+
+Preserving the roles is accomplished by:
+
+- On the new active BMC at the start of the failover save the failover in
+  progress indication in the filesystem. On every startup, look for that
+  indication and use it in the
+  [role determination calculation](#role-determination-rules). It will be
+  cleared from the filesystem after a successful failover or after it was used
+  in role determination.
+
+- On the new passive BMC during role determination obtain the failover in
+  progress value from the other BMC. If it is true, then choose the passive
+  role.
