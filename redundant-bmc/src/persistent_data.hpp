@@ -21,6 +21,7 @@ constexpr auto noRedDetails = "NoRedundancyDetails";
 constexpr auto disableRed = "DisableRedundancy";
 constexpr auto redundancyOffAtRuntime = "RedundancyOffAtRuntime";
 constexpr auto failoversNotAllowedReasons = "FailoversNotAllowedReasons";
+constexpr auto failoverInProgress = "FailoverInProgress";
 } // namespace key
 
 namespace util

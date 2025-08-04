@@ -30,7 +30,7 @@ constexpr auto siblingService =
 template <typename T>
 void printParam(std::string_view key, const T& value)
 {
-    std::println("{:21}{}", key, value);
+    std::println("{:22}{}", key, value);
 }
 
 void printReason(std::string_view reason)
@@ -131,6 +131,7 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
             auto bmcState = co_await getBMCState(services);
             printParam("BMC State:", bmcState);
             printParam("Failovers Allowed:", props.failovers_allowed);
+            printParam("Failover In Progress:", props.failover_in_progress);
             printParam("FW Version Hash:", services.getFWVersion());
             printParam("Provisioned:", services.getProvisioned());
 

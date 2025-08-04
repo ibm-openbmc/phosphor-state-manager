@@ -169,6 +169,21 @@ class SiblingImpl : public Sibling
     }
 
     /**
+     * @brief Returns if the sibling has a failover in progress
+     *
+     * @return - If in progress, or nullopt if not available
+     */
+    std::optional<bool> getFailoverInProgress() const override
+    {
+        if (getInterfacePresent() && hasHeartbeat())
+        {
+            return redundancy.failoverInProgress;
+        }
+
+        return std::nullopt;
+    }
+
+    /**
      * @brief Returns if the sibling BMC is plugged in
      *
      * @return bool - if present
@@ -301,6 +316,7 @@ class SiblingImpl : public Sibling
         Role role = Role::Unknown;
         bool redundancyEnabled = false;
         bool failoversAllowed = false;
+        bool failoverInProgress = false;
     };
 
     /**

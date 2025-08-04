@@ -113,6 +113,12 @@ class Manager :
     sdbusplus::async::task<> doFailoverFromPassive();
 
     /**
+     * @brief Clears 'failover in progress' if it is on and
+     *        removes the persisted value.
+     */
+    sdbusplus::async::task<> postStartupClearFOInProgress();
+
+    /**
      * @brief The async context object
      */
     sdbusplus::async::context& ctx;
