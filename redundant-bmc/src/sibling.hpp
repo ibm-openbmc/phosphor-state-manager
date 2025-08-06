@@ -30,6 +30,7 @@ class Sibling
     using BMCStateCallback = std::function<void(BMCState)>;
     using HeartbeatCallback = std::function<void(bool)>;
     using FailoversAllowedCallback = std::function<void(bool)>;
+    using FailoverImminentCallback = std::function<void(bool)>;
 
     Sibling() = default;
     virtual ~Sibling() = default;
@@ -126,9 +127,16 @@ class Sibling
     /**
      * @brief Returns if the sibling has a failover in progress
      *
-     * @return - If allowed, or nullopt if not available
+     * @return - If in progress, or nullopt if not available
      */
     virtual std::optional<bool> getFailoverInProgress() const = 0;
+
+    /**
+     * @brief Returns if the sibling has a failover imminent
+     *
+     * @return - If imminent, or nullopt if not available
+     */
+    virtual std::optional<bool> getFailoverImminent() const = 0;
 
     /**
      * @brief Returns if the sibling BMC is plugged in
@@ -154,6 +162,7 @@ class Sibling
         bmcStateCBs.erase(role);
         heartbeatCBs.erase(role);
         foAllowedCBs.erase(role);
+        foImminentCBs.erase(role);
     }
 
     /**
@@ -206,6 +215,19 @@ class Sibling
         foAllowedCBs.emplace(role, std::move(callback));
     }
 
+    /**
+     * @brief Adds a callback function to invoke when the sibling's
+     *        FailoverImminent property changes
+     *
+     * @param[in] role - The role to register with
+     * @param[in] callback - The callback function
+     */
+    void addFailoverImminentCallback(Role role,
+                                     FailoverImminentCallback callback)
+    {
+        foImminentCBs.emplace(role, std::move(callback));
+    }
+
   protected:
     /**
      * @brief Callbacks for RedundancyEnabled
@@ -226,5 +248,10 @@ class Sibling
      * @brief Callbacks for FailoversAllowed
      */
     std::map<Role, FailoversAllowedCallback> foAllowedCBs;
+
+    /**
+     * @brief Callbacks for FailoverImminent
+     */
+    std::map<Role, FailoverImminentCallback> foImminentCBs;
 };
 } // namespace rbmc

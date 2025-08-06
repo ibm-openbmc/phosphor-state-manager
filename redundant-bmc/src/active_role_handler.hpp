@@ -122,6 +122,10 @@ class ActiveRoleHandler : public RoleHandler
         sibling.addHeartbeatCallback(
             Role::Active,
             std::bind_front(&ActiveRoleHandler::siblingHBChange, this));
+
+        sibling.addFailoverImminentCallback(
+            Role::Active,
+            std::bind_front(&ActiveRoleHandler::siblingFailoverImminent, this));
     }
 
     /**
@@ -196,6 +200,15 @@ class ActiveRoleHandler : public RoleHandler
      * Redundancy will be disabled if it's a true sync failure.
      */
     sdbusplus::async::task<> syncHealthCritical();
+
+    /**
+     * @brief Called when the passive BMC is about to start a failover
+     *        so that any preparation can be done.
+     *
+     * @param[in] imminent - The new FailoverImminent value.
+     *
+     */
+    void siblingFailoverImminent(bool imminent);
 
     /**
      * @brief Redundancy manager object
