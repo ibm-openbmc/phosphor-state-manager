@@ -184,6 +184,21 @@ class SiblingImpl : public Sibling
     }
 
     /**
+     * @brief Returns if the sibling has a failover imminent
+     *
+     * @return - If imminent, or nullopt if not available
+     */
+    std::optional<bool> getFailoverImminent() const override
+    {
+        if (getInterfacePresent() && hasHeartbeat())
+        {
+            return redundancy.failoverImminent;
+        }
+
+        return std::nullopt;
+    }
+
+    /**
      * @brief Returns if the sibling BMC is plugged in
      *
      * @return bool - if present
@@ -317,6 +332,7 @@ class SiblingImpl : public Sibling
         bool redundancyEnabled = false;
         bool failoversAllowed = false;
         bool failoverInProgress = false;
+        bool failoverImminent = false;
     };
 
     /**

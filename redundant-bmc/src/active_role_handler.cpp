@@ -217,4 +217,14 @@ sdbusplus::async::task<> ActiveRoleHandler::failoverDetermineRedundancy()
     startSyncHealthWatch();
 }
 
+void ActiveRoleHandler::siblingFailoverImminent(bool imminent)
+{
+    if (imminent)
+    {
+        lg2::info("A failover is imminent");
+
+        ctx.spawn(providers.getSyncInterface().disableBackgroundSync());
+    }
+}
+
 } // namespace rbmc

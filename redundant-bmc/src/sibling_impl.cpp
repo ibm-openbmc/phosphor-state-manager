@@ -120,6 +120,21 @@ void SiblingImpl::loadRedundancyProps(
         }
     }
 
+    it = propertyMap.find("FailoverImminent");
+    if (it != propertyMap.end())
+    {
+        auto old = redundancy.failoverImminent;
+        redundancy.failoverImminent = std::get<bool>(it->second);
+        if (redundancy.failoverImminent != old)
+        {
+            for (const auto& callback :
+                 std::ranges::views::values(foImminentCBs))
+            {
+                callback(redundancy.failoverImminent);
+            }
+        }
+    }
+
     it = propertyMap.find("FailoverInProgress");
     if (it != propertyMap.end())
     {
