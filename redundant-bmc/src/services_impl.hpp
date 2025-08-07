@@ -104,6 +104,12 @@ class ServicesImpl : public Services
      */
     sdbusplus::async::task<> doFailoverImminentDelay() const override;
 
+    /**
+     * @brief Flush the journal to the filesystem with
+     *        "journalctl --sync"
+     */
+    sdbusplus::async::task<> flushJournal() const override;
+
   private:
     /**
      * @brief Returns the D-Bus object path for the unit in the
