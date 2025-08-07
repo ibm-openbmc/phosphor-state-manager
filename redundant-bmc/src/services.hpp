@@ -111,6 +111,11 @@ class Services
     virtual sdbusplus::async::task<> doFailoverImminentDelay() const = 0;
 
     /**
+     * @brief Flush the journal to the filesystem.
+     */
+    virtual sdbusplus::async::task<> flushJournal() const = 0;
+
+    /**
      * @brief Returns the string name for the system state enum
      *
      * @param[in] state - The state enum

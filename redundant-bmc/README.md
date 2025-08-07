@@ -291,3 +291,11 @@ Preserving the roles is accomplished by:
 - On the new passive BMC during role determination obtain the failover in
   progress value from the other BMC. If it is true, then choose the passive
   role.
+
+### Active BMC handling of an imminent failover
+
+When the current active BMC sees the failover imminent indication, it will do
+the following to prepare to be reset and come back as the passive BMC:
+
+1. Stop background syncing.
+2. Flush any unwritten journal messages to disk.
