@@ -31,8 +31,9 @@ class ActiveRoleHandler : public RoleHandler
     ActiveRoleHandler(sdbusplus::async::context& ctx, Providers& providers,
                       RedundancyInterface& iface) :
         RoleHandler(ctx, providers, iface), redMgr(ctx, providers, iface),
-        siblingHBTimer(
-            ctx, std::bind_front(&ActiveRoleHandler::siblingHBCritical, this))
+        siblingHealthTimer(
+            ctx,
+            std::bind_front(&ActiveRoleHandler::siblingHealthCritical, this))
     {}
 
     /**
@@ -121,7 +122,7 @@ class ActiveRoleHandler : public RoleHandler
 
         sibling.addHealthCallback(
             Role::Active,
-            std::bind_front(&ActiveRoleHandler::siblingHBChange, this));
+            std::bind_front(&ActiveRoleHandler::siblingHealthChange, this));
 
         sibling.addFailoverImminentCallback(
             Role::Active,
@@ -133,7 +134,7 @@ class ActiveRoleHandler : public RoleHandler
      */
     inline void stopSiblingWatches()
     {
-        siblingHBTimer.stop();
+        siblingHealthTimer.stop();
         providers.getSibling().clearCallbacks(Role::Active);
     }
 
@@ -149,30 +150,30 @@ class ActiveRoleHandler : public RoleHandler
     void siblingStateChange(BMCState state);
 
     /**
-     * @brief Called when the sibling's heartbeat changes
+     * @brief Called when the sibling's health changes
      *        assuming the callback has been enabled.
      *
-     * Spawns siblingHBStarted() on a start, and calls
-     * siblingHBCritical() on a stop.
+     * Spawns siblingHealthy() when changes to good, and calls
+     * siblingHealthCritical() when changes to bad.
      *
-     * @param[in] hb - The new heartbeat status
+     * @param[in] alive - If sibling is alive and healthy
      */
-    void siblingHBChange(bool hb);
+    void siblingHealthChange(bool alive);
 
     /**
-     * @brief Called when the sibling heartbeat starts after
+     * @brief Called when the sibling becomes good after
      *        sibling monitoring has been enabled.
      *
      * This will attempt to re-enable redundancy, though it might
      * not be possible for other reasons.
      */
-    sdbusplus::async::task<> siblingHBStarted();
+    sdbusplus::async::task<> siblingHealthy();
 
     /**
-     * @brief Called when the sibling heartbeat has been stopped
+     * @brief Called when the sibling health changes to bad
      *        long enough to explicitly disable redundancy.
      */
-    void siblingHBCritical();
+    void siblingHealthCritical();
 
     /**
      * @brief Starts watching the data sync health status property
@@ -216,11 +217,11 @@ class ActiveRoleHandler : public RoleHandler
     RedundancyMgr redMgr;
 
     /**
-     * @brief Timer used when the sibling's heartbeat stops
+     * @brief Timer used when the sibling's health changes to bad
      *
      * Upon expiration redundancy will be disabled.
      */
-    Timer siblingHBTimer;
+    Timer siblingHealthTimer;
 };
 
 } // namespace rbmc

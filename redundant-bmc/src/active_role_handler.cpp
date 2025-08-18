@@ -7,7 +7,7 @@ namespace rbmc
 {
 
 constexpr auto bmcActiveTarget = "obmc-bmc-active.target";
-const std::chrono::minutes siblingHBTimeout{5};
+const std::chrono::minutes siblingHealthTimeout{5};
 
 // NOLINTNEXTLINE
 sdbusplus::async::task<> ActiveRoleHandler::start()
@@ -27,7 +27,7 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
                    e);
     }
 
-    if (sibling.hasHeartbeat())
+    if (sibling.alive())
     {
         // Make sure the sibling had time to get its role assigned, and
         // also wait for it to hit steady state as redundancy can only
@@ -56,36 +56,36 @@ void ActiveRoleHandler::siblingStateChange(BMCState state)
     }
 }
 
-void ActiveRoleHandler::siblingHBChange(bool hb)
+void ActiveRoleHandler::siblingHealthChange(bool alive)
 {
-    if (hb)
+    if (alive)
     {
-        siblingHBTimer.stop();
-        ctx.spawn(siblingHBStarted());
+        siblingHealthTimer.stop();
+        ctx.spawn(siblingHealthy());
     }
     else
     {
-        lg2::info("Sibling BMC heartbeat lost");
+        lg2::info("Sibling BMC health changed to bad");
         if (redundancyInterface.redundancy_enabled())
         {
             lg2::info(
-                "Disabling redundancy in {TIME} minutes if sibling heartbeat doesn't recover",
-                "TIME", siblingHBTimeout.count());
-            siblingHBTimer.start(siblingHBTimeout);
+                "Disabling redundancy in {TIME} minutes if sibling doesn't come back",
+                "TIME", siblingHealthTimeout.count());
+            siblingHealthTimer.start(siblingHealthTimeout);
         }
     }
 }
 
-void ActiveRoleHandler::siblingHBCritical()
+void ActiveRoleHandler::siblingHealthCritical()
 {
-    lg2::error("Sibling heartbeat timer expired, disabling redundancy");
+    lg2::error("Sibling health timer expired, disabling redundancy");
     redMgr.determineAndSetRedundancy();
 }
 
 // NOLINTNEXTLINE
-sdbusplus::async::task<> ActiveRoleHandler::siblingHBStarted()
+sdbusplus::async::task<> ActiveRoleHandler::siblingHealthy()
 {
-    lg2::info("Passive BMC heartbeat started");
+    lg2::info("Passive BMC health changed to good");
 
     stopSiblingWatches();
 
@@ -96,8 +96,6 @@ sdbusplus::async::task<> ActiveRoleHandler::siblingHBStarted()
     lg2::info("Attempting to enable redundancy now that sibling is back");
     providers.getSyncInterface().clearFullSyncComplete();
     co_await redMgr.determineRedundancyAndSync();
-
-    // TODO: full sync, etc
 
     startSiblingWatches();
 
@@ -139,7 +137,7 @@ sdbusplus::async::task<> ActiveRoleHandler::syncHealthCritical()
     lg2::info("Waiting to see if sibling heartbeat stops");
     co_await providers.getSibling().pauseForHeartbeatChange();
 
-    if (providers.getSibling().hasHeartbeat())
+    if (providers.getSibling().alive())
     {
         lg2::error("Disabling redundancy due to critical sync health");
 

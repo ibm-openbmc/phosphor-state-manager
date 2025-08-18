@@ -104,12 +104,12 @@ class PassiveRoleHandler : public RoleHandler
     void disableRedPropChanged(bool disable) override;
 
     /**
-     * @brief Setup watching the sibling BMC's heartbeat
+     * @brief Setup watching the sibling BMC's health
      */
-    inline void setupSiblingHBWatch()
+    inline void setupSiblingHealthWatch()
     {
         providers.getSibling().addHealthCallback(
-            Role::Passive, [this](bool hb) { siblingHBChange(hb); });
+            Role::Passive, [this](bool hb) { siblingHealthChange(hb); });
     }
 
     /**
@@ -133,11 +133,11 @@ class PassiveRoleHandler : public RoleHandler
     sdbusplus::async::task<> stopSync();
 
     /**
-     * @brief Called when the sibling BMC heartbeat changes.
+     * @brief Called when the sibling BMC health changes.
      *
      * Will try to start or stop syncing as appropriate.
      */
-    void siblingHBChange(bool hb);
+    void siblingHealthChange(bool alive);
 
     /**
      * @brief Called when the sync health property changes
