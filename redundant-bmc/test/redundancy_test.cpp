@@ -13,7 +13,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
     const Input golden{
         .role = rbmc::Role::Active,
         .siblingPresent = true,
-        .siblingHeartbeat = true,
+        .siblingAlive = true,
         .siblingProvisioned = true,
         .siblingRole = rbmc::Role::Passive,
         .siblingState = rbmc::BMCState::Ready,
@@ -48,14 +48,14 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         EXPECT_EQ(*reasons.begin(), siblingMissing);
     }
 
-    // No sibling heartbeat
+    // Sibling not alive
     {
         auto input = golden;
-        input.siblingHeartbeat = false;
+        input.siblingAlive = false;
 
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(), noSiblingHeartbeat);
+        EXPECT_EQ(*reasons.begin(), siblingNotAlive);
     }
 
     // Sibling isn't provisioned
@@ -221,7 +221,7 @@ TEST(RedundancyTest, GetFailoversNotAllowedDescTest)
 TEST(RedundancyTest, FailoverBlockedTest)
 {
     rbmc::fo_blocked::Input golden{
-        .siblingHeartbeat = true,
+        .siblingAlive = true,
         .siblingState = rbmc::BMCState::Ready,
         .redundancyEnabled = true,
         .syncInProgress = false,
@@ -278,7 +278,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
     // Sibling not responding, but redundancy was enabled
     {
         auto input = golden;
-        input.siblingHeartbeat = false;
+        input.siblingAlive = false;
         EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::none);
     }
@@ -286,7 +286,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
     // Sibling not responding, redundancy was enabled and failovers not allowed
     {
         auto input = golden;
-        input.siblingHeartbeat = false;
+        input.siblingAlive = false;
         input.failoversNotAllowed = true;
         EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::none);
@@ -295,7 +295,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
     // Sibling not responding, redundancy was enabled, but this BMC in Quiesced.
     {
         auto input = golden;
-        input.siblingHeartbeat = false;
+        input.siblingAlive = false;
         input.state = rbmc::BMCState::Quiesced;
         EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::notAtReady);
@@ -304,7 +304,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
     // Sibling not responding, but redundancy wasn't enabled
     {
         auto input = golden;
-        input.siblingHeartbeat = false;
+        input.siblingAlive = false;
         input.lastKnownRedundancyEnabled = false;
         EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::siblingDeadButRedundancyNotEnabled);

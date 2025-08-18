@@ -33,9 +33,9 @@ NoRedundancyReasons getNoRedundancyReasons(const Input& input)
     }
     else
     {
-        if (!input.siblingHeartbeat)
+        if (!input.siblingAlive)
         {
-            reasons.insert(noSiblingHeartbeat);
+            reasons.insert(siblingNotAlive);
         }
         else
         {
@@ -95,8 +95,8 @@ std::string getNoRedundancyDescription(NoRedundancyReason reason)
         case siblingMissing:
             desc = "Sibling is missing"s;
             break;
-        case noSiblingHeartbeat:
-            desc = "No sibling heartbeat"s;
+        case siblingNotAlive:
+            desc = "Sibling not alive"s;
             break;
         case siblingNotProvisioned:
             desc = "Sibling is not provisioned"s;
@@ -195,7 +195,7 @@ namespace fo_blocked
 
 Reason getFailoverBlockedReason(const Input& input)
 {
-    if (input.siblingHeartbeat)
+    if (input.siblingAlive)
     {
         if (!input.redundancyEnabled)
         {
@@ -242,7 +242,7 @@ Reason getFailoverBlockedReason(const Input& input)
         }
 
         lg2::info(
-            "There is no sibling heartbeat but redundancy was last known to be enabled");
+            "Sibling not alive but redundancy was last known to be enabled");
 
         if (input.failoversNotAllowed)
         {

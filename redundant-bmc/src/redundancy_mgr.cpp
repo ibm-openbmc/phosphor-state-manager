@@ -107,7 +107,7 @@ redundancy::NoRedundancyReasons RedundancyMgr::getNoRedundancyReasons()
     redundancy::Input input{
         .role = redundancyInterface.role(),
         .siblingPresent = sibling.isBMCPresent(),
-        .siblingHeartbeat = sibling.hasHeartbeat(),
+        .siblingAlive = sibling.alive(),
         .siblingProvisioned = sibling.getProvisioned().value_or(false),
         .siblingRole = sibling.getRole().value_or(Role::Unknown),
         .siblingState = sibling.getBMCState().value_or(BMCState::NotReady),

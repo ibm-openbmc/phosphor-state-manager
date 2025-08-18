@@ -297,7 +297,7 @@ auto PassiveRoleHandler::getFailoverBlockedReason(
     auto& sibling = providers.getSibling();
 
     fo_blocked::Input input{
-        .siblingHeartbeat = sibling.hasHeartbeat(),
+        .siblingAlive = sibling.alive(),
         .siblingState = sibling.getBMCState().value_or(BMCState::NotReady),
         .redundancyEnabled = sibling.getRedundancyEnabled().value_or(false),
         .syncInProgress = providers.getSyncInterface().isFullSyncInProgress(),
