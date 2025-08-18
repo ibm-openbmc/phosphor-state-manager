@@ -16,7 +16,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
         Input input{.bmcPosition = 0,
                     .previousRole = Unknown,
                     .siblingRole = Unknown,
-                    .siblingHeartbeat = true,
+                    .siblingAlive = true,
                     .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
@@ -31,7 +31,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
         Input input{.bmcPosition = 1,
                     .previousRole = Unknown,
                     .siblingRole = Unknown,
-                    .siblingHeartbeat = true,
+                    .siblingAlive = true,
                     .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
@@ -46,15 +46,14 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
         Input input{.bmcPosition = 1,
                     .previousRole = Unknown,
                     .siblingRole = Unknown,
-                    .siblingHeartbeat = false,
+                    .siblingAlive = false,
                     .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
 
-        RoleInfo info{Active, noSiblingHeartbeat};
+        RoleInfo info{Active, siblingNotAlive};
         EXPECT_EQ(determineRole(input), info);
-        EXPECT_EQ(getRoleReasonDescription(info.reason),
-                  "No sibling heartbeat");
+        EXPECT_EQ(getRoleReasonDescription(info.reason), "Sibling not alive");
     }
 
     // Sibling not provisioned
@@ -62,7 +61,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
         Input input{.bmcPosition = 1,
                     .previousRole = Unknown,
                     .siblingRole = Unknown,
-                    .siblingHeartbeat = true,
+                    .siblingAlive = true,
                     .siblingProvisioned = false,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
@@ -78,7 +77,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
         Input input{.bmcPosition = 0,
                     .previousRole = Unknown,
                     .siblingRole = Active,
-                    .siblingHeartbeat = true,
+                    .siblingAlive = true,
                     .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
@@ -94,7 +93,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
         Input input{.bmcPosition = 1,
                     .previousRole = Unknown,
                     .siblingRole = Passive,
-                    .siblingHeartbeat = true,
+                    .siblingAlive = true,
                     .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
@@ -110,7 +109,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
         Input input{.bmcPosition = 0,
                     .previousRole = Passive,
                     .siblingRole = Unknown,
-                    .siblingHeartbeat = true,
+                    .siblingAlive = true,
                     .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
@@ -127,7 +126,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
         Input input{.bmcPosition = 1,
                     .previousRole = Active,
                     .siblingRole = Unknown,
-                    .siblingHeartbeat = true,
+                    .siblingAlive = true,
                     .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
@@ -145,7 +144,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
         Input input{.bmcPosition = 1,
                     .previousRole = Active,
                     .siblingRole = Unknown,
-                    .siblingHeartbeat = true,
+                    .siblingAlive = true,
                     .siblingProvisioned = true,
                     .failoverInProgress = true,
                     .siblingFailoverInProgress = false};
@@ -164,7 +163,7 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
         Input input{.bmcPosition = 0,
                     .previousRole = Active,
                     .siblingRole = Unknown,
-                    .siblingHeartbeat = true,
+                    .siblingAlive = true,
                     .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = true};

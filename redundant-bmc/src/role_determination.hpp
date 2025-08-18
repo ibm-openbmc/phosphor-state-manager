@@ -20,7 +20,7 @@ struct Input
     size_t bmcPosition;
     Role previousRole;
     Role siblingRole;
-    bool siblingHeartbeat;
+    bool siblingAlive;
     bool siblingProvisioned;
     bool failoverInProgress;
     bool siblingFailoverInProgress;
@@ -32,7 +32,7 @@ struct Input
 enum class RoleReason
 {
     unknown,
-    noSiblingHeartbeat,
+    siblingNotAlive,
     siblingNotProvisioned,
     siblingPassive,
     siblingActive,
