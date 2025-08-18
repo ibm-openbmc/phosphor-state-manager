@@ -10,9 +10,9 @@ RoleInfo determineRole(const Input& input)
     RoleInfo result;
 
     // Must check this before any other sibling fields
-    if (!input.siblingHeartbeat)
+    if (!input.siblingAlive)
     {
-        result = {Role::Active, RoleReason::noSiblingHeartbeat};
+        result = {Role::Active, RoleReason::siblingNotAlive};
     }
 
     else if (!input.siblingProvisioned)
@@ -73,8 +73,8 @@ std::string getRoleReasonDescription(RoleReason reason)
         case RoleReason::unknown:
             desc = "Unknown reason"s;
             break;
-        case RoleReason::noSiblingHeartbeat:
-            desc = "No sibling heartbeat"s;
+        case RoleReason::siblingNotAlive:
+            desc = "Sibling not alive"s;
             break;
         case RoleReason::siblingNotProvisioned:
             desc = "Sibling is not provisioned"s;

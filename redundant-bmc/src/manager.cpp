@@ -210,7 +210,7 @@ role_determination::RoleInfo Manager::determineRole()
             .bmcPosition = services.getBMCPosition(),
             .previousRole = previousRole,
             .siblingRole = siblingRole,
-            .siblingHeartbeat = sibling.hasHeartbeat(),
+            .siblingAlive = sibling.alive(),
             .siblingProvisioned = siblingProvisioned,
             .failoverInProgress = redundancyInterface.failover_in_progress(),
             .siblingFailoverInProgress = siblingFailoverInProgress};
@@ -253,7 +253,7 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
     }
 
     // The sibling service must be up and running.
-    if (!providers->getSibling().getInterfacePresent())
+    if (!providers->getSibling().alive())
     {
         auto state =
             co_await providers->getServices().getUnitState(Sibling::unitName);
