@@ -6,7 +6,6 @@
 #include <xyz/openbmc_project/Software/Version/common.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
-#include <xyz/openbmc_project/State/Decorator/Heartbeat/common.hpp>
 
 #include <ranges>
 
@@ -16,8 +15,6 @@ namespace rbmc
 using RedIntf = sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy;
 using VersionIntf = sdbusplus::common::xyz::openbmc_project::software::Version;
 using BMCStateIntf = sdbusplus::common::xyz::openbmc_project::state::BMC;
-using HBIntf =
-    sdbusplus::common::xyz::openbmc_project::state::decorator::Heartbeat;
 
 SiblingImpl::SiblingImpl(sdbusplus::async::context& ctx) :
     ctx(ctx), objectPath(std::string{RedIntf::namespace_path::value} + '/' +
@@ -57,8 +54,7 @@ sdbusplus::async::task<> SiblingImpl::init()
         co_await initProperties();
     }
 
-    lg2::info("In Sibling init, interface present is {PRESENT}", "PRESENT",
-              getInterfacePresent());
+    lg2::info("In Sibling init, sibling alive is {ALIVE}", "ALIVE", alive());
 
     initialized = true;
 }
@@ -170,27 +166,6 @@ void SiblingImpl::loadStateProps(const SiblingImpl::PropertyMap& propertyMap)
     }
 }
 
-void SiblingImpl::loadHeartbeatProps(
-    const SiblingImpl::PropertyMap& propertyMap)
-{
-    heartbeat.present = true;
-
-    auto it = propertyMap.find("Active");
-    if (it != propertyMap.end())
-    {
-        auto old = heartbeat.active;
-        heartbeat.active = std::get<bool>(it->second);
-        if (heartbeat.active != old)
-        {
-            for (const auto& callback :
-                 std::ranges::views::values(heartbeatCBs))
-            {
-                callback(heartbeat.active);
-            }
-        }
-    }
-}
-
 // NOLINTNEXTLINE
 sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded()
 {
@@ -202,6 +177,8 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded()
         auto [_, interfaces] =
             co_await match
                 .next<sdbusplus::message::object_path, InterfaceMap>();
+
+        auto prevAlive = alive();
 
         std::ranges::for_each(interfaces, [this](const auto& entry) {
             loadFromPropertyMap(entry.first, entry.second);
@@ -228,6 +205,16 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded()
                 ctx.spawn(watchNameOwnerChanged());
             }
         }
+
+        // If not alive before and now all interfaces are
+        // on D-Bus invoke the callbacks.
+        if (!prevAlive && alive())
+        {
+            for (const auto& callback : std::ranges::views::values(healthCBs))
+            {
+                callback(true);
+            }
+        }
     }
 }
 
@@ -244,6 +231,8 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved()
             co_await match.next<sdbusplus::message::object_path,
                                 std::vector<std::string>>();
 
+        auto prevAlive = alive();
+
         if (std::ranges::contains(interfaces, RedIntf::interface))
         {
             redundancy.present = false;
@@ -256,19 +245,13 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved()
         {
             bmcState.present = false;
         }
-        if (std::ranges::contains(interfaces, HBIntf::interface))
-        {
-            heartbeat.present = false;
 
-            auto old = heartbeat.active;
-            heartbeat.active = false;
-            if (old != heartbeat.active)
+        // If alive before and all interfaces are now gone invoke the callbacks
+        if (prevAlive && !alive())
+        {
+            for (const auto& callback : std::ranges::views::values(healthCBs))
             {
-                for (const auto& callback :
-                     std::ranges::views::values(heartbeatCBs))
-                {
-                    callback(heartbeat.active);
-                }
+                callback(false);
             }
         }
     }
@@ -310,6 +293,12 @@ sdbusplus::async::task<> SiblingImpl::watchNameOwnerChanged()
         {
             lg2::info("Sibling D-Bus name lost");
             setInterfacesNotPresent();
+
+            // Invoke any health callbacks as sibling is gone.
+            for (const auto& callback : std::ranges::views::values(healthCBs))
+            {
+                callback(false);
+            }
         }
     }
 }
@@ -357,10 +346,6 @@ void SiblingImpl::loadFromPropertyMap(const std::string& interface,
     {
         loadVersionProps(propertyMap);
     }
-    else if (interface == HBIntf::interface)
-    {
-        loadHeartbeatProps(propertyMap);
-    }
 }
 
 // NOLINTNEXTLINE
@@ -371,25 +356,20 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingUp()
     std::chrono::minutes timeout{6};
     auto waiting = false;
 
-    while ((!getInterfacePresent() || !hasHeartbeat()) &&
-           ((std::chrono::steady_clock::now() - start) < timeout))
+    while (!alive() && ((std::chrono::steady_clock::now() - start) < timeout))
     {
         if (!waiting)
         {
             lg2::info(
-                "Waiting up to {TIME} minutes for sibling interface and/or heartbeat: "
-                "Present = {PRES}, Heartbeat = {HB}",
-                "TIME", timeout.count(), "PRES", getInterfacePresent(), "HB",
-                heartbeat.active);
+                "Waiting up to {TIME} minutes for sibling to become alive",
+                "TIME", timeout.count());
             waiting = true;
         }
 
         co_await sdbusplus::async::sleep_for(ctx, 500ms);
     }
 
-    lg2::info(
-        "Done waiting for sibling. Interface present = {PRES}, heartbeat = {HB}",
-        "PRES", getInterfacePresent(), "HB", heartbeat.active);
+    lg2::info("Done waiting for sibling, alive = {ALIVE}", "ALIVE", alive());
 }
 
 // NOLINTNEXTLINE
@@ -403,7 +383,7 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingRole()
         return getRole().value_or(Role::Unknown) == Role::Unknown;
     };
 
-    if (!hasHeartbeat() || !noRole())
+    if (!alive() || !noRole())
     {
         co_return;
     }
@@ -433,7 +413,7 @@ sdbusplus::async::task<> SiblingImpl::waitForBMCSteadyState() const
     bool waiting = false;
 
     // If sibling isn't alive don't bother waiting
-    if (!hasHeartbeat())
+    if (!alive())
     {
         co_return;
     }

@@ -10,7 +10,6 @@
 #include <xyz/openbmc_project/Software/Version/client.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
-#include <xyz/openbmc_project/State/Decorator/Heartbeat/client.hpp>
 
 #include <format>
 #include <print>
@@ -20,8 +19,6 @@ using Redundancy =
 using BMCState = sdbusplus::client::xyz::openbmc_project::state::BMC<>;
 using Role = Redundancy::Role;
 using Failover = sdbusplus::client::xyz::openbmc_project::control::Failover<>;
-using Heartbeat =
-    sdbusplus::client::xyz::openbmc_project::state::decorator::Heartbeat<>;
 using Version = sdbusplus::client::xyz::openbmc_project::software::Version<>;
 
 constexpr auto siblingService =
@@ -174,16 +171,6 @@ sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
 
     try
     {
-        auto hbActive = co_await Heartbeat(ctx)
-                            .service(siblingService)
-                            .path(path.str)
-                            .active();
-        if (!hbActive)
-        {
-            std::println("No sibling heartbeat");
-            co_return;
-        }
-
         auto rProps = co_await Redundancy(ctx)
                           .service(siblingService)
                           .path(path.str)
@@ -219,8 +206,7 @@ sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
     }
     catch (const sdbusplus::exception_t& e)
     {
-        std::println("Cannot get to a sibling interface on D-Bus: {}",
-                     e.what());
+        std::println("Sibling data not available");
     }
 }
 
