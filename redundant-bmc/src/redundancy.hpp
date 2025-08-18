@@ -24,7 +24,7 @@ struct Input
 {
     Role role;
     bool siblingPresent;
-    bool siblingHeartbeat;
+    bool siblingAlive;
     bool siblingProvisioned;
     Role siblingRole;
     BMCState siblingState;
@@ -44,7 +44,7 @@ enum class NoRedundancyReason
     bmcNotActive,
     manuallyDisabled,
     siblingMissing,
-    noSiblingHeartbeat,
+    siblingNotAlive,
     siblingNotProvisioned,
     siblingNotPassive,
     codeMismatch,
@@ -126,7 +126,7 @@ namespace fo_blocked
  */
 struct Input
 {
-    bool siblingHeartbeat;
+    bool siblingAlive;
     BMCState siblingState;
     bool redundancyEnabled;
     bool syncInProgress;
