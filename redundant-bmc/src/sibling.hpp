@@ -46,21 +46,11 @@ class Sibling
         "xyz.openbmc_project.State.BMC.Redundancy.Sibling.service";
 
     /**
-     * @brief Returns if the Sibling interface is on D-Bus
-     */
-    virtual bool getInterfacePresent() const = 0;
-
-    /**
      * @brief Sets up the D-Bus matches
      *
      * @return - The task object
      */
     virtual sdbusplus::async::task<> init() = 0;
-
-    /**
-     * @brief Returns if the sibling heartbeat is active
-     */
-    virtual bool hasHeartbeat() const = 0;
 
     /**
      * @brief Returns if the sibling BMC has a good heartbeat

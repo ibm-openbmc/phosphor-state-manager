@@ -35,24 +35,6 @@ class SiblingImpl : public Sibling
      */
     explicit SiblingImpl(sdbusplus::async::context& ctx);
 
-    // TODO: remove this function when it is no longer called
-    /**
-     * @brief Returns if the Sibling interfaces are on D-Bus
-     */
-    bool getInterfacePresent() const override
-    {
-        return alive();
-    }
-
-    // TODO: remove this function when it is no longer called
-    /**
-     * @brief Returns if the sibling heartbeat is active
-     */
-    bool hasHeartbeat() const override
-    {
-        return alive();
-    }
-
     /**
      * @brief Returns if the sibling BMC has a good heartbeat
      *        and there is valid data on D-Bus for it.
