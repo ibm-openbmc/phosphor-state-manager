@@ -66,7 +66,7 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
 
     setupSiblingFailoversAllowedWatch();
 
-    setupSiblingHBWatch();
+    setupSiblingHealthWatch();
 
     try
     {
@@ -168,7 +168,7 @@ void PassiveRoleHandler::disableRedPropChanged(bool /*disable*/)
 // NOLINTNEXTLINE
 sdbusplus::async::task<> PassiveRoleHandler::tryFullSync()
 {
-    if (providers.getSibling().hasHeartbeat() &&
+    if (providers.getSibling().alive() &&
         providers.getSibling().getRedundancyEnabled().value_or(false) &&
         (providers.getSibling().getRole().value_or(Role::Unknown) ==
          Role::Active))
@@ -246,7 +246,7 @@ sdbusplus::async::task<> PassiveRoleHandler::syncHealthCritical()
     lg2::info("Waiting to see if sibling heartbeat stops");
     co_await providers.getSibling().pauseForHeartbeatChange();
 
-    if (providers.getSibling().hasHeartbeat())
+    if (providers.getSibling().alive())
     {
         lg2::error("Sync fail was not caused by a sibling BMC problem");
         // TODO: Create error log
@@ -258,11 +258,11 @@ sdbusplus::async::task<> PassiveRoleHandler::syncHealthCritical()
     }
 }
 
-void PassiveRoleHandler::siblingHBChange(bool hb)
+void PassiveRoleHandler::siblingHealthChange(bool alive)
 {
-    lg2::info("Sibling heartbeat changed to {HB}", "HB", hb);
+    lg2::info("Sibling health changed to {ALIVE}", "ALIVE", alive);
 
-    if (hb)
+    if (alive)
     {
         // Probably redundancy would be disabled here,
         // but try anyway just in case.
