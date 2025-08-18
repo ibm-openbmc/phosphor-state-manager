@@ -119,7 +119,7 @@ class ActiveRoleHandler : public RoleHandler
             Role::Active,
             std::bind_front(&ActiveRoleHandler::siblingStateChange, this));
 
-        sibling.addHeartbeatCallback(
+        sibling.addHealthCallback(
             Role::Active,
             std::bind_front(&ActiveRoleHandler::siblingHBChange, this));
 

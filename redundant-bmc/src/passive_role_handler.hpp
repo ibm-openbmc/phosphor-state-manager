@@ -108,7 +108,7 @@ class PassiveRoleHandler : public RoleHandler
      */
     inline void setupSiblingHBWatch()
     {
-        providers.getSibling().addHeartbeatCallback(
+        providers.getSibling().addHealthCallback(
             Role::Passive, [this](bool hb) { siblingHBChange(hb); });
     }
 

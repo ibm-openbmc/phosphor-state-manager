@@ -35,21 +35,34 @@ class SiblingImpl : public Sibling
      */
     explicit SiblingImpl(sdbusplus::async::context& ctx);
 
+    // TODO: remove this function when it is no longer called
     /**
      * @brief Returns if the Sibling interfaces are on D-Bus
      */
     bool getInterfacePresent() const override
     {
-        return version.present && redundancy.present && bmcState.present &&
-               heartbeat.present;
+        return alive();
     }
 
+    // TODO: remove this function when it is no longer called
     /**
      * @brief Returns if the sibling heartbeat is active
      */
     bool hasHeartbeat() const override
     {
-        return heartbeat.active;
+        return alive();
+    }
+
+    /**
+     * @brief Returns if the sibling BMC has a good heartbeat
+     *        and there is valid data on D-Bus for it.
+     *
+     * The sibling daemon only puts the interfaces on D-Bus when
+     * the heartbeat is active.
+     */
+    bool alive() const override
+    {
+        return version.present && redundancy.present && bmcState.present;
     }
 
     /**
@@ -84,7 +97,7 @@ class SiblingImpl : public Sibling
      */
     std::optional<BMCState> getBMCState() const override
     {
-        if (getInterfacePresent() && hasHeartbeat())
+        if (alive())
         {
             return bmcState.state;
         }
@@ -99,7 +112,7 @@ class SiblingImpl : public Sibling
      */
     std::optional<Role> getRole() const override
     {
-        if (getInterfacePresent() && hasHeartbeat())
+        if (alive())
         {
             return redundancy.role;
         }
@@ -114,7 +127,7 @@ class SiblingImpl : public Sibling
      */
     std::optional<bool> getRedundancyEnabled() const override
     {
-        if (getInterfacePresent() && hasHeartbeat())
+        if (alive())
         {
             return redundancy.redundancyEnabled;
         }
@@ -129,7 +142,7 @@ class SiblingImpl : public Sibling
      */
     std::optional<bool> getProvisioned() const override
     {
-        if (getInterfacePresent() && hasHeartbeat())
+        if (alive())
         {
             // TBD which interface to use.
             return true;
@@ -145,7 +158,7 @@ class SiblingImpl : public Sibling
      */
     std::optional<std::string> getFWVersion() const override
     {
-        if (getInterfacePresent() && hasHeartbeat())
+        if (alive())
         {
             return version.version;
         }
@@ -160,7 +173,7 @@ class SiblingImpl : public Sibling
      */
     std::optional<bool> getFailoversAllowed() const override
     {
-        if (getInterfacePresent() && hasHeartbeat())
+        if (alive())
         {
             return redundancy.failoversAllowed;
         }
@@ -175,7 +188,7 @@ class SiblingImpl : public Sibling
      */
     std::optional<bool> getFailoverInProgress() const override
     {
-        if (getInterfacePresent() && hasHeartbeat())
+        if (alive())
         {
             return redundancy.failoverInProgress;
         }
@@ -190,7 +203,7 @@ class SiblingImpl : public Sibling
      */
     std::optional<bool> getFailoverImminent() const override
     {
-        if (getInterfacePresent() && hasHeartbeat())
+        if (alive())
         {
             return redundancy.failoverImminent;
         }
@@ -288,8 +301,6 @@ class SiblingImpl : public Sibling
         redundancy.present = false;
         bmcState.present = false;
         version.present = false;
-        heartbeat.present = false;
-        heartbeat.active = false;
     }
 
     /**
@@ -350,17 +361,6 @@ class SiblingImpl : public Sibling
      * @brief State presence and value
      */
     State bmcState;
-
-    struct Heartbeat
-    {
-        bool present = false;
-        bool active = false;
-    };
-
-    /**
-     * @brief Heartbeat presence and value
-     */
-    Heartbeat heartbeat;
 
     /**
      * @brief The D-Bus object path for the sibling.

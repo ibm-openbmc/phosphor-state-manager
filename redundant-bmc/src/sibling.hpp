@@ -28,7 +28,7 @@ class Sibling
         sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState;
     using RedundancyEnabledCallback = std::function<void(bool)>;
     using BMCStateCallback = std::function<void(BMCState)>;
-    using HeartbeatCallback = std::function<void(bool)>;
+    using HealthCallback = std::function<void(bool)>;
     using FailoversAllowedCallback = std::function<void(bool)>;
     using FailoverImminentCallback = std::function<void(bool)>;
 
@@ -61,6 +61,12 @@ class Sibling
      * @brief Returns if the sibling heartbeat is active
      */
     virtual bool hasHeartbeat() const = 0;
+
+    /**
+     * @brief Returns if the sibling BMC has a good heartbeat
+     *        and there is valid data on D-Bus for it.
+     */
+    virtual bool alive() const = 0;
 
     /**
      * @brief Waits up to 6 minutes for the sibling interface to
@@ -160,7 +166,7 @@ class Sibling
     {
         redEnabledCBs.erase(role);
         bmcStateCBs.erase(role);
-        heartbeatCBs.erase(role);
+        healthCBs.erase(role);
         foAllowedCBs.erase(role);
         foImminentCBs.erase(role);
     }
@@ -192,14 +198,15 @@ class Sibling
 
     /**
      * @brief Adds a callback function to invoke when the sibling's
-     *        Heartbeat property changes
+     *        health changes, i.e. its D-Bus interfaces either show
+     *        up or disappear.
      *
      * @param[in] role - The role to register with
      * @param[in] callback - The callback function
      */
-    void addHeartbeatCallback(Role role, HeartbeatCallback callback)
+    void addHealthCallback(Role role, HealthCallback callback)
     {
-        heartbeatCBs.emplace(role, std::move(callback));
+        healthCBs.emplace(role, std::move(callback));
     }
 
     /**
@@ -240,9 +247,9 @@ class Sibling
     std::map<Role, BMCStateCallback> bmcStateCBs;
 
     /**
-     * @brief Callbacks for Heartbeat
+     * @brief Callbacks for when the health changes
      */
-    std::map<Role, HeartbeatCallback> heartbeatCBs;
+    std::map<Role, HealthCallback> healthCBs;
 
     /**
      * @brief Callbacks for FailoversAllowed
