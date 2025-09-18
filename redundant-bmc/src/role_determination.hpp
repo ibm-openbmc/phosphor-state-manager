@@ -44,7 +44,8 @@ enum class RoleReason
     exception,
     failover,
     failoverInProgress,
-    siblingFailoverInProgress
+    siblingFailoverInProgress,
+    unknownBMCPosition
 };
 
 /**

@@ -47,9 +47,10 @@ class Services
     /**
      * @brief Returns this BMC's position.
      *
-     * @return - The position
+     * @return - The position if it can be obtained
      */
-    virtual size_t getBMCPosition() const = 0;
+    virtual sdbusplus::async::task<std::optional<size_t>> getBMCPosition()
+        const = 0;
 
     /**
      * @brief Starts a systemd unit

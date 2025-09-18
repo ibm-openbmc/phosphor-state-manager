@@ -4,6 +4,7 @@
 #include <openssl/evp.h>
 
 #include <phosphor-logging/lg2.hpp>
+#include <xyz/openbmc_project/Inventory/Decorator/Position/client.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
 #include <xyz/openbmc_project/State/Boot/Progress/client.hpp>
@@ -18,6 +19,8 @@ using HostState = sdbusplus::client::xyz::openbmc_project::state::Host<>;
 using ObjectMapper = sdbusplus::client::xyz::openbmc_project::ObjectMapper<>;
 using BootProgress =
     sdbusplus::client::xyz::openbmc_project::state::boot::Progress<>;
+using Position =
+    sdbusplus::client::xyz::openbmc_project::inventory::decorator::Position<>;
 
 using HostProperties =
     std::variant<std::string, HostState::HostState, HostState::RestartCause,
@@ -31,6 +34,7 @@ namespace rules = sdbusplus::bus::match::rules;
 namespace object_path
 {
 constexpr auto systemd = "/org/freedesktop/systemd1";
+const auto systemInv = "/xyz/openbmc_project/inventory/system";
 
 // host0 represents the overall host state
 const std::string hostState = std::string{HostState::namespace_path::value} +
@@ -356,50 +360,39 @@ void ServicesImpl::updateSystemState()
     }
 }
 
-size_t ServicesImpl::getBMCPosition() const
+// NOLINTNEXTLINE
+sdbusplus::async::task<std::optional<size_t>> ServicesImpl::getBMCPosition()
+    const
 {
-    size_t bmcPosition = 0;
-
-    // NOTE:  This a temporary solution for simulation until the
-    // daemon that should be providing this information is in place.
-    // Most likely, this will then have to return a task<uint32_t>.
-
-    // Read it out of the bmc_position uboot environment variable
-    // This was written by a simulation script.
-    std::string cmd{"/sbin/fw_printenv -n bmc_position"};
-
-    // NOLINTBEGIN(cert-env33-c)
-    FILE* pipe = popen(cmd.c_str(), "r");
-    // NOLINTEND(cert-env33-c)
-    if (pipe == nullptr)
+    try
     {
-        throw std::runtime_error("Error calling popen to get bmc_position");
+        static std::string service;
+        if (service.empty())
+        {
+            service = co_await util::getService(ctx, object_path::systemInv,
+                                                Position::interface);
+        }
+
+        size_t position = co_await Position(ctx)
+                              .service(service)
+                              .path(object_path::systemInv)
+                              .position();
+
+        // max() is a special value meaning position cannot be obtained.
+        if (position == std::numeric_limits<size_t>::max())
+        {
+            lg2::error("BMC position value is not valid");
+            co_return std::nullopt;
+        }
+
+        co_return position;
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("D-Bus error obtaining BMC position: {ERROR}", "ERROR", e);
     }
 
-    std::string output;
-    std::array<char, 128> buffer;
-    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr)
-    {
-        output.append(buffer.data());
-    }
-
-    int rc = pclose(pipe);
-    if (WEXITSTATUS(rc) != 0)
-    {
-        throw std::runtime_error{std::format(
-            "Error running cmd: {}, output = {}, rc = {}", cmd, output, rc)};
-    }
-
-    auto [_,
-          ec] = std::from_chars(&*output.begin(), &*output.end(), bmcPosition);
-    if (ec != std::errc())
-    {
-        throw std::runtime_error{
-            std::format("Could not extract position from {}: rc {}", output,
-                        std::to_underlying(ec))};
-    }
-
-    return bmcPosition;
+    co_return std::nullopt;
 }
 
 // NOLINTBEGIN

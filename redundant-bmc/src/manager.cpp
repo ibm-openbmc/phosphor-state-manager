@@ -104,7 +104,7 @@ sdbusplus::async::task<> Manager::startup()
             }
         }
 
-        updateRole(determineRole());
+        updateRole(co_await determineRole());
     }
 
     co_await postStartupClearFOInProgress();
@@ -188,7 +188,8 @@ sdbusplus::async::task<> Manager::doHeartBeat()
     co_return;
 }
 
-role_determination::RoleInfo Manager::determineRole()
+// NOLINTNEXTLINE
+sdbusplus::async::task<role_determination::RoleInfo> Manager::determineRole()
 {
     auto& services = providers->getServices();
     auto& sibling = providers->getSibling();
@@ -206,8 +207,17 @@ role_determination::RoleInfo Manager::determineRole()
         auto siblingFailoverInProgress =
             sibling.getFailoverInProgress().value_or(false);
 
+        // determineRole() doesn't support an empty BMC position because
+        // it should have been caught in determinePassiveRoleIfRequired.
+        auto bmcPos = co_await services.getBMCPosition();
+        if (!bmcPos.has_value())
+        {
+            lg2::error("determineRole: No BMC position");
+            co_return RoleInfo{Role::Passive, RoleReason::unknownBMCPosition};
+        }
+
         role_determination::Input input{
-            .bmcPosition = services.getBMCPosition(),
+            .bmcPosition = bmcPos.value(),
             .previousRole = previousRole,
             .siblingRole = siblingRole,
             .siblingAlive = sibling.alive(),
@@ -235,7 +245,7 @@ role_determination::RoleInfo Manager::determineRole()
 
     // TODO, probably: Create an error log if passive due to an error
 
-    return roleInfo;
+    co_return roleInfo;
 }
 
 // clang-tidy appears to get confused on some code down in stdexec
@@ -245,6 +255,13 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
     Manager::determinePassiveRoleIfRequired()
 {
     using namespace role_determination;
+
+    // A BMC with no position cannot be active.
+    auto bmcPos = co_await providers->getServices().getBMCPosition();
+    if (!bmcPos.has_value())
+    {
+        co_return RoleInfo{Role::Passive, RoleReason::unknownBMCPosition};
+    }
 
     // An unprovisioned BMC cannot be active.
     if (!providers->getServices().getProvisioned())

@@ -119,7 +119,9 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
         printParam("Role:", role);
 
         rbmc::ServicesImpl services{ctx};
-        printParam("BMC Position:", services.getBMCPosition());
+        auto pos = co_await services.getBMCPosition();
+        auto bmcPos = pos.has_value() ? std::to_string(pos.value()) : "Unknown";
+        printParam("BMC Position:", bmcPos);
 
         printParam("Redundancy Enabled:", props.redundancy_enabled);
 

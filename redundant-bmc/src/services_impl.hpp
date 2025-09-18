@@ -41,9 +41,10 @@ class ServicesImpl : public Services
     /**
      * @brief Returns this BMC's position.
      *
-     * @return - The position
+     * @return - The position if it can be obtained
      */
-    size_t getBMCPosition() const override;
+    sdbusplus::async::task<std::optional<size_t>> getBMCPosition()
+        const override;
 
     /**
      * @brief Starts a systemd unit
