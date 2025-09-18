@@ -53,6 +53,7 @@ There are some error cases that require that the BMC is passive regardless of
 what the sibling is doing. These are:
 
 1. The BMC is not provisioned.
+1. The BMC position cannot be determined.
 1. The systemd service that maintains the sibling API isn't running. Without
    this service running, the sibling BMC will think this BMC is dead and will
    become active.

@@ -79,7 +79,7 @@ class Manager :
      *
      * @return roleInfo - The role + role error if any
      */
-    role_determination::RoleInfo determineRole();
+    sdbusplus::async::task<role_determination::RoleInfo> determineRole();
 
     /**
      * @brief Determine if the BMC must be passive due to a problem.

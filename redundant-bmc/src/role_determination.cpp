@@ -112,6 +112,9 @@ std::string getRoleReasonDescription(RoleReason reason)
         case RoleReason::failover:
             desc = "Failover"s;
             break;
+        case RoleReason::unknownBMCPosition:
+            desc = "Cannot determine BMC position"s;
+            break;
     }
 
     return desc;
@@ -121,7 +124,7 @@ bool isErrorReason(RoleReason reason)
 {
     using enum RoleReason;
     return (reason == notProvisioned) || (reason == siblingServiceNotRunning) ||
-           (reason == exception);
+           (reason == exception) || (reason == unknownBMCPosition);
 }
 
 } // namespace rbmc::role_determination
