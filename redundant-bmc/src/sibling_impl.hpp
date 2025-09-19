@@ -44,7 +44,8 @@ class SiblingImpl : public Sibling
      */
     bool alive() const override
     {
-        return version.present && redundancy.present && bmcState.present;
+        return version.present && redundancy.present && bmcState.present &&
+               availability.present;
     }
 
     /**
@@ -198,7 +199,10 @@ class SiblingImpl : public Sibling
      *
      * @return bool - if present
      */
-    bool isBMCPresent() override;
+    bool isBMCPresent() override
+    {
+        return availability.available;
+    }
 
     /**
      * @brief Waits for up to 10 minutes for the sibling BMC to
@@ -260,11 +264,12 @@ class SiblingImpl : public Sibling
     void loadStateProps(const PropertyMap& propertyMap);
 
     /**
-     * @brief Sets heartbeat data members with whatever is in the property map
+     * @brief Sets Availability data members with whatever is in the property
+     * map
      *
      * @param[in] propertyMap - The property name -> value map
      */
-    void loadHeartbeatProps(const PropertyMap& propertyMap);
+    void loadAvailabilityProps(const PropertyMap& propertyMap);
 
     /**
      * @brief Sets data members with whatever is in the property map
@@ -283,6 +288,7 @@ class SiblingImpl : public Sibling
         redundancy.present = false;
         bmcState.present = false;
         version.present = false;
+        availability.present = false;
     }
 
     /**
@@ -343,6 +349,17 @@ class SiblingImpl : public Sibling
      * @brief State presence and value
      */
     State bmcState;
+
+    struct Availability
+    {
+        bool present = false;
+        bool available = false;
+    };
+
+    /**
+     * @brief Availability presence and value
+     */
+    Availability availability;
 
     /**
      * @brief The D-Bus object path for the sibling.
