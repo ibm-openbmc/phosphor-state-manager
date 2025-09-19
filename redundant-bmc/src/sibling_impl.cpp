@@ -6,6 +6,7 @@
 #include <xyz/openbmc_project/Software/Version/common.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
+#include <xyz/openbmc_project/State/Decorator/Availability/client.hpp>
 
 #include <ranges>
 
@@ -15,18 +16,13 @@ namespace rbmc
 using RedIntf = sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy;
 using VersionIntf = sdbusplus::common::xyz::openbmc_project::software::Version;
 using BMCStateIntf = sdbusplus::common::xyz::openbmc_project::state::BMC;
+using AvailIntf =
+    sdbusplus::common::xyz::openbmc_project::state::decorator::Availability;
 
 SiblingImpl::SiblingImpl(sdbusplus::async::context& ctx) :
     ctx(ctx), objectPath(std::string{RedIntf::namespace_path::value} + '/' +
                          RedIntf::namespace_path::sibling_bmc)
 {}
-
-bool SiblingImpl::isBMCPresent()
-{
-    // TODO: Actually check this.
-    // May also need to check if it has Vcs PGOOD.
-    return true;
-}
 
 // NOLINTNEXTLINE
 sdbusplus::async::task<> SiblingImpl::init()
@@ -64,7 +60,7 @@ sdbusplus::async::task<std::string> SiblingImpl::getServiceName()
 {
     using ObjectMapper =
         sdbusplus::client::xyz::openbmc_project::ObjectMapper<>;
-    std::vector<std::string> interface{RedIntf::interface};
+    std::vector<std::string> interface{AvailIntf::interface};
 
     try
     {
@@ -163,6 +159,18 @@ void SiblingImpl::loadStateProps(const SiblingImpl::PropertyMap& propertyMap)
     if (it != propertyMap.end())
     {
         bmcState.state = std::get<BMCState>(it->second);
+    }
+}
+
+void SiblingImpl::loadAvailabilityProps(
+    const SiblingImpl::PropertyMap& propertyMap)
+{
+    availability.present = true;
+
+    auto it = propertyMap.find("Available");
+    if (it != propertyMap.end())
+    {
+        availability.available = std::get<bool>(it->second);
     }
 }
 
@@ -345,6 +353,10 @@ void SiblingImpl::loadFromPropertyMap(const std::string& interface,
     else if (interface == VersionIntf::interface)
     {
         loadVersionProps(propertyMap);
+    }
+    else if (interface == AvailIntf::interface)
+    {
+        loadAvailabilityProps(propertyMap);
     }
 }
 
