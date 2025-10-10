@@ -161,7 +161,13 @@ void RedundancyMgr::enableOrDisableRedundancy(
 
 void RedundancyMgr::disableRedPropChanged(bool disable)
 {
-    if (systemState.value_or(SystemState::other) != SystemState::off)
+    if (!systemState.has_value())
+    {
+        lg2::error(
+            "Cannot modify DisableRedundancy prop before system state is known");
+        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+    }
+    else if (systemState.value() != SystemState::off)
     {
         lg2::error("Cannot modify DisableRedundancy prop when powered on");
         throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
@@ -181,13 +187,6 @@ void RedundancyMgr::disableRedPropChanged(bool disable)
         // Must be before we've handled redundancy, it should happen soon
         lg2::info(
             "Redundancy has not been determined yet, will not change redundancy now.");
-        return;
-    }
-
-    if (disable == !redundancyInterface.redundancy_enabled())
-    {
-        // No changes necessary now
-        lg2::info("No change to redundancy necessary");
         return;
     }
 
