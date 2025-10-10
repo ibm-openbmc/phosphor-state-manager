@@ -55,6 +55,18 @@ class RedundancyInterface :
      */
     bool set_property(failover_in_progress_t type, bool inProgress);
 
+    /**
+     * @brief Implements property set for the
+     *        NoRedundancyReasons property
+     *
+     * @param[in] reasons_for_no_redundancy_t - The type
+     * @param[in] reasons - the value being set
+     *
+     * @return If the property value changed
+     */
+    bool set_property(reasons_for_no_redundancy_t type,
+                      const std::set<ReasonForNoRedundancy>& reasons);
+
   private:
     /**
      * @brief Reference to the Manager class

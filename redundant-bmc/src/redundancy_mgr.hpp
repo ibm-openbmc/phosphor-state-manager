@@ -97,7 +97,7 @@ class RedundancyMgr
      *
      * @return The reasons.  If empty, then redundancy can be enabled.
      */
-    redundancy::NoRedundancyReasons getNoRedundancyReasons();
+    redundancy::ReasonsForNoRedundancy getNoRedundancyReasons();
 
     /**
      * @brief Based on if disableReasons is empty or not, disables
@@ -107,7 +107,7 @@ class RedundancyMgr
      *            disabled, if any.
      */
     void enableOrDisableRedundancy(
-        const redundancy::NoRedundancyReasons& disableReasons);
+        const redundancy::ReasonsForNoRedundancy& disableReasons);
 
     /**
      * @brief Called when the system state changes to do

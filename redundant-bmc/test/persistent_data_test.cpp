@@ -141,7 +141,7 @@ TEST_F(PersistentDataTest, FailoverLogTest)
     EXPECT_TRUE(!logs.begin()->second.empty());
 
     // log 9 more so there are now the max of 10
-    for (auto _ : std::views::iota(0, 9))
+    for ([[maybe_unused]] auto _ : std::views::iota(0, 9))
     {
         data::logFailover(dataDir, 0, Requester::Tool, time(nullptr));
     }
