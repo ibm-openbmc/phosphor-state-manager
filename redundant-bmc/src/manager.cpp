@@ -48,24 +48,6 @@ Manager::Manager(sdbusplus::async::context& ctx,
                    "ERROR", e);
     }
 
-    try
-    {
-        // Restore FailoverInProgress on D-Bus
-        auto failoverInProgress =
-            data::read<bool>(data::key::failoverInProgress).value_or(false);
-        if (failoverInProgress)
-        {
-            lg2::info("Failover was previously in progress");
-        }
-
-        redundancyInterface.failover_in_progress(failoverInProgress);
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error("Failed trying to obtain failover-in-progress: {ERROR}",
-                   "ERROR", e);
-    }
-
     // emit the Failover interfaces added signal
     emit_added();
 
@@ -122,8 +104,7 @@ sdbusplus::async::task<> Manager::postStartupClearFOInProgress()
 
     // If true, this property is used by both BMCs to determine their roles.
     // This BMC will have already used it.  Check the other BMC already has
-    // as well and then it can be set to false and removed from the persistent
-    // data.
+    // as well and then it can be set to false.
 
     lg2::info(
         "Waiting for sibling to get role and then clearing failover in progress");
@@ -131,14 +112,6 @@ sdbusplus::async::task<> Manager::postStartupClearFOInProgress()
     co_await providers->getSibling().waitForSiblingRole();
 
     redundancyInterface.failover_in_progress(false);
-    try
-    {
-        data::remove(data::key::failoverInProgress);
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error("Failed removing failover-in-progress: {ERROR}", "ERROR", e);
-    }
 }
 
 void Manager::spawnRoleHandler()
@@ -403,25 +376,14 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive()
 
     redundancyInterface.failover_imminent(false);
 
-    lg2::info("Setting failover in progress");
-    redundancyInterface.failover_in_progress(true);
-
     // Reset the active so it can come back as passive.
     // If this were to throw, let it restart the app.
     co_await providers->getSiblingReset().toggleReset();
 
-    try
-    {
-        // Now that its past the reset, save the failover in progress
-        // indication in case this BMC is rebooted before the failover
-        // is done.
-        data::write(data::key::failoverInProgress, true);
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error("Failed serializing failover-in-progress: {ERROR}", "ERROR",
-                   e);
-    }
+    // Needs to be set after the point of no-return so if this BMC
+    // is rebooted it could handle it.
+    lg2::info("Setting failover in progress");
+    redundancyInterface.failover_in_progress(true);
 
     lg2::info("Claiming active role");
     updateRole(role_determination::RoleInfo{
@@ -441,15 +403,6 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive()
 
     lg2::info("Clearing failover in progress");
     redundancyInterface.failover_in_progress(false);
-
-    try
-    {
-        data::remove(data::key::failoverInProgress);
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error("Failed removing failover-in-progress: {ERROR}", "ERROR", e);
-    }
 
     co_await active->failoverDetermineRedundancy();
 }

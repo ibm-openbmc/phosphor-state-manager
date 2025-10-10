@@ -29,6 +29,21 @@ RedundancyInterface::RedundancyInterface(sdbusplus::async::context& ctx,
             "Failed trying to obtain previous value of DisableRedundancy");
     }
 
+    try
+    {
+        failover_in_progress_ =
+            data::read<bool>(data::key::failoverInProgress).value_or(false);
+        if (failover_in_progress_)
+        {
+            lg2::info("Failover was previously in progress");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed trying to obtain failover-in-progress: {ERROR}",
+                   "ERROR", e);
+    }
+
     emit_added();
 }
 
@@ -57,6 +72,29 @@ bool RedundancyInterface::set_property(
     }
 
     disable_redundancy_override_ = disable;
+    return true;
+}
+
+bool RedundancyInterface::set_property(
+    [[maybe_unused]] failover_in_progress_t type, bool inProgress)
+{
+    if (inProgress == failover_in_progress())
+    {
+        return false;
+    }
+
+    try
+    {
+        data::write(data::key::failoverInProgress, inProgress);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::info(
+            "Could not serialize FailoverInProgress value of {INPROGRESS}: {ERROR}",
+            "INPROGRESS", inProgress, "ERROR", e);
+    }
+
+    failover_in_progress_ = inProgress;
     return true;
 }
 
