@@ -44,6 +44,17 @@ class RedundancyInterface :
      */
     bool set_property(disable_redundancy_override_t type, bool disable);
 
+    /**
+     * @brief Implements property set for the
+     *        FailoverInProgress property
+     *
+     * @param[in] failover_in_progress_t - The type
+     * @param[in] inProgress - the value being set
+     *
+     * @return If the property value changed
+     */
+    bool set_property(failover_in_progress_t type, bool inProgress);
+
   private:
     /**
      * @brief Reference to the Manager class
