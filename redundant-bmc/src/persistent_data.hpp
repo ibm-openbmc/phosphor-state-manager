@@ -23,7 +23,7 @@ namespace key
 constexpr auto role = "Role";
 constexpr auto passiveError = "PassiveDueToError";
 constexpr auto roleReason = "RoleReason";
-constexpr auto noRedDetails = "NoRedundancyDetails";
+constexpr auto noRedReasons = "NoRedundancyReasons";
 constexpr auto disableRed = "DisableRedundancy";
 constexpr auto redundancyOffAtRuntime = "RedundancyOffAtRuntime";
 constexpr auto failoversNotAllowedReasons = "FailoversNotAllowedReasons";

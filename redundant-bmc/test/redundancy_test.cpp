@@ -7,7 +7,7 @@ using namespace rbmc::redundancy;
 
 TEST(RedundancyTest, NoRedundancyReasonsTest)
 {
-    using enum NoRedundancyReason;
+    using enum rbmc::ReasonForNoRedundancy;
 
     // Golden inputs - redundancy can be enabled.
     const Input golden{
@@ -35,7 +35,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
 
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(), bmcNotActive);
+        EXPECT_EQ(*reasons.begin(), BMCNotActive);
     }
 
     // No sibling
@@ -45,7 +45,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
 
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(), siblingMissing);
+        EXPECT_EQ(*reasons.begin(), SiblingMissing);
     }
 
     // Sibling not alive
@@ -55,7 +55,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
 
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(), siblingNotAlive);
+        EXPECT_EQ(*reasons.begin(), SiblingNotAlive);
     }
 
     // Sibling isn't provisioned
@@ -65,7 +65,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
 
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(), siblingNotProvisioned);
+        EXPECT_EQ(*reasons.begin(), SiblingNotProvisioned);
     }
 
     // Sibling isn't passive
@@ -75,7 +75,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
 
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(), siblingNotPassive);
+        EXPECT_EQ(*reasons.begin(), SiblingNotPassive);
     }
 
     // FW versions don't match
@@ -85,7 +85,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
 
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(), codeMismatch);
+        EXPECT_EQ(*reasons.begin(), CodeVersionMismatch);
     }
 
     // Sibling is in Quiesce state
@@ -95,7 +95,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
 
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(), siblingNotAtReady);
+        EXPECT_EQ(*reasons.begin(), SiblingNotAtReady);
     }
 
     // Redundancy is manually disabled
@@ -105,7 +105,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
 
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(), manuallyDisabled);
+        EXPECT_EQ(*reasons.begin(), ManuallyDisabled);
     }
 
     // Redundancy was off at runtime
@@ -115,7 +115,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
 
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(), redundancyOffAtRuntimeStart);
+        EXPECT_EQ(*reasons.begin(), RedundancyOffAtRuntimeStart);
     }
 
     // Sync failed
@@ -125,7 +125,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
 
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(), syncFailed);
+        EXPECT_EQ(*reasons.begin(), DataSyncFailed);
     }
 
     // Multiple fails
@@ -138,16 +138,10 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         auto reasons = getNoRedundancyReasons(input);
 
         EXPECT_EQ(reasons.size(), 3);
-        EXPECT_TRUE(std::ranges::contains(reasons, codeMismatch));
-        EXPECT_TRUE(std::ranges::contains(reasons, siblingNotAtReady));
-        EXPECT_TRUE(std::ranges::contains(reasons, siblingNotPassive));
+        EXPECT_TRUE(std::ranges::contains(reasons, CodeVersionMismatch));
+        EXPECT_TRUE(std::ranges::contains(reasons, SiblingNotAtReady));
+        EXPECT_TRUE(std::ranges::contains(reasons, SiblingNotPassive));
     }
-}
-
-TEST(RedundancyTest, GetNoRedundancyDescTest)
-{
-    EXPECT_EQ(getNoRedundancyDescription(NoRedundancyReason::codeMismatch),
-              "Firmware version mismatch");
 }
 
 TEST(RedundancyTest, FailoversNotAllowedTest)

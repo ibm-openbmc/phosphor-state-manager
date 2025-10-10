@@ -12,6 +12,9 @@ namespace rbmc
 using Role =
     sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy::Role;
 
+using ReasonForNoRedundancy = sdbusplus::common::xyz::openbmc_project::state::
+    bmc::Redundancy::ReasonForNoRedundancy;
+
 using BMCState = sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState;
 
 namespace redundancy
@@ -34,42 +37,14 @@ struct Input
     bool syncFailed;
 };
 
-// TODO: Move this to PDI Enums
-/**
- * @brief Reasons why redundancy can't be enabled
- */
-enum class NoRedundancyReason
-{
-    none,
-    bmcNotActive,
-    manuallyDisabled,
-    siblingMissing,
-    siblingNotAlive,
-    siblingNotProvisioned,
-    siblingNotPassive,
-    codeMismatch,
-    siblingNotAtReady,
-    systemHardwareConfigIssue,
-    redundancyOffAtRuntimeStart,
-    syncFailed,
-    other
-};
-
-using NoRedundancyReasons = std::set<NoRedundancyReason>;
+using ReasonsForNoRedundancy = std::set<ReasonForNoRedundancy>;
 
 /**
  * @brief Returns the reasons that redundancy can't be enabled.
  *
  * @return The reasons.  Empty if it can be enabled.
  */
-NoRedundancyReasons getNoRedundancyReasons(const Input& input);
-
-/**
- * @brief Return the string description of the reason
- *
- * @return The human readable description.
- */
-std::string getNoRedundancyDescription(NoRedundancyReason reason);
+ReasonsForNoRedundancy getNoRedundancyReasons(const Input& input);
 
 } // namespace redundancy
 

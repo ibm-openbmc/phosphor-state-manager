@@ -53,19 +53,17 @@ sdbusplus::async::task<std::string> getBMCState(const rbmc::Services& services)
     }
 }
 
-void printNoRedReasons()
+void printNoRedReasons(const rbmc::redundancy::ReasonsForNoRedundancy& reasons)
 {
-    using NoRedDetails =
-        std::map<rbmc::redundancy::NoRedundancyReason, std::string>;
-    auto details = data::read<NoRedDetails>(data::key::noRedDetails)
-                       .value_or(NoRedDetails{});
     std::println("Reasons for no BMC redundancy:");
-    if (!details.empty())
+    if (!reasons.empty())
     {
-        for (const auto& d : std::views::values(details))
-        {
-            printReason(d);
-        }
+        std::ranges::for_each(reasons, [](const auto& r) {
+            auto shortName =
+                Redundancy::convertReasonForNoRedundancyToString(r);
+            shortName = shortName.substr(shortName.find_last_of('.') + 1);
+            printReason(shortName);
+        });
     }
     else
     {
@@ -158,7 +156,7 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
 
             if ((role == "Active") && !props.redundancy_enabled)
             {
-                printNoRedReasons();
+                printNoRedReasons(props.reasons_for_no_redundancy);
             }
 
             if ((role == "Active") && props.redundancy_enabled &&

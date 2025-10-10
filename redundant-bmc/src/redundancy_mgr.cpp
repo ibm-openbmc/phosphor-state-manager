@@ -16,15 +16,6 @@ RedundancyMgr::RedundancyMgr(sdbusplus::async::context& ctx,
 {
     try
     {
-        data::remove(data::key::noRedDetails);
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error("Failed removing NoRedundancyDetails: {ERROR}", "ERROR", e);
-    }
-
-    try
-    {
         data::remove(data::key::failoversNotAllowedReasons);
     }
     catch (const std::exception& e)
@@ -99,7 +90,7 @@ void RedundancyMgr::handleBackgroundSyncFailed()
     syncFailed = false;
 }
 
-redundancy::NoRedundancyReasons RedundancyMgr::getNoRedundancyReasons()
+redundancy::ReasonsForNoRedundancy RedundancyMgr::getNoRedundancyReasons()
 {
     auto& sibling = providers.getSibling();
     auto& services = providers.getServices();
@@ -117,33 +108,11 @@ redundancy::NoRedundancyReasons RedundancyMgr::getNoRedundancyReasons()
         .redundancyOffAtRuntimeStart = isRedundancyOffAtRuntime(),
         .syncFailed = syncFailed};
 
-    auto reasons = redundancy::getNoRedundancyReasons(input);
-
-    std::map<redundancy::NoRedundancyReason, std::string> details;
-
-    std::ranges::transform(
-        reasons, std::inserter(details, details.begin()),
-        [](const auto& reason) {
-            auto desc = redundancy::getNoRedundancyDescription(reason);
-            lg2::info("No redundancy because: {DESC}", "DESC", desc);
-            return std::pair{reason, desc};
-        });
-
-    try
-    {
-        data::write(data::key::noRedDetails, details);
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error("Failed serializing NoRedundancyReasons: {ERROR}", "ERROR",
-                   e);
-    }
-
-    return reasons;
+    return redundancy::getNoRedundancyReasons(input);
 }
 
 void RedundancyMgr::enableOrDisableRedundancy(
-    const redundancy::NoRedundancyReasons& disableReasons)
+    const redundancy::ReasonsForNoRedundancy& disableReasons)
 {
     auto enable = disableReasons.empty();
 
@@ -156,6 +125,7 @@ void RedundancyMgr::enableOrDisableRedundancy(
         lg2::info("Redundancy must be disabled");
     }
 
+    redundancyInterface.reasons_for_no_redundancy(disableReasons);
     redundancyInterface.redundancy_enabled(enable);
 }
 

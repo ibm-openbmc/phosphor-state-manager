@@ -44,6 +44,16 @@ RedundancyInterface::RedundancyInterface(sdbusplus::async::context& ctx,
                    "ERROR", e);
     }
 
+    // This is recalculated each time.
+    try
+    {
+        data::remove(data::key::noRedReasons);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed removing NoRedundancyReasons: {ERROR}", "ERROR", e);
+    }
+
     emit_added();
 }
 
@@ -95,6 +105,38 @@ bool RedundancyInterface::set_property(
     }
 
     failover_in_progress_ = inProgress;
+    return true;
+}
+
+bool RedundancyInterface::set_property(
+    [[maybe_unused]] reasons_for_no_redundancy_t type,
+    const std::set<ReasonForNoRedundancy>& reasons)
+{
+    if (reasons == reasons_for_no_redundancy_)
+    {
+        return false;
+    }
+
+    // Use the last segment of the string name to trace and save for debug
+    std::set<std::string> names;
+    std::ranges::for_each(reasons, [&names](const auto& reason) {
+        auto shortName = convertReasonForNoRedundancyToString(reason);
+        shortName = shortName.substr(shortName.find_last_of('.') + 1);
+        lg2::info("No redundancy because: {DESC}", "DESC", shortName);
+        names.insert(shortName);
+    });
+
+    try
+    {
+        data::write(data::key::noRedReasons, names);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed serializing NoRedundancyReasons: {ERROR}", "ERROR",
+                   e);
+    }
+
+    reasons_for_no_redundancy_ = reasons;
     return true;
 }
 
