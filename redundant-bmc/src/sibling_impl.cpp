@@ -253,6 +253,10 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved()
         {
             bmcState.present = false;
         }
+        if (std::ranges::contains(interfaces, AvailIntf::interface))
+        {
+            availability.present = false;
+        }
 
         // If alive before and all interfaces are now gone invoke the callbacks
         if (prevAlive && !alive())
