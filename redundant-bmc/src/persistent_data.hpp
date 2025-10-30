@@ -2,6 +2,7 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
+#include <xyz/openbmc_project/Control/Failover/common.hpp>
 
 #include <filesystem>
 #include <optional>
@@ -11,6 +12,11 @@ namespace data
 
 const std::filesystem::path dataFile{
     "/var/lib/phosphor-state-manager/redundant-bmc/data.json"};
+
+using FailoverLogs = std::vector<std::pair<std::string, std::string>>;
+
+using Requester =
+    sdbusplus::common::xyz::openbmc_project::control::Failover::Requester;
 
 namespace key
 {
@@ -121,5 +127,31 @@ std::optional<T> read(std::string_view name,
  */
 void remove(std::string_view name,
             const std::filesystem::path& path = dataFile);
+
+/**
+ * @brief Log the requester and timestamp of a failover.
+ *
+ * The BMC driving the failover uses this.  It will keep the 10 most
+ * recent entries in a file called bmc<position>_failovers.
+ *
+ * @param[in] dirPath - The directory to save the log file in.
+ * @param[in] bmcPos - The BMC position driving the failover.
+ * @param[in] requester - The failover requester, e.g. 'host'.
+ * @param[in] timestamp - The time the failover was initiated.
+ */
+void logFailover(const std::filesystem::path& dirPath, size_t bmcPos,
+                 Requester requester, const time_t& timestamp);
+
+/**
+ * @brief Returns the failover logs as a vector of pairs.
+ *
+ * pair.first is the requester, and pair.second is the UTC timestamp
+ * that looks like: "YYYY-MM-DD HH:MM:SS UTC"
+ *
+ * @param[in] dirPath - The directory to save the log file in.
+ * @param[in] bmcPos - The BMC position driving the failover.
+ */
+FailoverLogs getFailoverLogs(const std::filesystem::path& dirPath,
+                             size_t bmcPos);
 
 } // namespace data

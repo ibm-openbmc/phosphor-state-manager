@@ -12,6 +12,9 @@
 namespace rbmc
 {
 
+using Requester =
+    sdbusplus::common::xyz::openbmc_project::control::Failover::Requester;
+
 /**
  * @class Manager
  *
@@ -50,9 +53,11 @@ class Manager :
     /**
      * @brief Implements the StartFailover D-Bus method.
      *
+     * @param[in] requester - For logging who requested the failover
      * @param[in] options - The failover options
      */
     sdbusplus::async::task<> method_call(start_failover_t /* unused */,
+                                         Requester requester,
                                          const FailoverOptions& options);
 
   private:
@@ -109,8 +114,11 @@ class Manager :
     /**
      * @brief Drives the failover from passive to active when
      *        this BMC is the starting passive one.
+     *
+     * @param[in] requester - The failover requester passed into the
+     *                        StartFailover D-Bus method.
      */
-    sdbusplus::async::task<> doFailoverFromPassive();
+    sdbusplus::async::task<> doFailoverFromPassive(Requester requester);
 
     /**
      * @brief Clears 'failover in progress' if it is on and

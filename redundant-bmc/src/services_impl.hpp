@@ -9,6 +9,9 @@
 namespace rbmc
 {
 
+const std::filesystem::path persistentDataPath =
+    "/var/lib/phosphor-state-manager/redundant-bmc";
+
 /**
  * @class ServicesImpl
  *
@@ -110,6 +113,14 @@ class ServicesImpl : public Services
      *        "journalctl --sync"
      */
     sdbusplus::async::task<> flushJournal() const override;
+
+    /**
+     * @brief Returns the persistent data directory
+     */
+    std::filesystem::path getPersistentDataPath() const override
+    {
+        return persistentDataPath;
+    }
 
   private:
     /**

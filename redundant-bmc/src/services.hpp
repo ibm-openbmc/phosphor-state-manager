@@ -3,6 +3,8 @@
 #include <sdbusplus/async.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
 
+#include <filesystem>
+
 namespace rbmc
 {
 
@@ -115,6 +117,11 @@ class Services
      * @brief Flush the journal to the filesystem.
      */
     virtual sdbusplus::async::task<> flushJournal() const = 0;
+
+    /**
+     * @brief Returns the persistent data directory
+     */
+    virtual std::filesystem::path getPersistentDataPath() const = 0;
 
     /**
      * @brief Returns the string name for the system state enum

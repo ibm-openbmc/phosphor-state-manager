@@ -274,6 +274,14 @@ The failover sequence is:
    issues a full sync. Otherwise it sets `RedundancyEnabled` to false.
 1. When the full sync is complete, `FailoversAllowed` is now set to true.
 
+### Failover History
+
+The BMC driving the failover logs the requester and timestamp of each failover
+in the file `/var/lib/phosphor-state-manager/redundant-bmc/bmcN_failovers`,
+where `N` is the BMC position.
+
+The most recent 10 failovers are kept.
+
 ### Reboots in the middle of a failover
 
 If the new active BMC is rebooted in the middle of a failover while the other

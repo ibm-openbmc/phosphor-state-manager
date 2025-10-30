@@ -14,19 +14,21 @@ class PersistentDataTest : public ::testing::Test
     static void SetUpTestCase()
     {
         char d[] = "/tmp/datatestXXXXXX";
-        saveFile = mkdtemp(d);
-        saveFile /= "save.json";
+        dataDir = mkdtemp(d);
+        saveFile = dataDir / "save.json";
     }
 
     static void TearDownTestCase()
     {
-        std::filesystem::remove_all(saveFile.parent_path());
+        std::filesystem::remove_all(dataDir);
     }
 
     static std::filesystem::path saveFile;
+    static std::filesystem::path dataDir;
 };
 
 std::filesystem::path PersistentDataTest::saveFile;
+std::filesystem::path PersistentDataTest::dataDir;
 
 TEST_F(PersistentDataTest, WriteAndReadTest)
 {
@@ -121,4 +123,41 @@ TEST_F(PersistentDataTest, RemoveTest)
 
     // Not found
     data::remove("Blah");
+}
+
+TEST_F(PersistentDataTest, FailoverLogTest)
+{
+    using Requester =
+        sdbusplus::common::xyz::openbmc_project::control::Failover::Requester;
+
+    data::logFailover(dataDir, 0, Requester::Host, time(nullptr));
+
+    ASSERT_TRUE(std::filesystem::exists(dataDir / "bmc0_failovers"));
+
+    auto logs = data::getFailoverLogs(dataDir, 0);
+
+    ASSERT_EQ(logs.size(), 1);
+    EXPECT_EQ(logs.begin()->first, "Host");
+    EXPECT_TRUE(!logs.begin()->second.empty());
+
+    // log 9 more so there are now the max of 10
+    for (auto _ : std::views::iota(0, 9))
+    {
+        data::logFailover(dataDir, 0, Requester::Tool, time(nullptr));
+    }
+
+    logs = data::getFailoverLogs(dataDir, 0);
+
+    ASSERT_EQ(logs.size(), 10);
+    EXPECT_EQ(logs.begin()->first, "Host");
+    EXPECT_EQ(logs.back().first, "Tool");
+
+    // Add one more to cause oldest to be dropped
+    data::logFailover(dataDir, 0, Requester::SystemConfig, time(nullptr));
+
+    logs = data::getFailoverLogs(dataDir, 0);
+
+    ASSERT_EQ(logs.size(), 10);
+    EXPECT_EQ(logs.begin()->first, "Tool");
+    EXPECT_EQ(logs.back().first, "SystemConfig");
 }

@@ -94,6 +94,21 @@ void printFONotAllowedReasons()
     }
 }
 
+void printLastFailoverDetails(const std::filesystem::path& dataPath,
+                              size_t bmcPos)
+{
+    auto logs = data::getFailoverLogs(dataPath, bmcPos);
+
+    if (!logs.empty())
+    {
+        std::println("Last failover driven by this BMC:");
+
+        const auto& last = logs.back();
+        printReason(std::format("Requester: {}", last.first));
+        printReason(std::format("Timestamp: {}", last.second));
+    }
+}
+
 // NOLINTBEGIN
 sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
                                              bool extended)
@@ -150,6 +165,12 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
                 !props.failovers_allowed)
             {
                 printFONotAllowedReasons();
+            }
+
+            if ((role == "Active") && pos.has_value())
+            {
+                printLastFailoverDetails(services.getPersistentDataPath(),
+                                         pos.value());
             }
         }
     }
@@ -303,7 +324,7 @@ sdbusplus::async::task<> startFailover(sdbusplus::async::context& ctx,
         co_await Failover(ctx)
             .service(Redundancy::interface)
             .path(path.str)
-            .start_failover(options);
+            .start_failover(Failover::Requester::Tool, options);
     }
     catch (const sdbusplus::exception_t& e)
     {

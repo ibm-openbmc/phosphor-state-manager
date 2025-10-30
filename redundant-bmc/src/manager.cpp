@@ -319,8 +319,11 @@ void Manager::disableRedPropChanged(bool disable)
 
 // NOLINTNEXTLINE
 sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
+                                              Requester requester,
                                               const FailoverOptions& options)
 {
+    lg2::info("Failover requester is {REQUESTER}", "REQUESTER", requester);
+
     if (redundancyInterface.failover_imminent() ||
         redundancyInterface.failover_in_progress())
     {
@@ -346,7 +349,7 @@ sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
 
     if (redundancyInterface.role() == Role::Passive)
     {
-        ctx.spawn(doFailoverFromPassive());
+        ctx.spawn(doFailoverFromPassive(requester));
     }
     else
     {
@@ -357,9 +360,10 @@ sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
 }
 
 // NOLINTNEXTLINE
-sdbusplus::async::task<> Manager::doFailoverFromPassive()
+sdbusplus::async::task<> Manager::doFailoverFromPassive(Requester requester)
 {
     lg2::info("Starting failover");
+    time_t now = time(nullptr);
 
     // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
     co_await providers->getSyncInterface().disableBackgroundSync();
@@ -384,6 +388,12 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive()
     // is rebooted it could handle it.
     lg2::info("Setting failover in progress");
     redundancyInterface.failover_in_progress(true);
+
+    // After the point of no return, log it
+    data::logFailover(
+        providers->getServices().getPersistentDataPath(),
+        (co_await providers->getServices().getBMCPosition()).value_or(0xFF),
+        requester, now);
 
     lg2::info("Claiming active role");
     updateRole(role_determination::RoleInfo{
