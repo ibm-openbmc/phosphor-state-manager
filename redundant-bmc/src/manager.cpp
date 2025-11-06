@@ -229,6 +229,12 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
 {
     using namespace role_determination;
 
+    // An unprovisioned BMC cannot be active.
+    if (!providers->getServices().getProvisioned())
+    {
+        co_return RoleInfo{Role::Passive, RoleReason::notProvisioned};
+    }
+
     // A BMC with no position cannot be active.
     auto bmcPos = co_await providers->getServices().getBMCPosition();
     if (!bmcPos.has_value())
@@ -236,10 +242,11 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
         co_return RoleInfo{Role::Passive, RoleReason::unknownBMCPosition};
     }
 
-    // An unprovisioned BMC cannot be active.
-    if (!providers->getServices().getProvisioned())
+    // A BMC with a failed system inventory status cannot be active.
+    if (!co_await providers->getServices().checkSystemInventoryStatus())
     {
-        co_return RoleInfo{Role::Passive, RoleReason::notProvisioned};
+        co_return RoleInfo{Role::Passive,
+                           RoleReason::systemInventoryNotAvailable};
     }
 
     // The sibling service must be up and running.

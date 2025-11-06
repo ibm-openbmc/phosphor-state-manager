@@ -115,6 +115,9 @@ std::string getRoleReasonDescription(RoleReason reason)
         case RoleReason::unknownBMCPosition:
             desc = "Cannot determine BMC position"s;
             break;
+        case RoleReason::systemInventoryNotAvailable:
+            desc = "System inventory is not available";
+            break;
     }
 
     return desc;
