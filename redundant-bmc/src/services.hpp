@@ -164,6 +164,19 @@ class Services
         systemStateCBs.clear();
     }
 
+    /**
+     * @brief On the system inventory object, check that its Progress
+     *        Status property is 'Completed'.
+     *
+     * It will wait if the property isn't Completed or Failed/Aborted.
+     *
+     * If the interface doesn't exist on that path, just return true as
+     * it's assumed it isn't implemented.
+     *
+     * @return true if the status is complete, false else
+     */
+    virtual sdbusplus::async::task<bool> checkSystemInventoryStatus() = 0;
+
   protected:
     /**
      * @brief The functions to call when the system state changes

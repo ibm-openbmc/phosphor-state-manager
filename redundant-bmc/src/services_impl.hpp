@@ -122,6 +122,19 @@ class ServicesImpl : public Services
         return persistentDataPath;
     }
 
+    /**
+     * @brief On the system inventory object, check that its Progress
+     *        Status property is 'Completed'.
+     *
+     * It will wait if the property isn't Completed or Failed/Aborted.
+     *
+     * If the interface doesn't exist on that path, just return true as
+     * it's assumed it isn't implemented.
+     *
+     * @return true if the status is complete, false else
+     */
+    sdbusplus::async::task<bool> checkSystemInventoryStatus() override;
+
   private:
     /**
      * @brief Returns the D-Bus object path for the unit in the
@@ -166,6 +179,12 @@ class ServicesImpl : public Services
     void updateSystemState();
 
     /**
+     * @brief Waits up to 3 minutes for the Item.System interface
+     *        to show up and then saves the path in systemInvPath.
+     */
+    sdbusplus::async::task<> waitForSystemInventoryPath();
+
+    /**
      * @brief The async context object
      */
     sdbusplus::async::context& ctx;
@@ -188,6 +207,11 @@ class ServicesImpl : public Services
      * @brief The current system state value
      */
     std::optional<SystemState> systemState;
+
+    /**
+     * @brief D-Bus path for the Item.System object
+     */
+    std::string systemInvPath;
 };
 
 } // namespace rbmc

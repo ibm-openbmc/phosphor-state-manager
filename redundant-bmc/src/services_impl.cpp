@@ -4,7 +4,9 @@
 #include <openssl/evp.h>
 
 #include <phosphor-logging/lg2.hpp>
+#include <xyz/openbmc_project/Common/Progress/client.hpp>
 #include <xyz/openbmc_project/Inventory/Decorator/Position/client.hpp>
+#include <xyz/openbmc_project/Inventory/Item/System/common.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
 #include <xyz/openbmc_project/State/Boot/Progress/client.hpp>
@@ -21,6 +23,9 @@ using BootProgress =
     sdbusplus::client::xyz::openbmc_project::state::boot::Progress<>;
 using Position =
     sdbusplus::client::xyz::openbmc_project::inventory::decorator::Position<>;
+using SystemInv =
+    sdbusplus::common::xyz::openbmc_project::inventory::item::System;
+using InvProgress = sdbusplus::client::xyz::openbmc_project::common::Progress<>;
 
 using HostProperties =
     std::variant<std::string, HostState::HostState, HostState::RestartCause,
@@ -34,7 +39,6 @@ namespace rules = sdbusplus::bus::match::rules;
 namespace object_path
 {
 constexpr auto systemd = "/org/freedesktop/systemd1";
-const auto systemInv = "/xyz/openbmc_project/inventory/system";
 
 // host0 represents the overall host state
 const std::string hostState = std::string{HostState::namespace_path::value} +
@@ -67,6 +71,34 @@ sdbusplus::async::task<std::string> getService(sdbusplus::async::context& ctx,
     std::vector<std::string> iface{interface};
     auto object = co_await mapper.get_object(path, iface);
     co_return object.begin()->first;
+}
+
+sdbusplus::async::task<std::string> findSystemInventoryPath(
+    sdbusplus::async::context& ctx)
+{
+    auto mapper = ObjectMapper(ctx)
+                      .service(ObjectMapper::default_service)
+                      .path(ObjectMapper::instance_path);
+
+    std::vector<std::string> systemIface{SystemInv::interface};
+
+    auto objects = co_await mapper.get_sub_tree(
+        "/xyz/openbmc_project/inventory", 0, systemIface);
+
+    if (objects.empty())
+    {
+        throw std::runtime_error("No system inventory object found");
+    }
+
+    // Until there is a reason to expect more, check
+    // that there is just one System interface.
+    if (objects.size() != 1)
+    {
+        throw std::invalid_argument(std::format(
+            "Wrong number of system inventory objects: {}", objects.size()));
+    }
+
+    co_return objects.begin()->first;
 }
 
 /**
@@ -163,7 +195,7 @@ sdbusplus::async::task<> ServicesImpl::init()
     co_await readBootProgress();
     updateSystemState();
 
-    co_return;
+    co_await waitForSystemInventoryPath();
 }
 
 // NOLINTNEXTLINE
@@ -364,19 +396,34 @@ void ServicesImpl::updateSystemState()
 sdbusplus::async::task<std::optional<size_t>> ServicesImpl::getBMCPosition()
     const
 {
+    // This can be called from rbmctool which wouldn't call init().
+    // So may need to look up the path here.
+    auto path = systemInvPath;
+    if (path.empty())
+    {
+        try
+        {
+            path = co_await util::findSystemInventoryPath(ctx);
+        }
+        catch (const std::exception& e)
+        {
+            lg2::error(
+                "There is no system inventory object to find the BMC position for: {ERROR}",
+                "ERROR", e);
+            co_return std::nullopt;
+        }
+    }
+
     try
     {
         static std::string service;
         if (service.empty())
         {
-            service = co_await util::getService(ctx, object_path::systemInv,
-                                                Position::interface);
+            service = co_await util::getService(ctx, path, Position::interface);
         }
 
-        size_t position = co_await Position(ctx)
-                              .service(service)
-                              .path(object_path::systemInv)
-                              .position();
+        size_t position =
+            co_await Position(ctx).service(service).path(path).position();
 
         // max() is a special value meaning position cannot be obtained.
         if (position == std::numeric_limits<size_t>::max())
@@ -571,6 +618,113 @@ sdbusplus::async::task<> ServicesImpl::flushJournal() const
     {
         lg2::error("Exception while syncing journal: {ERROR}", "ERROR", e);
     }
+}
+
+sdbusplus::async::task<> ServicesImpl::waitForSystemInventoryPath()
+{
+    using namespace std::chrono_literals;
+    auto end = std::chrono::steady_clock::now() + 3min;
+    bool traced = false;
+
+    while (std::chrono::steady_clock::now() < end)
+    {
+        try
+        {
+            systemInvPath = co_await util::findSystemInventoryPath(ctx);
+            co_return;
+        }
+        catch (const std::invalid_argument& e)
+        {
+            // Wrong number of system interfaces.
+            lg2::error("Error obtaining system inventory path: {ERROR}",
+                       "ERROR", e);
+            co_return;
+        }
+        catch (const std::exception& e)
+        {
+            if (!traced)
+            {
+                traced = true;
+                lg2::info("Waiting for system inventory object. ({ERROR})",
+                          "ERROR", e);
+            }
+        }
+
+        co_await sdbusplus::async::sleep_for(ctx, 1s);
+    }
+
+    lg2::error("Timed out waiting for system inventory object");
+}
+
+sdbusplus::async::task<bool> ServicesImpl::checkSystemInventoryStatus()
+{
+    if (systemInvPath.empty())
+    {
+        lg2::error("There is no system inventory object");
+        co_return false;
+    }
+
+    bool tracedWait = false;
+    std::string service;
+
+    using namespace std::chrono_literals;
+    auto end = std::chrono::steady_clock::now() + 3min;
+
+    while (std::chrono::steady_clock::now() < end)
+    {
+        InvProgress::OperationStatus status;
+
+        try
+        {
+            if (service.empty())
+            {
+                service = co_await util::getService(ctx, systemInvPath,
+                                                    InvProgress::interface);
+            }
+
+            status = co_await InvProgress(ctx)
+                         .service(service)
+                         .path(systemInvPath)
+                         .status();
+        }
+        catch (const std::exception& e)
+        {
+            // If the system object path is known but it doesn't have
+            // the Progress interface, assume it isn't used in this system.
+            lg2::warning(
+                "Progress interface not available on {PATH}, assuming it isn't implemented. Error = {ERROR}",
+                "PATH", systemInvPath, "ERROR", e);
+            co_return true;
+        }
+
+        if (status == InvProgress::OperationStatus::Completed)
+        {
+            lg2::info("System inventory status is complete");
+            co_return true;
+        }
+        else if ((status == InvProgress::OperationStatus::Failed) ||
+                 (status == InvProgress::OperationStatus::Aborted))
+        {
+            lg2::error("System inventory failed with status {STATUS}", "STATUS",
+                       status);
+            co_return false;
+        }
+        else
+        {
+            if (!tracedWait)
+            {
+                tracedWait = true;
+                lg2::info(
+                    "System inventory status isn't complete yet: {STATUS}",
+                    "STATUS", status);
+            }
+        }
+
+        co_await sdbusplus::async::sleep_for(ctx, 1s);
+    }
+
+    lg2::error("Timed out waiting for system inventory status");
+    co_return false;
 }
 
 } // namespace rbmc
