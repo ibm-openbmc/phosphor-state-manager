@@ -5,6 +5,12 @@
 namespace rbmc::role_determination
 {
 
+// Reasons for being passive that are errors.
+constexpr auto errorRoleReasons = std::to_array(
+    {RoleReason::notProvisioned, RoleReason::siblingServiceNotRunning,
+     RoleReason::exception, RoleReason::unknownBMCPosition,
+     RoleReason::systemInventoryNotAvailable});
+
 RoleInfo determineRole(const Input& input)
 {
     RoleInfo result;
@@ -125,9 +131,7 @@ std::string getRoleReasonDescription(RoleReason reason)
 
 bool isErrorReason(RoleReason reason)
 {
-    using enum RoleReason;
-    return (reason == notProvisioned) || (reason == siblingServiceNotRunning) ||
-           (reason == exception) || (reason == unknownBMCPosition);
+    return std::ranges::contains(errorRoleReasons, reason);
 }
 
 } // namespace rbmc::role_determination
