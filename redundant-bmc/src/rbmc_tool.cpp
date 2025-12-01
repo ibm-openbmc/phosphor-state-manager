@@ -6,6 +6,7 @@
 #include "sibling_reset_impl.hpp"
 
 #include <CLI/CLI.hpp>
+#include <nlohmann/json.hpp>
 #include <xyz/openbmc_project/Control/Failover/client.hpp>
 #include <xyz/openbmc_project/Software/Version/client.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/client.hpp>
@@ -25,14 +26,58 @@ constexpr auto siblingService =
     "xyz.openbmc_project.State.BMC.Redundancy.Sibling";
 
 template <typename T>
-void printParam(std::string_view key, const T& value)
+void printParam(std::string key, const T& value)
 {
+    key.push_back(':');
     std::println("{:22}{}", key, value);
 }
 
 void printReason(std::string_view reason)
 {
     std::println("    {}", reason);
+}
+
+void printJSONParam(const std::string& name, const nlohmann::json& value)
+{
+    if (value.is_boolean())
+    {
+        printParam(name, value.get<bool>());
+    }
+    else if (value.is_string())
+    {
+        printParam(name, value.get<std::string>());
+    }
+    else if (value.is_number_integer())
+    {
+        printParam(name, value.get<int>());
+    }
+    else if (value.is_object())
+    {
+        std::println("{}:", name);
+        for (const auto& [subName, subVal] : value.items())
+        {
+            // Only need string support here and they look
+            // better not using dump. But keep dump() just in case.
+            std::string printVal =
+                subVal.is_string() ? subVal.get<std::string>() : subVal.dump();
+            printReason(std::format("{}: {}", subName, printVal));
+        }
+    }
+    else if (value.is_array())
+    {
+        std::println("{}:", name);
+        for (const auto& v : value)
+        {
+            // Same string support statement as above.
+            std::string printVal =
+                (v.is_string()) ? v.get<std::string>() : v.dump();
+            printReason(printVal);
+        }
+    }
+    else
+    {
+        printParam(name, value.dump());
+    }
 }
 
 // NOLINTNEXTLINE
@@ -53,16 +98,17 @@ sdbusplus::async::task<std::string> getBMCState(const rbmc::Services& services)
     }
 }
 
-void printNoRedReasons(const rbmc::redundancy::ReasonsForNoRedundancy& reasons)
+void addNoRedReasons(const rbmc::redundancy::ReasonsForNoRedundancy& reasons,
+                     nlohmann::ordered_json& output)
 {
-    std::println("Reasons for no BMC redundancy:");
+    nlohmann::json::array_t reasonList;
     if (!reasons.empty())
     {
-        std::ranges::for_each(reasons, [](const auto& r) {
+        std::ranges::for_each(reasons, [&reasonList](const auto& r) {
             auto shortName =
                 Redundancy::convertReasonForNoRedundancyToString(r);
             shortName = shortName.substr(shortName.find_last_of('.') + 1);
-            printReason(shortName);
+            reasonList.push_back(shortName);
         });
     }
     else
@@ -70,54 +116,54 @@ void printNoRedReasons(const rbmc::redundancy::ReasonsForNoRedundancy& reasons)
         // There can be long periods where the active BMC is waiting
         // for the passive BMC so redundancy can't be checked yet.
         // As far as rbmctool goes, label them as in a transition.
-        printReason("In transition");
+        reasonList.emplace_back("In transition");
     }
+
+    output["Reasons for no BMC redundancy"] = std::move(reasonList);
 }
 
-void printFONotAllowedReasons()
+void addFONotAllowedReasons(nlohmann::ordered_json& output)
 {
-    std::println("Reasons failovers are not allowed:");
+    nlohmann::json::array_t reasonList;
     auto reasons =
         data::read<std::set<std::string>>(data::key::failoversNotAllowedReasons)
             .value_or(std::set<std::string>());
     if (!reasons.empty())
     {
-        std::ranges::for_each(reasons, [](auto& reason) {
-            printReason(reason);
+        std::ranges::for_each(reasons, [&reasonList](auto& reason) {
+            reasonList.push_back(reason);
         });
     }
     else
     {
-        printReason("Unknown");
+        reasonList.emplace_back("Unknown");
     }
+
+    output["Reasons failovers are not allowed"] = std::move(reasonList);
 }
 
-void printLastFailoverDetails(const std::filesystem::path& dataPath,
-                              size_t bmcPos)
+void addLastFailoverDetails(const std::filesystem::path& dataPath,
+                            size_t bmcPos, nlohmann::ordered_json& output)
 {
     auto logs = data::getFailoverLogs(dataPath, bmcPos);
 
     if (!logs.empty())
     {
-        std::println("Last failover driven by this BMC:");
-
+        auto& object = output["Last failover driven by this BMC"];
         const auto& last = logs.back();
-        printReason(std::format("Requester: {}", last.first));
-        printReason(std::format("Timestamp: {}", last.second));
+        object["Requester"] = last.first;
+        object["Timestamp"] = last.second;
     }
 }
 
-// NOLINTBEGIN
-sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
-                                             bool extended)
-// NOLINTEND
+// NOLINTNEXTLINE
+sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
+                                         bool extended,
+                                         nlohmann::ordered_json& output)
 {
     auto path =
         sdbusplus::message::object_path{Redundancy::namespace_path::value} /
         Redundancy::namespace_path::bmc;
-
-    std::println("Local BMC");
-    std::println("-----------------------------");
 
     try
     {
@@ -129,66 +175,65 @@ sdbusplus::async::task<> displayLocalBMCInfo(sdbusplus::async::context& ctx,
         auto role = Redundancy::convertRoleToString(props.role);
         // Strip off the sdbusplus prefix to get the final part, e.g. 'Active'.
         role = role.substr(role.find_last_of('.') + 1);
-        printParam("Role:", role);
+        output["Role"] = role;
 
         rbmc::ServicesImpl services{ctx};
         auto pos = co_await services.getBMCPosition();
         auto bmcPos = pos.has_value() ? std::to_string(pos.value()) : "Unknown";
-        printParam("BMC Position:", bmcPos);
+        output["BMC Position"] = bmcPos;
 
-        printParam("Redundancy Enabled:", props.redundancy_enabled);
+        output["Redundancy Enabled"] = props.redundancy_enabled;
 
-        if (extended)
+        if (!extended)
         {
-            auto bmcState = co_await getBMCState(services);
-            printParam("BMC State:", bmcState);
-            printParam("Failovers Allowed:", props.failovers_allowed);
-            printParam("Failover In Progress:", props.failover_in_progress);
-            printParam("FW Version Hash:", services.getFWVersion());
-            printParam("Provisioned:", services.getProvisioned());
+            co_return;
+        }
 
-            if (role != "Unknown")
-            {
-                printParam("Role Reason:",
-                           data::read<std::string>(data::key::roleReason)
-                               .value_or("No reason found"));
-            }
+        auto bmcState = co_await getBMCState(services);
+        output["BMC State"] = bmcState;
+        output["Failovers Allowed"] = props.failovers_allowed;
+        output["Failover In Progress"] = props.failover_in_progress;
+        output["FW Version Hash"] = services.getFWVersion();
+        output["Provisioned"] = services.getProvisioned();
 
-            if ((role == "Active") && !props.redundancy_enabled)
-            {
-                printNoRedReasons(props.reasons_for_no_redundancy);
-            }
+        if (role != "Unknown")
+        {
+            output["Role Reason"] =
+                data::read<std::string>(data::key::roleReason)
+                    .value_or("No reason found");
+        }
 
-            if ((role == "Active") && props.redundancy_enabled &&
-                !props.failovers_allowed)
-            {
-                printFONotAllowedReasons();
-            }
+        if ((role == "Active") && !props.redundancy_enabled)
+        {
+            addNoRedReasons(props.reasons_for_no_redundancy, output);
+        }
 
-            if ((role == "Active") && pos.has_value())
-            {
-                printLastFailoverDetails(services.getPersistentDataPath(),
-                                         pos.value());
-            }
+        if ((role == "Active") && props.redundancy_enabled &&
+            !props.failovers_allowed)
+        {
+            addFONotAllowedReasons(output);
+        }
+
+        if ((role == "Active") && pos.has_value())
+        {
+            addLastFailoverDetails(services.getPersistentDataPath(),
+                                   pos.value(), output);
         }
     }
     catch (const std::exception& e)
     {
-        std::println("Cannot get to Redundancy interface on D-Bus: {}",
-                     e.what());
+        // Don't print an error so we don't corrupt the JSON output
     }
 }
 
 // NOLINTNEXTLINE
-sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
-                                               bool extended)
+sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
+                                           bool extended,
+                                           nlohmann::ordered_json& output)
 {
     auto path =
         sdbusplus::message::object_path{Redundancy::namespace_path::value} /
         Redundancy::namespace_path::sibling_bmc;
-
-    std::println("Sibling BMC");
-    std::println("-----------------------------");
 
     try
     {
@@ -199,7 +244,7 @@ sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
 
         auto role = Redundancy::convertRoleToString(rProps.role);
         role = role.substr(role.find_last_of('.') + 1);
-        printParam("Role:", role);
+        output["Role"] = role;
 
         if (!extended)
         {
@@ -219,27 +264,72 @@ sdbusplus::async::task<> displaySiblingBMCInfo(sdbusplus::async::context& ctx,
         auto bmcState = BMCState::convertBMCStateToString(state);
         bmcState = bmcState.substr(bmcState.find_last_of('.') + 1);
 
-        printParam("Redundancy Enabled:", rProps.redundancy_enabled);
-        printParam("Failovers Allowed:", rProps.failovers_allowed);
-        printParam("BMC State:", bmcState);
-        printParam("FW Version Hash:", fwVersion);
-        printParam("Provisioned:", true); // TODO
+        output["Redundancy Enabled"] = rProps.redundancy_enabled;
+        output["Failovers Allowed"] = rProps.failovers_allowed;
+        output["BMC State"] = bmcState;
+        output["FW Version Hash"] = fwVersion;
+        output["Provisioned"] = true; // TODO
     }
-    catch (const sdbusplus::exception_t& e)
+    catch (const std::exception& e)
     {
-        std::println("Sibling data not available");
+        // Don't print an error so we don't corrupt the JSON output
+    }
+}
+
+void displayBMCInfo(const nlohmann::ordered_json& bmcInfo)
+{
+    for (const auto& [name, value] : bmcInfo.items())
+    {
+        printJSONParam(name, value);
     }
 }
 
 // NOLINTNEXTLINE
 sdbusplus::async::task<> displayInfo(sdbusplus::async::context& ctx,
-                                     bool extended)
+                                     bool extended, bool jsonOutput)
 {
-    std::println();
-    co_await displayLocalBMCInfo(ctx, extended);
-    std::println();
-    co_await displaySiblingBMCInfo(ctx, extended);
-    std::println();
+    nlohmann::ordered_json localInfo;
+    nlohmann::ordered_json siblingInfo;
+    co_await getLocalBMCInfo(ctx, extended, localInfo);
+    co_await getSiblingBMCInfo(ctx, extended, siblingInfo);
+
+    if (jsonOutput)
+    {
+        nlohmann::ordered_json out;
+        out["Local BMC"] = std::move(localInfo);
+        out["Sibling BMC"] = std::move(siblingInfo);
+        std::println("{}", out.dump(4));
+    }
+    else
+    {
+        std::println();
+        std::println("Local BMC");
+        std::println("-----------------------------");
+
+        if (!localInfo.empty())
+        {
+            displayBMCInfo(localInfo);
+        }
+        else
+        {
+            std::println("Local BMC data not available");
+        }
+
+        std::println();
+        std::println("Sibling BMC");
+        std::println("-----------------------------");
+
+        if (!siblingInfo.empty())
+        {
+            displayBMCInfo(siblingInfo);
+        }
+        else
+        {
+            std::println("Sibling BMC data not available");
+        }
+
+        std::println();
+    }
 }
 
 // NOLINTNEXTLINE
@@ -351,12 +441,15 @@ int main(int argc, char** argv)
     bool enableRedundancy{};
     bool failover{};
     bool forceFailover{};
+    bool jsonOutput{};
     sdbusplus::async::context ctx;
 
     auto* displayGroup = app.add_option_group("Display RBMC information");
     auto* flag =
         displayGroup->add_flag("-d", info, "Display basic RBMC information");
     displayGroup->add_flag("-e", extended, "Add in extended details")
+        ->needs(flag);
+    displayGroup->add_flag("-j, --json", jsonOutput, "Display in JSON")
         ->needs(flag);
 
     auto* overrideGroup =
@@ -388,7 +481,7 @@ int main(int argc, char** argv)
 
     if (info)
     {
-        ctx.spawn(displayInfo(ctx, extended));
+        ctx.spawn(displayInfo(ctx, extended, jsonOutput));
     }
     else if (resetSibling)
     {
