@@ -48,6 +48,11 @@ ReasonsForNoRedundancy getNoRedundancyReasons(const Input& input)
                 reasons.insert(SiblingNotPassive);
             }
 
+            if (input.siblingCannotBeActive)
+            {
+                reasons.insert(SiblingCannotBeActive);
+            }
+
             if (!input.codeVersionsMatch)
             {
                 reasons.insert(CodeVersionMismatch);

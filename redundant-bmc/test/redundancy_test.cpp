@@ -16,6 +16,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         .siblingAlive = true,
         .siblingProvisioned = true,
         .siblingRole = rbmc::Role::Passive,
+        .siblingCannotBeActive = false,
         .siblingState = rbmc::BMCState::Ready,
         .codeVersionsMatch = true,
         .manualDisable = false,
@@ -96,6 +97,16 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
         EXPECT_EQ(*reasons.begin(), SiblingNotAtReady);
+    }
+
+    // Sibling cannot be active
+    {
+        auto input = golden;
+        input.siblingCannotBeActive = true;
+
+        auto reasons = getNoRedundancyReasons(input);
+        ASSERT_EQ(reasons.size(), 1);
+        EXPECT_EQ(*reasons.begin(), SiblingCannotBeActive);
     }
 
     // Redundancy is manually disabled

@@ -101,6 +101,8 @@ redundancy::ReasonsForNoRedundancy RedundancyMgr::getNoRedundancyReasons()
         .siblingAlive = sibling.alive(),
         .siblingProvisioned = sibling.getProvisioned().value_or(false),
         .siblingRole = sibling.getRole().value_or(Role::Unknown),
+        .siblingCannotBeActive =
+            sibling.getHasReasonForNoRedundancy().value_or(false),
         .siblingState = sibling.getBMCState().value_or(BMCState::NotReady),
         .codeVersionsMatch =
             services.getFWVersion() == sibling.getFWVersion().value_or(""),

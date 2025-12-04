@@ -89,6 +89,7 @@ items to see if redundancy can be enabled:
 1. The sibling BMC is present and is alive (has a heartbeat).
 1. The sibling is at the Ready state.
 1. The sibling BMC has the Passive role.
+1. If the sibling BMC indicates that it can never be active.
 1. Redundancy hasn't been manually disabled with the D-bus property that does
    so.
 1. The sibling BMC has been provisioned.

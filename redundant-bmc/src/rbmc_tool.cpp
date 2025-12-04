@@ -207,6 +207,11 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
         {
             addNoRedReasons(props.reasons_for_no_redundancy, output);
         }
+        else if (role == "Passive")
+        {
+            output["Cannot Be Active"] =
+                !props.reasons_for_no_redundancy.empty();
+        }
 
         if ((role == "Active") && props.redundancy_enabled &&
             !props.failovers_allowed)
