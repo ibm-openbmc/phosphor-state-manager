@@ -6,6 +6,7 @@
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/Common/error.hpp>
 #include <xyz/openbmc_project/Control/Failover/common.hpp>
+#include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 
 namespace rbmc
 {
@@ -13,6 +14,8 @@ namespace rbmc
 constexpr auto bmcPassiveTarget = "obmc-bmc-passive.target";
 
 using Failover = sdbusplus::common::xyz::openbmc_project::control::Failover;
+using Redundancy =
+    sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy;
 
 namespace util
 {
@@ -45,6 +48,36 @@ std::optional<T> getFailoverOption(Failover::Options option,
 }
 
 } // namespace util
+
+PassiveRoleHandler::PassiveRoleHandler(sdbusplus::async::context& ctx,
+                                       Providers& providers,
+                                       RedundancyInterface& iface) :
+    RoleHandler(ctx, providers, iface)
+{
+    try
+    {
+        // If passiveDueToError is true, then this BMC can never
+        // be active.  Add a value into ReasonsForNoRedundancy so
+        // the active can get it and not enable redundancy.
+        if (data::read<bool>(data::key::passiveError).value_or(false))
+        {
+            lg2::info(
+                "Setting 'SiblingCannotBeActive' in ReasonsForNoRedundancy property");
+            iface.reasons_for_no_redundancy(
+                {Redundancy::ReasonForNoRedundancy::SiblingCannotBeActive});
+        }
+        else
+        {
+            iface.reasons_for_no_redundancy({});
+        }
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed trying to obtain PassiveDueToError: {ERROR}",
+                   "ERROR", e);
+        iface.reasons_for_no_redundancy({});
+    }
+}
 
 // NOLINTNEXTLINE
 sdbusplus::async::task<> PassiveRoleHandler::start()

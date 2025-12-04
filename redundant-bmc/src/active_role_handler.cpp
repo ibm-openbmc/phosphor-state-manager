@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "active_role_handler.hpp"
 
+#include "persistent_data.hpp"
+
 #include <phosphor-logging/lg2.hpp>
 
 namespace rbmc
@@ -14,6 +16,16 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
 {
     auto& services = providers.getServices();
     auto& sibling = providers.getSibling();
+
+    try
+    {
+        data::write(data::key::passiveError, false);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed clearing the PassiveDueToError field: {ERROR}",
+                   "ERROR", e);
+    }
 
     try
     {

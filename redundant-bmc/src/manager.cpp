@@ -296,7 +296,7 @@ void Manager::updateRole(const role_determination::RoleInfo& roleInfo)
     catch (const std::exception& e)
     {
         lg2::error(
-            "Failed serializing the role error value of {VALUE}: {ERROR}",
+            "Failed serializing the PassiveDueToError value of {VALUE}: {ERROR}",
             "VALUE", chosePassiveDueToError, "ERROR", e);
     }
 

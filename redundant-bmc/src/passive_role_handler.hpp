@@ -28,9 +28,7 @@ class PassiveRoleHandler : public RoleHandler
      * @param[in] iface - The redundancy D-Bus interface object
      */
     PassiveRoleHandler(sdbusplus::async::context& ctx, Providers& providers,
-                       RedundancyInterface& iface) :
-        RoleHandler(ctx, providers, iface)
-    {}
+                       RedundancyInterface& iface);
 
     /**
      * @brief Destructor
