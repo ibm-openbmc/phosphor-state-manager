@@ -138,6 +138,14 @@ void SiblingImpl::loadRedundancyProps(
     {
         redundancy.role = std::get<Role>(it->second);
     }
+
+    it = propertyMap.find("ReasonsForNoRedundancy");
+    if (it != propertyMap.end())
+    {
+        const auto& reasons =
+            std::get<std::set<ReasonForNoRedundancy>>(it->second);
+        redundancy.hasReasonForNoRedundancy = !reasons.empty();
+    }
 }
 
 void SiblingImpl::loadVersionProps(const SiblingImpl::PropertyMap& propertyMap)

@@ -2,6 +2,8 @@
 #pragma once
 #include "sibling.hpp"
 
+#include <set>
+
 namespace rbmc
 {
 
@@ -16,7 +18,8 @@ class SiblingImpl : public Sibling
 {
   public:
     using PropertyVariant =
-        std::variant<std::string, bool, Role, size_t, BMCState>;
+        std::variant<std::string, bool, Role, size_t, BMCState,
+                     std::set<ReasonForNoRedundancy>>;
     using PropertyMap = std::unordered_map<std::string, PropertyVariant>;
     using InterfaceMap = std::map<std::string, PropertyMap>;
     using ManagedObjects =
@@ -195,6 +198,21 @@ class SiblingImpl : public Sibling
     }
 
     /**
+     * @brief Returns if the sibling a reason redundancy can't be enabled
+     *
+     * @return - If there is a reason, or nullopt if not available
+     */
+    std::optional<bool> getHasReasonForNoRedundancy() const override
+    {
+        if (alive())
+        {
+            return redundancy.hasReasonForNoRedundancy;
+        }
+
+        return std::nullopt;
+    }
+
+    /**
      * @brief Returns if the sibling BMC is plugged in
      *
      * @return bool - if present
@@ -332,6 +350,7 @@ class SiblingImpl : public Sibling
         bool failoversAllowed = false;
         bool failoverInProgress = false;
         bool failoverImminent = false;
+        bool hasReasonForNoRedundancy = false;
     };
 
     /**

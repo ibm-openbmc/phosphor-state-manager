@@ -26,6 +26,8 @@ class Sibling
         sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy::Role;
     using BMCState =
         sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState;
+    using ReasonForNoRedundancy = sdbusplus::common::xyz::openbmc_project::
+        state::bmc::Redundancy::ReasonForNoRedundancy;
     using RedundancyEnabledCallback = std::function<void(bool)>;
     using BMCStateCallback = std::function<void(BMCState)>;
     using HealthCallback = std::function<void(bool)>;
@@ -133,6 +135,13 @@ class Sibling
      * @return - If imminent, or nullopt if not available
      */
     virtual std::optional<bool> getFailoverImminent() const = 0;
+
+    /**
+     * @brief Returns if the sibling a reason redundancy can't be enabled
+     *
+     * @return - If there is a reason, or nullopt if not available
+     */
+    virtual std::optional<bool> getHasReasonForNoRedundancy() const = 0;
 
     /**
      * @brief Returns if the sibling BMC is plugged in
