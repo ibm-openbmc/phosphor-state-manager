@@ -6,6 +6,8 @@
 #include <xyz/openbmc_project/State/Boot/Progress/common.hpp>
 #include <xyz/openbmc_project/State/Host/common.hpp>
 
+#include <optional>
+
 namespace rbmc
 {
 
@@ -46,8 +48,7 @@ class ServicesImpl : public Services
      *
      * @return - The position if it can be obtained
      */
-    sdbusplus::async::task<std::optional<size_t>> getBMCPosition()
-        const override;
+    std::optional<size_t> getBMCPosition() const override;
 
     /**
      * @brief Starts a systemd unit

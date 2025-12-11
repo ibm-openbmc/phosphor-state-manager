@@ -182,7 +182,7 @@ sdbusplus::async::task<role_determination::RoleInfo> Manager::determineRole()
 
         // determineRole() doesn't support an empty BMC position because
         // it should have been caught in determinePassiveRoleIfRequired.
-        auto bmcPos = co_await services.getBMCPosition();
+        auto bmcPos = services.getBMCPosition();
         if (!bmcPos.has_value())
         {
             lg2::error("determineRole: No BMC position");
@@ -236,7 +236,7 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
     }
 
     // A BMC with no position cannot be active.
-    auto bmcPos = co_await providers->getServices().getBMCPosition();
+    auto bmcPos = providers->getServices().getBMCPosition();
     if (!bmcPos.has_value())
     {
         co_return RoleInfo{Role::Passive, RoleReason::unknownBMCPosition};
@@ -391,10 +391,9 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive(Requester requester)
     redundancyInterface.failover_in_progress(true);
 
     // After the point of no return, log it
-    data::logFailover(
-        providers->getServices().getPersistentDataPath(),
-        (co_await providers->getServices().getBMCPosition()).value_or(0xFF),
-        requester, now);
+    data::logFailover(providers->getServices().getPersistentDataPath(),
+                      providers->getServices().getBMCPosition().value_or(0xFF),
+                      requester, now);
 
     lg2::info("Claiming active role");
     updateRole(role_determination::RoleInfo{

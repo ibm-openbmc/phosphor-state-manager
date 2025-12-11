@@ -51,8 +51,7 @@ class Services
      *
      * @return - The position if it can be obtained
      */
-    virtual sdbusplus::async::task<std::optional<size_t>> getBMCPosition()
-        const = 0;
+    virtual std::optional<size_t> getBMCPosition() const = 0;
 
     /**
      * @brief Starts a systemd unit

@@ -23,8 +23,6 @@ using HostState = sdbusplus::client::xyz::openbmc_project::state::Host<>;
 using ObjectMapper = sdbusplus::client::xyz::openbmc_project::ObjectMapper<>;
 using BootProgress =
     sdbusplus::client::xyz::openbmc_project::state::boot::Progress<>;
-using Position =
-    sdbusplus::client::xyz::openbmc_project::inventory::decorator::Position<>;
 using SystemInv =
     sdbusplus::common::xyz::openbmc_project::inventory::item::System;
 using InvProgress = sdbusplus::client::xyz::openbmc_project::common::Progress<>;
@@ -396,54 +394,50 @@ void ServicesImpl::updateSystemState()
     }
 }
 
-// NOLINTNEXTLINE
-sdbusplus::async::task<std::optional<size_t>> ServicesImpl::getBMCPosition()
-    const
+std::optional<size_t> ServicesImpl::getBMCPosition() const
 {
-    // This can be called from rbmctool which wouldn't call init().
-    // So may need to look up the path here.
-    auto path = systemInvPath;
-    if (path.empty())
+    static std::optional<size_t> bmcPosition;
+    const std::filesystem::path posFile{"/run/openbmc/bmc_position"};
+
+    if (bmcPosition.has_value())
     {
-        try
-        {
-            path = co_await util::findSystemInventoryPath(ctx);
-        }
-        catch (const std::exception& e)
-        {
-            lg2::error(
-                "There is no system inventory object to find the BMC position for: {ERROR}",
-                "ERROR", e);
-            co_return std::nullopt;
-        }
+        return bmcPosition;
     }
 
-    try
+    std::error_code ec;
+    if (!std::filesystem::exists(posFile, ec))
     {
-        static std::string service;
-        if (service.empty())
-        {
-            service = co_await util::getService(ctx, path, Position::interface);
-        }
-
-        size_t position =
-            co_await Position(ctx).service(service).path(path).position();
-
-        // max() is a special value meaning position cannot be obtained.
-        if (position == std::numeric_limits<size_t>::max())
-        {
-            lg2::error("BMC position value is not valid");
-            co_return std::nullopt;
-        }
-
-        co_return position;
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error("D-Bus error obtaining BMC position: {ERROR}", "ERROR", e);
+        lg2::error("BMC position file {FILE} doesn't exist", "FILE", posFile);
+        return std::nullopt;
     }
 
-    co_return std::nullopt;
+    std::ifstream stream{posFile};
+    if (!stream)
+    {
+        lg2::error("Could not open BMC position file {FILE}", "FILE", posFile);
+        return std::nullopt;
+    }
+
+    size_t position;
+    stream >> position;
+
+    if (stream.fail())
+    {
+        lg2::error("Failed reading BMC position out of {FILE}", "FILE",
+                   posFile);
+        return std::nullopt;
+    }
+
+    if (position == std::numeric_limits<size_t>::max())
+    {
+        lg2::warning("BMC position value could not be obtained from hardware");
+        return std::nullopt;
+    }
+
+    // Don't cache it until there is a good value.
+    bmcPosition = position;
+
+    return bmcPosition;
 }
 
 // NOLINTBEGIN
