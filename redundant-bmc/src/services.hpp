@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #pragma once
+#include "errors.hpp"
+
 #include <sdbusplus/async.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
 
@@ -125,6 +127,17 @@ class Services
      * @brief Returns the persistent data directory
      */
     virtual std::filesystem::path getPersistentDataPath() const = 0;
+
+    /**
+     * @brief Creates an event log with the specified fields
+     *
+     * @param[in] error - The error enum to use
+     * @param[in] severity - The log severity
+     * @param[in] data - AdditionalData property value
+     */
+    virtual sdbusplus::async::task<> logError(
+        std::string error, errors::Level severity,
+        errors::AdditionalData data) const = 0;
 
     /**
      * @brief Returns the string name for the system state enum

@@ -17,6 +17,7 @@ rbmc_deps = [
 executable(
     'phosphor-rbmc-state-manager',
     'active_role_handler.cpp',
+    'error_data.cpp',
     'manager.cpp',
     'passive_role_handler.cpp',
     'persistent_data.cpp',

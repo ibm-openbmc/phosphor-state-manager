@@ -8,6 +8,7 @@
 #include <xyz/openbmc_project/Control/SideBandBus/client.hpp>
 #include <xyz/openbmc_project/Inventory/Decorator/Position/client.hpp>
 #include <xyz/openbmc_project/Inventory/Item/System/common.hpp>
+#include <xyz/openbmc_project/Logging/Create/client.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
 #include <xyz/openbmc_project/State/Boot/Progress/client.hpp>
@@ -788,6 +789,27 @@ sdbusplus::async::task<> ServicesImpl::acquireFullHardwareAccess()
         .service(SidebandBus::interface)
         .path(SidebandBus::instance_path)
         .acquire(options);
+}
+
+sdbusplus::async::task<> ServicesImpl::logError(
+    std::string error, errors::Level severity,
+    errors::AdditionalData data) const
+{
+    try
+    {
+        using Create =
+            sdbusplus::client::xyz::openbmc_project::logging::Create<>;
+
+        co_await Create(ctx)
+            .service(Create::default_service)
+            .path(Create::instance_path)
+            .create(error, severity, data);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed to create event log {MSG}: {ERROR}", "MSG", error,
+                   "ERROR", e);
+    }
 }
 
 } // namespace rbmc

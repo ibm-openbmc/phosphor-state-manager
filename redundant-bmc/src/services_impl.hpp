@@ -147,6 +147,17 @@ class ServicesImpl : public Services
      */
     sdbusplus::async::task<> acquireFullHardwareAccess() override;
 
+    /**
+     * @brief Creates an event log with the specified fields
+     *
+     * @param[in] error - The error enum to use
+     * @param[in] severity - The log severity
+     * @param[in] data - AdditionalData property value
+     */
+    sdbusplus::async::task<> logError(
+        std::string error, errors::Level severity,
+        errors::AdditionalData data) const override;
+
   private:
     /**
      * @brief Returns the D-Bus object path for the unit in the
