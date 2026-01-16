@@ -249,17 +249,11 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
                            RoleReason::systemInventoryNotAvailable};
     }
 
-    // The sibling service must be up and running.
-    if (!providers->getSibling().alive())
+    // If the sibling service isn't on D-Bus, the BMC can't be active.
+    if (providers->getSibling().getServiceName().empty())
     {
-        auto state =
-            co_await providers->getServices().getUnitState(Sibling::unitName);
-        if ((state != "active") && (state != "activating"))
-        {
-            lg2::info("Sibling service state is {STATE}", "STATE", state);
-            co_return RoleInfo{Role::Passive,
-                               RoleReason::siblingServiceNotRunning};
-        }
+        lg2::error("Sibling service is not running");
+        co_return RoleInfo{Role::Passive, RoleReason::siblingServiceNotRunning};
     }
 
     co_return std::nullopt;

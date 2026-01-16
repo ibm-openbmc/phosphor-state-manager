@@ -157,6 +157,13 @@ class Sibling
     virtual sdbusplus::async::task<> pauseForHeartbeatChange() const = 0;
 
     /**
+     * @brief Returns the D-Bus service name for the sibling service.
+     *
+     * Returns an empty string if it isn't on D-Bus.
+     */
+    virtual const std::string& getServiceName() const = 0;
+
+    /**
      * @brief Clears callbacks held based on role
      *
      * @param[in] role - The role to clear

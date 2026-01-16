@@ -234,6 +234,16 @@ class SiblingImpl : public Sibling
      */
     sdbusplus::async::task<> pauseForHeartbeatChange() const override;
 
+    /**
+     * @brief Returns the D-Bus service name for the sibling service.
+     *
+     * Returns an empty string if it isn't on D-Bus.
+     */
+    const std::string& getServiceName() const override
+    {
+        return serviceName;
+    }
+
   private:
     /**
      * @brief Starts a Sibling InterfacesAdded watch
@@ -310,11 +320,11 @@ class SiblingImpl : public Sibling
     }
 
     /**
-     * @brief Gets the sibling D-Bus service name from the mapper
+     * @brief Looks up the sibling D-Bus service name from the mapper
      *
-     * @return std::string - The service name
+     * @return std::string - The service name or empty string if not found.
      */
-    sdbusplus::async::task<std::string> getServiceName();
+    sdbusplus::async::task<std::string> lookupServiceName() const;
 
     /**
      * @brief The async context object

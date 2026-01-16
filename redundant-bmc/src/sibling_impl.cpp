@@ -41,7 +41,7 @@ sdbusplus::async::task<> SiblingImpl::init()
 
     // Attempt to get the D-Bus service name.  It would only
     // be there if the sibling BMC is present.
-    serviceName = co_await getServiceName();
+    serviceName = co_await lookupServiceName();
 
     if (!serviceName.empty())
     {
@@ -55,8 +55,7 @@ sdbusplus::async::task<> SiblingImpl::init()
     initialized = true;
 }
 
-// NOLINTNEXTLINE
-sdbusplus::async::task<std::string> SiblingImpl::getServiceName()
+sdbusplus::async::task<std::string> SiblingImpl::lookupServiceName() const
 {
     using ObjectMapper =
         sdbusplus::client::xyz::openbmc_project::ObjectMapper<>;
@@ -211,7 +210,7 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded()
             {
                 using namespace std::chrono_literals;
                 co_await sdbusplus::async::sleep_for(ctx, 100ms);
-                serviceName = co_await getServiceName();
+                serviceName = co_await lookupServiceName();
                 lg2::info("After interfacesAdded, sibling service is {SERVICE}",
                           "SERVICE", serviceName);
             } while (serviceName.empty() && (count++ < mapperRetries));
