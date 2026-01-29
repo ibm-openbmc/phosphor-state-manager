@@ -2,6 +2,8 @@
 #include "manager.hpp"
 
 #include "active_role_handler.hpp"
+#include "error_data.hpp"
+#include "errors.hpp"
 #include "passive_role_handler.hpp"
 #include "persistent_data.hpp"
 
@@ -87,6 +89,17 @@ sdbusplus::async::task<> Manager::startup()
         }
 
         updateRole(co_await determineRole());
+    }
+
+    if (chosePassiveDueToError)
+    {
+        using namespace errors;
+        AdditionalData data{
+            {"RoleReasonVal", std::to_string(std::to_underlying(roleReason))}};
+        addDefaultData(redundancyInterface, *providers, data);
+
+        co_await services.logError(error_msg::bmcIsPassiveDueToError,
+                                   Level::Error, data);
     }
 
     co_await postStartupClearFOInProgress();
@@ -262,6 +275,8 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
 
 void Manager::updateRole(const role_determination::RoleInfo& roleInfo)
 {
+    roleReason = roleInfo.reason;
+
     auto reasonDesc =
         role_determination::getRoleReasonDescription(roleInfo.reason);
 

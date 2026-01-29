@@ -159,6 +159,12 @@ class Manager :
      * Read from the filesystem in the constructor.
      */
     bool chosePassiveDueToError{false};
+
+    /**
+     * @brief The reason the active/passive role was chosen.
+     */
+    role_determination::RoleReason roleReason{
+        role_determination::RoleReason::unknown};
 };
 
 } // namespace rbmc
