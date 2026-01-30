@@ -405,9 +405,6 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive(Requester requester)
 
     active->clearFailoversAllowedDuringFailover();
 
-    // TODO: Grab local bus.  Not needed if it would be linked
-    // into the active target instead.
-
     co_await active->failoverStartActiveTarget();
 
     co_await active->failoverWaitForSibling();

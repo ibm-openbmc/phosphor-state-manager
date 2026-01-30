@@ -5,6 +5,7 @@
 
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/Common/Progress/client.hpp>
+#include <xyz/openbmc_project/Control/SideBandBus/client.hpp>
 #include <xyz/openbmc_project/Inventory/Decorator/Position/client.hpp>
 #include <xyz/openbmc_project/Inventory/Item/System/common.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
@@ -26,6 +27,8 @@ using Position =
 using SystemInv =
     sdbusplus::common::xyz::openbmc_project::inventory::item::System;
 using InvProgress = sdbusplus::client::xyz::openbmc_project::common::Progress<>;
+using SidebandBus =
+    sdbusplus::client::xyz::openbmc_project::control::SideBandBus<>;
 
 using HostProperties =
     std::variant<std::string, HostState::HostState, HostState::RestartCause,
@@ -725,6 +728,21 @@ sdbusplus::async::task<bool> ServicesImpl::checkSystemInventoryStatus()
 
     lg2::error("Timed out waiting for system inventory status");
     co_return false;
+}
+
+sdbusplus::async::task<> ServicesImpl::acquireFullHardwareAccess()
+{
+    using Options = std::map<std::string, std::variant<bool>>;
+    Options options;
+
+    options.emplace(SidebandBus::convertAcquireOptionsToString(
+                        SidebandBus::AcquireOptions::Force),
+                    true);
+
+    co_await SidebandBus(ctx)
+        .service(SidebandBus::interface)
+        .path(SidebandBus::instance_path)
+        .acquire(options);
 }
 
 } // namespace rbmc

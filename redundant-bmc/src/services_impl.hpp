@@ -135,6 +135,12 @@ class ServicesImpl : public Services
      */
     sdbusplus::async::task<bool> checkSystemInventoryStatus() override;
 
+    /**
+     * @brief Acquires hardware access to the rest of the
+     * system from this BMC if the hardware requires it.
+     */
+    sdbusplus::async::task<> acquireFullHardwareAccess() override;
+
   private:
     /**
      * @brief Returns the D-Bus object path for the unit in the

@@ -177,6 +177,12 @@ class Services
      */
     virtual sdbusplus::async::task<bool> checkSystemInventoryStatus() = 0;
 
+    /**
+     * @brief Acquires hardware access to the rest of the
+     * system from this BMC if the hardware requires it.
+     */
+    virtual sdbusplus::async::task<> acquireFullHardwareAccess() = 0;
+
   protected:
     /**
      * @brief The functions to call when the system state changes

@@ -265,7 +265,7 @@ The failover sequence is:
 1. The passive BMC toggles the reset on the sibling BMC to reboot it.
 1. The passive BMC now switches its role to Active.
 1. The new active BMC sets `FailoversAllowed` to false.
-1. The new active BMC takes over the hardware access bus. (TODO in code still)
+1. The new active BMC takes over the hardware access bus.
 1. The new active BMC starts obmc-bmc-active.target. This starts all of the
    active only services. It will not proceed until all active services have been
    started which may take some time.
