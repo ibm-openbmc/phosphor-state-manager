@@ -176,6 +176,10 @@ Reason getFailoverBlockedReason(const Input& input)
                 return Reason::failoversNotAllowed;
             }
         }
+        else if (input.failoverInProgress)
+        {
+            return Reason::failoverAlreadyInProgress;
+        }
     }
     else
     {
@@ -235,6 +239,11 @@ std::string getFailoverBlockedDescription(Reason reason)
         case Reason::bmcNotPassive:
             desc = "This BMC is not passive"s;
             break;
+        case Reason::failoverAlreadyInProgress:
+            desc = "A failover is already in progress"s;
+            break;
+        case Reason::tooEarly:
+            desc = "It is too early in the BMC boot to start a failover"s;
     }
     return desc;
 }

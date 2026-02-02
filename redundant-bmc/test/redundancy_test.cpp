@@ -232,6 +232,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
         .state = rbmc::BMCState::Ready,
         .failoversNotAllowed = false,
         .forceOption = false,
+        .failoverInProgress = false,
         .lastKnownRedundancyEnabled = true};
 
     EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(golden),
@@ -304,6 +305,14 @@ TEST(RedundancyTest, FailoverBlockedTest)
         input.lastKnownRedundancyEnabled = false;
         EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::siblingDeadButRedundancyNotEnabled);
+    }
+
+    // Failover in Progress
+    {
+        auto input = golden;
+        input.failoverInProgress = true;
+        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::failoverAlreadyInProgress);
     }
 }
 

@@ -108,6 +108,7 @@ struct Input
     BMCState state;
     bool failoversNotAllowed;
     bool forceOption;
+    bool failoverInProgress;
     bool lastKnownRedundancyEnabled;
 };
 
@@ -121,7 +122,9 @@ enum class Reason
     failoversNotAllowed,
     siblingDeadButRedundancyNotEnabled,
     notAtReady,
-    bmcNotPassive
+    bmcNotPassive,
+    failoverAlreadyInProgress,
+    tooEarly
 };
 
 /**

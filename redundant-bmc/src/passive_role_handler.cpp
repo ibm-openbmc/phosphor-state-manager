@@ -324,6 +324,8 @@ auto PassiveRoleHandler::getFailoverBlockedReason(
         .state = bmcState,
         .failoversNotAllowed = !redundancyInterface.failovers_allowed(),
         .forceOption = force,
+        .failoverInProgress = redundancyInterface.failover_in_progress() ||
+                              redundancyInterface.failover_imminent(),
 
         // If the active BMC were to completely die, its last known value of
         // RedundancyEnabled will still have been mirrored to the passive.
