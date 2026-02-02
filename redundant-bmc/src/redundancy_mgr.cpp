@@ -2,6 +2,9 @@
 
 #include "redundancy_mgr.hpp"
 
+#include "error_data.hpp"
+#include "errors.hpp"
+
 #include <persistent_data.hpp>
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/Common/error.hpp>
@@ -25,21 +28,57 @@ RedundancyMgr::RedundancyMgr(sdbusplus::async::context& ctx,
     }
 }
 
-// NOLINTNEXTLINE
 void RedundancyMgr::determineAndSetRedundancy()
 {
+    auto firstTime = !redundancyDetermined;
+    auto oldEnabled = redundancyInterface.redundancy_enabled();
+    auto oldReasons = redundancyInterface.reasons_for_no_redundancy();
+
     if (!redundancyDetermined)
     {
         initSystemState();
     }
 
-    enableOrDisableRedundancy(getNoRedundancyReasons());
+    auto reasons = getNoRedundancyReasons();
+    enableOrDisableRedundancy(reasons);
     redundancyDetermined = true;
 
     determineAndSetFailoversAllowed();
 
     if (!redundancyInterface.redundancy_enabled())
     {
+        auto wasManuallyDisabled = std::ranges::contains(
+            oldReasons, ReasonForNoRedundancy::ManuallyDisabled);
+
+        // Log an error when redundancy isn't enabled if:
+        // 1. Redundancy was previously enabled.
+        // 2. This is the first time checking redundancy.
+        // 3. The manual override to disable redundancy is now off but
+        //    was previously on, meaning there is some other reason.
+        if (oldEnabled || firstTime || (!manualDisable && wasManuallyDisabled))
+        {
+            using namespace errors;
+            std::string error{error_msg::noRedundancy};
+            Level sev{Level::Error};
+
+            if (manualDisable)
+            {
+                error = error_msg::redundancyManuallyDisabled;
+                sev = Level::Informational;
+            }
+
+            AdditionalData data;
+            data.emplace("ReasonsCount", std::to_string(reasons.size()));
+            if (!reasons.empty())
+            {
+                auto val = std::to_underlying(*reasons.begin());
+                data.emplace("FirstReasonVal", std::to_string(val));
+            }
+            addDefaultData(redundancyInterface, providers, data);
+
+            ctx.spawn(providers.getServices().logError(error, sev, data));
+        }
+
         // Make sure syncs are disabled if redundancy is disabled.
         ctx.spawn(providers.getSyncInterface().disableBackgroundSync());
 
