@@ -214,4 +214,30 @@ void addDefaultData(const RedundancyInterface& iface, Providers& providers,
     addFWData(providers.getServices(), providers.getSibling(), data);
 }
 
+void addFailoverOptsToData(const FailoverOptions& options,
+                           errors::AdditionalData& data)
+{
+    constexpr auto failoverOptPrefix = "FOOpt:";
+
+    for (const auto& [key, value] : options)
+    {
+        std::string adKey = failoverOptPrefix + key;
+
+        data.emplace(adKey, std::visit(
+                                [](auto&& val) -> std::string {
+                                    using T = std::decay_t<decltype(val)>;
+                                    if constexpr (std::is_same_v<T, bool>)
+                                    {
+                                        return val ? "true" : "false";
+                                    }
+                                    else
+                                    {
+                                        // FailoverOptions can only hold bools
+                                        return "Unsupported option type";
+                                    }
+                                },
+                                value));
+    }
+}
+
 } // namespace rbmc::errors

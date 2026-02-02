@@ -4,8 +4,7 @@
 #include "providers.hpp"
 #include "redundancy.hpp"
 #include "redundancy_interface.hpp"
-
-using FailoverOptions = std::map<std::string, std::variant<bool>>;
+#include "types.hpp"
 
 namespace rbmc
 {

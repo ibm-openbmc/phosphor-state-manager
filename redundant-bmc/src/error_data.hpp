@@ -5,6 +5,7 @@
 #include "errors.hpp"
 #include "providers.hpp"
 #include "redundancy_interface.hpp"
+#include "types.hpp"
 
 namespace rbmc::errors
 {
@@ -19,5 +20,14 @@ namespace rbmc::errors
  */
 void addDefaultData(const RedundancyInterface& iface, Providers& providers,
                     AdditionalData& data);
+
+/**
+ * @brief Adds the failover options keys and values to the
+ *        additional data map.
+ *
+ * Of the form: "FOOpt:<key>  ->  <value>"
+ */
+void addFailoverOptsToData(const FailoverOptions& options,
+                           errors::AdditionalData& data);
 
 } // namespace rbmc::errors

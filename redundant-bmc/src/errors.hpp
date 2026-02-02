@@ -8,7 +8,10 @@
 #include <map>
 #include <string>
 
-namespace rbmc::errors
+namespace rbmc
+{
+
+namespace errors
 {
 
 using Level = sdbusplus::common::xyz::openbmc_project::logging::Entry::Level;
@@ -34,4 +37,6 @@ const std::string noRedundancy =
 
 } // namespace error_msg
 
-} // namespace rbmc::errors
+} // namespace errors
+
+} // namespace rbmc

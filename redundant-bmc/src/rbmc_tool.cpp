@@ -4,6 +4,7 @@
 #include "redundancy.hpp"
 #include "services_impl.hpp"
 #include "sibling_reset_impl.hpp"
+#include "types.hpp"
 
 #include <CLI/CLI.hpp>
 #include <nlohmann/json.hpp>
@@ -393,8 +394,7 @@ sdbusplus::async::task<> modifyRedundancyOverride(
 sdbusplus::async::task<> startFailover(sdbusplus::async::context& ctx,
                                        bool force)
 {
-    using FailoverOptions = std::map<std::string, std::variant<bool>>;
-    FailoverOptions options;
+    rbmc::FailoverOptions options;
 
     try
     {

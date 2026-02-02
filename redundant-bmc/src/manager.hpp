@@ -5,6 +5,7 @@
 #include "redundancy_interface.hpp"
 #include "role_determination.hpp"
 #include "role_handler.hpp"
+#include "types.hpp"
 
 #include <sdbusplus/async.hpp>
 #include <xyz/openbmc_project/Control/Failover/aserver.hpp>
@@ -125,6 +126,18 @@ class Manager :
      *        removes the persisted value.
      */
     sdbusplus::async::task<> postStartupClearFOInProgress();
+
+    /**
+     * @brief Checks if a failover can be started now.
+     *
+     * @param[in] options - The options passed to StartFailover
+     *
+     * @return std::string - The reason for the failover rejection
+     *                       or empty string if it can proceed.
+     *
+     */
+    sdbusplus::async::task<fo_blocked::Reason> validateFailoverRequest(
+        const FailoverOptions& options);
 
     /**
      * @brief The async context object

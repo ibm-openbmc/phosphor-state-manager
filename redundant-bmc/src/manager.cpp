@@ -333,43 +333,71 @@ void Manager::disableRedPropChanged(bool disable)
     handler->disableRedPropChanged(disable);
 }
 
+sdbusplus::async::task<fo_blocked::Reason> Manager::validateFailoverRequest(
+    const FailoverOptions& options)
+{
+    if (!handler)
+    {
+        co_return fo_blocked::Reason::tooEarly;
+    }
+
+    co_return co_await handler->getFailoverBlockedReason(options);
+}
+
 // NOLINTNEXTLINE
 sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
                                               Requester requester,
                                               const FailoverOptions& options)
 {
-    lg2::info("Failover requester is {REQUESTER}", "REQUESTER", requester);
-
-    if (redundancyInterface.failover_imminent() ||
-        redundancyInterface.failover_in_progress())
+    auto reqString = convertRequesterToString(requester);
+    if (reqString.contains('.'))
     {
-        lg2::error(
-            "Failover not allowed because a failover is already imminent or in progress ");
-        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+        reqString = reqString.substr(reqString.find_last_of('.') + 1);
     }
 
-    if (!handler)
-    {
-        lg2::error("Failover not allowed because it is too early");
-        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
-    }
+    lg2::info("Failover requester is {REQUESTER}", "REQUESTER", reqString);
 
-    // Do more in depth checking of system state
-    auto reason = co_await handler->getFailoverBlockedReason(options);
-    if (reason != fo_blocked::Reason::none)
+    errors::AdditionalData data{
+        {"FORequester", reqString},
+        {"FORequesterVal", std::to_string(std::to_underlying(requester))}};
+
+    errors::addDefaultData(redundancyInterface, *providers, data);
+    errors::addFailoverOptsToData(options, data);
+
+    auto blockedReason = co_await validateFailoverRequest(options);
+
+    if (blockedReason != fo_blocked::Reason::none)
     {
-        lg2::error("Failover is blocked because: {REASON}", "REASON",
-                   fo_blocked::getFailoverBlockedDescription(reason));
+        auto blockedReasonDesc =
+            fo_blocked::getFailoverBlockedDescription(blockedReason);
+
+        lg2::error("StartFailover failed because: {REASON}", "REASON",
+                   blockedReasonDesc);
+
+        data.emplace("FOBlockedReason", blockedReasonDesc);
+        data.emplace("FOBlockedReasonVal",
+                     std::to_string(std::to_underlying(blockedReason)));
+
+        auto sev = (requester == Requester::Tool) ? errors::Level::Informational
+                                                  : errors::Level::Warning;
+
+        co_await providers->getServices().logError(
+            errors::error_msg::failoverBlocked, sev, data);
+
         throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
     }
 
     if (redundancyInterface.role() == Role::Passive)
     {
+        co_await providers->getServices().logError(
+            errors::error_msg::failoverStarted, errors::Level::Informational,
+            data);
+
         ctx.spawn(doFailoverFromPassive(requester));
     }
     else
     {
-        // Shouldn't get here, would have failed in getFailoverBlockedReason
+        // Shouldn't get here, would have failed in validateFailoverRequest
         lg2::error("StartFailover on active BMC not supported yet");
         throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
     }
