@@ -59,8 +59,6 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
 
     co_await redMgr.determineRedundancyAndSync();
 
-    // TODO: Create an error if no redundancy
-
     startSiblingWatches();
 
     startSyncHealthWatch();

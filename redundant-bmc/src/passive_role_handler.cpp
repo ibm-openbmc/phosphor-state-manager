@@ -222,7 +222,6 @@ sdbusplus::async::task<> PassiveRoleHandler::startSync()
     {
         lg2::error("Full sync on passive BMC failed");
         co_await stopSync();
-        // TODO: create error log
     }
 }
 
@@ -270,7 +269,6 @@ sdbusplus::async::task<> PassiveRoleHandler::syncHealthCritical()
     if (providers.getSibling().alive())
     {
         lg2::error("Sync fail was not caused by a sibling BMC problem");
-        // TODO: Create error log
     }
     else
     {
