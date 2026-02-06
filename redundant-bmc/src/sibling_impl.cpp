@@ -8,6 +8,7 @@
 #include <xyz/openbmc_project/State/BMC/common.hpp>
 #include <xyz/openbmc_project/State/Decorator/Availability/client.hpp>
 
+#include <chrono>
 #include <ranges>
 
 namespace rbmc
@@ -39,8 +40,6 @@ sdbusplus::async::task<> SiblingImpl::init()
     ctx.spawn(watchInterfaceRemoved());
     ctx.spawn(watchPropertyChanged());
 
-    // Attempt to get the D-Bus service name.  It would only
-    // be there if the sibling BMC is present.
     serviceName = co_await lookupServiceName();
 
     if (!serviceName.empty())
@@ -59,19 +58,44 @@ sdbusplus::async::task<std::string> SiblingImpl::lookupServiceName() const
 {
     using ObjectMapper =
         sdbusplus::client::xyz::openbmc_project::ObjectMapper<>;
+
     std::vector<std::string> interface{AvailIntf::interface};
+    const std::chrono::milliseconds delay{100};
+    const size_t retries = 100; // 10 seconds total
+    size_t count = 0;
+    bool traced = false;
 
-    try
+    do
     {
-        auto object = co_await ObjectMapper(ctx)
-                          .service(ObjectMapper::default_service)
-                          .path(ObjectMapper::instance_path)
-                          .get_object(objectPath, interface);
+        try
+        {
+            auto object = co_await ObjectMapper(ctx)
+                              .service(ObjectMapper::default_service)
+                              .path(ObjectMapper::instance_path)
+                              .get_object(objectPath, interface);
 
-        co_return object.begin()->first;
-    }
-    catch (const sdbusplus::exception_t&)
-    {}
+            if (object.size() != 1)
+            {
+                lg2::warning(
+                    "Unexpected number of services found for {PATH} = {NUM_SERVICES}",
+                    "PATH", objectPath, "NUM_SERVICES", object.size());
+            }
+
+            co_return object.begin()->first;
+        }
+        catch (const sdbusplus::exception_t&)
+        {}
+
+        if (!traced)
+        {
+            traced = true;
+            lg2::warning("Sibling service not in mapper, will retry for 10s");
+        }
+        co_await sdbusplus::async::sleep_for(ctx, delay);
+
+    } while (++count < retries);
+
+    lg2::warning("Could not find sibling service name in mapper");
 
     co_return std::string{};
 }
@@ -203,17 +227,10 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded()
         // the mapper and then start the nameOwnerChanged watch.
         if (serviceName.empty())
         {
-            const size_t mapperRetries = 200;
-            size_t count = 0;
+            serviceName = co_await lookupServiceName();
 
-            do
-            {
-                using namespace std::chrono_literals;
-                co_await sdbusplus::async::sleep_for(ctx, 100ms);
-                serviceName = co_await lookupServiceName();
-                lg2::info("After interfacesAdded, sibling service is {SERVICE}",
-                          "SERVICE", serviceName);
-            } while (serviceName.empty() && (count++ < mapperRetries));
+            lg2::info("After interfacesAdded, sibling service is {SERVICE}",
+                      "SERVICE", serviceName);
 
             if (!serviceName.empty())
             {

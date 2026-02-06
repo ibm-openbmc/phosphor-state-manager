@@ -322,6 +322,8 @@ class SiblingImpl : public Sibling
     /**
      * @brief Looks up the sibling D-Bus service name from the mapper
      *
+     * Will do retries for up to 10 seconds.
+     *
      * @return std::string - The service name or empty string if not found.
      */
     sdbusplus::async::task<std::string> lookupServiceName() const;
