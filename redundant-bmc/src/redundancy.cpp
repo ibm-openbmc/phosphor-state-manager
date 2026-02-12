@@ -176,11 +176,6 @@ Reason getFailoverBlockedReason(const Input& input)
                 return Reason::failoversNotAllowed;
             }
         }
-        else if (input.syncInProgress)
-        {
-            // The passive BMC is in the middle of its full sync
-            return Reason::fullSyncInProgress;
-        }
     }
     else
     {
@@ -227,9 +222,6 @@ std::string getFailoverBlockedDescription(Reason reason)
             break;
         case Reason::redundancyNotEnabled:
             desc = "Redundancy is not enabled"s;
-            break;
-        case Reason::fullSyncInProgress:
-            desc = "Full sync is in progress"s;
             break;
         case Reason::failoversNotAllowed:
             desc = "Failovers are not allowed"s;

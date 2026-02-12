@@ -321,7 +321,6 @@ auto PassiveRoleHandler::getFailoverBlockedReason(
         .siblingAlive = sibling.alive(),
         .siblingState = sibling.getBMCState().value_or(BMCState::NotReady),
         .redundancyEnabled = sibling.getRedundancyEnabled().value_or(false),
-        .syncInProgress = providers.getSyncInterface().isFullSyncInProgress(),
         .state = bmcState,
         .failoversNotAllowed = !redundancyInterface.failovers_allowed(),
         .forceOption = force,

@@ -105,7 +105,6 @@ struct Input
     bool siblingAlive;
     BMCState siblingState;
     bool redundancyEnabled;
-    bool syncInProgress;
     BMCState state;
     bool failoversNotAllowed;
     bool forceOption;
@@ -119,7 +118,6 @@ enum class Reason
 {
     none,
     redundancyNotEnabled,
-    fullSyncInProgress,
     failoversNotAllowed,
     siblingDeadButRedundancyNotEnabled,
     notAtReady,

@@ -229,7 +229,6 @@ TEST(RedundancyTest, FailoverBlockedTest)
         .siblingAlive = true,
         .siblingState = rbmc::BMCState::Ready,
         .redundancyEnabled = true,
-        .syncInProgress = false,
         .state = rbmc::BMCState::Ready,
         .failoversNotAllowed = false,
         .forceOption = false,
@@ -270,14 +269,6 @@ TEST(RedundancyTest, FailoverBlockedTest)
         input.siblingState = rbmc::BMCState::Quiesced;
         EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::none);
-    }
-
-    // Sync in progress
-    {
-        auto input = golden;
-        input.syncInProgress = true;
-        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
-                  rbmc::fo_blocked::Reason::fullSyncInProgress);
     }
 
     // Sibling not responding, but redundancy was enabled
