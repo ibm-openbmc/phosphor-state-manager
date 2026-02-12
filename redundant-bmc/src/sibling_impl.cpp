@@ -30,7 +30,7 @@ sdbusplus::async::task<> SiblingImpl::init()
 {
     if (initialized)
     {
-        lg2::info("Sibling::init called more than once");
+        lg2::warning("Sibling::init called more than once");
         co_return;
     }
 
@@ -327,7 +327,7 @@ sdbusplus::async::task<> SiblingImpl::watchNameOwnerChanged()
 
         if (!oldOwner.empty() && newOwner.empty())
         {
-            lg2::info("Sibling D-Bus name lost");
+            lg2::warning("Sibling D-Bus name lost");
             setInterfacesNotPresent();
 
             // Invoke any health callbacks as sibling is gone.

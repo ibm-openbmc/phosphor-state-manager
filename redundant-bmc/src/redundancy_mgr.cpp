@@ -124,7 +124,7 @@ void RedundancyMgr::enableOrDisableRedundancy(
     }
     else
     {
-        lg2::info("Redundancy must be disabled");
+        lg2::warning("Redundancy must be disabled");
     }
 
     redundancyInterface.reasons_for_no_redundancy(disableReasons);
@@ -157,7 +157,7 @@ void RedundancyMgr::disableRedPropChanged(bool disable)
     if (!redundancyDetermined)
     {
         // Must be before we've handled redundancy, it should happen soon
-        lg2::info(
+        lg2::warning(
             "Redundancy has not been determined yet, will not change redundancy now.");
         return;
     }
@@ -275,7 +275,8 @@ void RedundancyMgr::determineAndSetFailoversAllowed()
         notAllowedReasons, std::inserter(descs, descs.begin()),
         [](const auto& reason) {
             auto desc = fona::getFailoversNotAllowedDescription(reason);
-            lg2::info("Failovers not allowed because {REASON}", "REASON", desc);
+            lg2::warning("Failovers not allowed because {REASON}", "REASON",
+                         desc);
             return desc;
         });
 

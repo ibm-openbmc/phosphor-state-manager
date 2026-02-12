@@ -39,7 +39,7 @@ Manager::Manager(sdbusplus::async::context& ctx,
             data::read<bool>(data::key::passiveError).value_or(false);
         if (chosePassiveDueToError)
         {
-            lg2::info("Was previously passive due to error");
+            lg2::warning("BMC was previously passive due to error");
         }
     }
     catch (const std::exception& e)
@@ -300,8 +300,8 @@ void Manager::updateRole(const role_determination::RoleInfo& roleInfo)
     }
     catch (const std::exception& e)
     {
-        lg2::info("Could not serialize RoleReason value of {REASON}: {ERROR}",
-                  "REASON", reasonDesc, "ERROR", e);
+        lg2::error("Could not serialize RoleReason value of {REASON}: {ERROR}",
+                   "REASON", reasonDesc, "ERROR", e);
     }
 }
 
@@ -355,7 +355,7 @@ sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
     else
     {
         // Shouldn't get here, would have failed in getFailoverBlockedReason
-        lg2::info("StartFailover on active BMC not supported yet");
+        lg2::error("StartFailover on active BMC not supported yet");
         throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
     }
 }

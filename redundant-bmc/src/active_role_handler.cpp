@@ -87,10 +87,10 @@ void ActiveRoleHandler::siblingHealthChange(bool alive)
     }
     else
     {
-        lg2::info("Sibling BMC health changed to bad");
+        lg2::warning("Sibling BMC health changed to bad");
         if (redundancyInterface.redundancy_enabled())
         {
-            lg2::info(
+            lg2::warning(
                 "Disabling redundancy in {TIME} minutes if sibling doesn't come back",
                 "TIME", siblingHealthTimeout.count());
             siblingHealthTimer.start(siblingHealthTimeout);
@@ -146,7 +146,7 @@ sdbusplus::async::task<> ActiveRoleHandler::syncHealthCritical()
 {
     using namespace std::chrono_literals;
 
-    lg2::info("Disabling background sync because it is failing");
+    lg2::warning("Disabling background sync because it is failing");
     co_await providers.getSyncInterface().disableBackgroundSync();
 
     // A passive BMC reboot should not result in redundancy being
@@ -168,7 +168,7 @@ sdbusplus::async::task<> ActiveRoleHandler::syncHealthCritical()
     }
     else
     {
-        lg2::info(
+        lg2::warning(
             "Sync health is critical, but there is also a sibling heartbeat loss");
     }
 
@@ -252,7 +252,7 @@ void ActiveRoleHandler::siblingFailoverImminent(bool imminent)
 {
     if (imminent)
     {
-        lg2::info("A failover is imminent");
+        lg2::warning("A failover is imminent");
 
         ctx.spawn(providers.getSyncInterface().disableBackgroundSync());
         ctx.spawn(providers.getServices().flushJournal());

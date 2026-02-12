@@ -256,7 +256,7 @@ void PassiveRoleHandler::syncHealthPropertyChanged(
 // NOLINTNEXTLINE
 sdbusplus::async::task<> PassiveRoleHandler::syncHealthCritical()
 {
-    lg2::info("Disabling sync because it is failing");
+    lg2::warning("Disabling sync because it is failing");
     co_await stopSync();
 
     // Redundancy doesn't need to be disabled if a background sync fails on a
@@ -274,7 +274,7 @@ sdbusplus::async::task<> PassiveRoleHandler::syncHealthCritical()
     }
     else
     {
-        lg2::info(
+        lg2::warning(
             "Sync health is critical, but there is also a sibling heartbeat loss");
     }
 }
