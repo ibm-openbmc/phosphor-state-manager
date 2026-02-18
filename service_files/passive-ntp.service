@@ -1,0 +1,18 @@
+[Unit]
+Description=Passive NTP Service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c ' \
+    POSITION=$(cat /run/openbmc/position 2>/dev/null || echo "0"); \
+    if [ "$POSITION" = "0" ]; then \
+        NTP_IP="9.6.28.101"; \
+    else \
+        NTP_IP="9.6.28.100"; \
+    fi; \
+    busctl set-property xyz.openbmc_project.Settings /xyz/openbmc_project/time/sync_method xyz.openbmc_project.Time.Synchronization TimeSyncMethod s "xyz.openbmc_project.Time.Synchronization.Method.NTP"; \
+    busctl set-property xyz.openbmc_project.Network /xyz/openbmc_project/network/eth0 xyz.openbmc_project.Network.EthernetInterface StaticNTPServers as 1 "$NTP_IP" \
+'
+
+[Install]
+WantedBy=multi-user.target

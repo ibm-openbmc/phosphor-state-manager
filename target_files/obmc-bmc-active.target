@@ -1,3 +1,5 @@
 [Unit]
 Description=Active BMC Target
 Conflicts=obmc-bmc-passive.target
+Requires=active-ntp.service chronyd.service
+After=network.target

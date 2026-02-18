@@ -1,3 +1,6 @@
 [Unit]
 Description=Passive BMC Target
-Conflicts=obmc-bmc-active.target
+Conflicts=obmc-bmc-active.target chronyd.service
+After=network.target
+Wants=systemd-timesyncd.service
+Requires=passive-ntp.service

@@ -1,0 +1,22 @@
+[Unit]
+Description=Active NTP Service
+
+[Service]
+Type=oneshot
+# Reload settings manager to get the preserved time sync method
+ExecStart=/bin/sh -c 'systemctl reload phosphor-settings-manager.service || true'
+# Wait a moment for settings to be loaded
+ExecStart=/bin/sleep 1
+# Read the saved sync method and apply it
+ExecStart=/bin/sh -c ' \
+    SETTINGS_FILE="/var/lib/phosphor-settings-manager/settings/xyz/openbmc_project/time/sync_method"; \
+    if [ -f "$SETTINGS_FILE" ]; then \
+        SYNC_METHOD=$(grep -oP "(?<=\"TimeSyncMethod\": \")[^\"]*" "$SETTINGS_FILE" 2>/dev/null || echo "xyz.openbmc_project.Time.Synchronization.Method.Manual"); \
+    else \
+        SYNC_METHOD="xyz.openbmc_project.Time.Synchronization.Method.Manual"; \
+    fi; \
+    busctl set-property xyz.openbmc_project.Settings /xyz/openbmc_project/time/sync_method xyz.openbmc_project.Time.Synchronization TimeSyncMethod s "$SYNC_METHOD" \
+'
+
+[Install]
+WantedBy=multi-user.target
