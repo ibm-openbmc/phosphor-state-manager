@@ -84,12 +84,12 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
 {
     try
     {
-        // NOLINTNEXTLINE
-        co_await providers.getServices().startUnit(bmcPassiveTarget);
+        // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+        co_await providers.getServices().startUnit(bmcPassiveTarget,
+                                                   std::chrono::minutes{5});
     }
-    catch (const sdbusplus::exception_t& e)
+    catch (const std::exception& e)
     {
-        // TODO: error log
         lg2::error("Failed while starting BMC passive target: {ERROR}", "ERROR",
                    e);
     }

@@ -57,12 +57,16 @@ class Services
     /**
      * @brief Starts a systemd unit
      *
-     * Waits for it to be active or failed before returning.
+     * Will return after unit becomes active, otherwise will
+     * throw if:
+     *   1. Unit goes to failed
+     *   2. The timeout is reached.
      *
      * @param[in] unitName - The unit name
+     * @param[in] timeout - Timeout value.
      */
     virtual sdbusplus::async::task<> startUnit(
-        const std::string& unitName) const = 0;
+        const std::string& unitName, std::chrono::seconds timeout) const = 0;
 
     /**
      * @brief Gets the systemd unit state

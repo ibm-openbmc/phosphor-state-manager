@@ -13,6 +13,7 @@
 #include <xyz/openbmc_project/State/Boot/Progress/client.hpp>
 #include <xyz/openbmc_project/State/Host/client.hpp>
 
+#include <format>
 #include <fstream>
 
 namespace rbmc
@@ -496,10 +497,39 @@ sdbusplus::async::task<std::string> ServicesImpl::getUnitState(
     co_return "inactive";
 }
 
-// NOLINTBEGIN
+sdbusplus::async::task<> ServicesImpl::listAndLogSystemdJobs() const
+{
+    try
+    {
+        constexpr auto systemd = sdbusplus::async::proxy()
+                                     .service(service::systemd)
+                                     .path(object_path::systemd)
+                                     .interface(interface::systemdMgr);
+
+        using JobInfo = std::tuple<uint32_t, std::string, std::string,
+                                   std::string, sdbusplus::message::object_path,
+                                   sdbusplus::message::object_path>;
+
+        auto jobs =
+            co_await systemd.call<std::vector<JobInfo>>(ctx, "ListJobs");
+
+        lg2::error("Active systemd jobs at timeout ({COUNT} total):", "COUNT",
+                   jobs.size());
+
+        for (const auto& [id, name, type, state, jobPath, unitPath] : jobs)
+        {
+            lg2::error("  Job {ID}: {NAME} State: {STATE}", "ID", id, "NAME",
+                       name, "STATE", state);
+        }
+    }
+    catch (const sdbusplus::exception_t& e)
+    {
+        lg2::error("Failed to list systemd jobs: {ERROR}", "ERROR", e);
+    }
+}
+
 sdbusplus::async::task<> ServicesImpl::startUnit(
-    const std::string& unitName) const
-// NOLINTEND
+    const std::string& unitName, std::chrono::seconds timeout) const
 {
     using namespace std::chrono_literals;
     constexpr auto systemd = sdbusplus::async::proxy()
@@ -513,9 +543,18 @@ sdbusplus::async::task<> ServicesImpl::startUnit(
         ctx, "StartUnit", unitName, std::string{"replace"});
 
     std::string state;
+    auto end = std::chrono::steady_clock::now() + timeout;
 
     while ((state != "active") && (state != "failed"))
     {
+        if (std::chrono::steady_clock::now() > end)
+        {
+            lg2::error("Timed out waiting for {UNIT} to start after {TIME}s",
+                       "UNIT", unitName, "TIME", timeout.count());
+            co_await listAndLogSystemdJobs();
+            break;
+        }
+
         co_await sdbusplus::async::sleep_for(ctx, 1s);
         state = co_await getUnitState(unitName);
     }
@@ -523,7 +562,11 @@ sdbusplus::async::task<> ServicesImpl::startUnit(
     lg2::info("Finished waiting for {UNIT} to start (result = {STATE})", "UNIT",
               unitName, "STATE", state);
 
-    co_return;
+    if (state != "active")
+    {
+        throw std::runtime_error{
+            std::format("{} final state is {}", unitName, state)};
+    }
 }
 
 bool ServicesImpl::getProvisioned() const

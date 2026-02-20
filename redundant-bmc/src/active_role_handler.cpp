@@ -39,12 +39,11 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
 
     try
     {
-        // NOLINTNEXTLINE
-        co_await services.startUnit(bmcActiveTarget);
+        // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+        co_await services.startUnit(bmcActiveTarget, std::chrono::minutes{10});
     }
-    catch (const sdbusplus::exception_t& e)
+    catch (const std::exception& e)
     {
-        // TODO: error log
         lg2::error("Failed while starting BMC active target: {ERROR}", "ERROR",
                    e);
     }
@@ -202,11 +201,12 @@ sdbusplus::async::task<> ActiveRoleHandler::failoverStartActiveTarget()
 
     try
     {
-        co_await providers.getServices().startUnit(bmcActiveTarget);
+        // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+        co_await providers.getServices().startUnit(bmcActiveTarget,
+                                                   std::chrono::minutes{10});
     }
-    catch (const sdbusplus::exception_t& e)
+    catch (const std::exception& e)
     {
-        // TODO: error log
         lg2::error(
             "Failed while starting BMC active target during failover: {ERROR}",
             "ERROR", e);

@@ -52,12 +52,17 @@ class ServicesImpl : public Services
     /**
      * @brief Starts a systemd unit
      *
-     * Waits for it to be active or failed before returning.
+     * Will return after unit becomes active, otherwise will
+     * throw if:
+     *   1. Unit goes to failed
+     *   2. The timeout is reached.
      *
      * @param[in] unitName - The unit name
+     * @param[in] timeout - Timeout value.
      */
     sdbusplus::async::task<> startUnit(
-        const std::string& unitName) const override;
+        const std::string& unitName,
+        std::chrono::seconds timeout) const override;
 
     /**
      * @brief Gets the systemd unit state
@@ -152,6 +157,14 @@ class ServicesImpl : public Services
      */
     sdbusplus::async::task<sdbusplus::message::object_path> getUnitPath(
         const std::string& unitName) const;
+
+    /**
+     * @brief Lists all active systemd jobs and logs them to the journal
+     *
+     * This is useful for debugging when a unit fails to start within
+     * the expected timeout period.
+     */
+    sdbusplus::async::task<> listAndLogSystemdJobs() const;
 
     /**
      * @brief Starts the InterfacesAdded watch for the host state
