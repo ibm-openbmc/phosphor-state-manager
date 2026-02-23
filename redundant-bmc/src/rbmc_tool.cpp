@@ -134,24 +134,15 @@ void addNoRedReasons(const rbmc::redundancy::ReasonsForNoRedundancy& reasons,
     output["Reasons for no BMC redundancy"] = std::move(reasonList);
 }
 
-void addFONotAllowedReasons(nlohmann::ordered_json& output)
+void addFONotAllowedReason(rbmc::FailoversNotAllowedReason reason,
+                           nlohmann::ordered_json& output)
 {
+    // The output looks better as an array even though there
+    // is only one value.
     nlohmann::json::array_t reasonList;
-    auto reasons =
-        data::read<std::set<std::string>>(data::key::failoversNotAllowedReasons)
-            .value_or(std::set<std::string>());
-    if (!reasons.empty())
-    {
-        std::ranges::for_each(reasons, [&reasonList](auto& reason) {
-            reasonList.push_back(reason);
-        });
-    }
-    else
-    {
-        reasonList.emplace_back("Unknown");
-    }
+    reasonList.emplace_back(getPDIEnumString(reason));
 
-    output["Reasons failovers are not allowed"] = std::move(reasonList);
+    output["Reason failovers are not allowed"] = std::move(reasonList);
 }
 
 void addLastFailoverDetails(const std::filesystem::path& dataPath,
@@ -226,7 +217,7 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
         if ((role == "Active") && props.redundancy_enabled &&
             !props.failovers_allowed)
         {
-            addFONotAllowedReasons(output);
+            addFONotAllowedReason(props.failovers_not_allowed_reason, output);
         }
 
         if ((role == "Active") && pos.has_value())

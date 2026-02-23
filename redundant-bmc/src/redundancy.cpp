@@ -83,37 +83,32 @@ ReasonsForNoRedundancy getNoRedundancyReasons(const Input& input)
 namespace fona
 {
 
-FailoversNotAllowedReasons getFailoversNotAllowedReasons(const Input& input)
+FailoversNotAllowedReason getFailoversNotAllowedReason(const Input& input)
 {
     using enum FailoversNotAllowedReason;
-    FailoversNotAllowedReasons reasons;
 
     if (!input.redundancyEnabled)
     {
-        reasons.insert(redundancyDisabled);
-        // No need to look for more reasons
-        return reasons;
+        return NoRedundancy;
     }
 
     if (input.failoverInProgress)
     {
-        reasons.insert(failoverInProgress);
-        // No need to look for more reasons
-        return reasons;
+        return FailoverInProgress;
     }
 
     if (!input.fullSyncComplete)
     {
-        reasons.insert(fullSyncNotComplete);
+        return FullSyncNotComplete;
     }
 
     if ((input.systemState != SystemState::off) &&
         (input.systemState != SystemState::runtime))
     {
-        reasons.insert(systemState);
+        return WrongSystemState;
     }
 
-    return reasons;
+    return None;
 }
 
 std::string getFailoversNotAllowedDescription(FailoversNotAllowedReason reason)
@@ -124,17 +119,20 @@ std::string getFailoversNotAllowedDescription(FailoversNotAllowedReason reason)
 
     switch (reason)
     {
-        case systemState:
+        case WrongSystemState:
             desc = "System state is not off or runtime"s;
             break;
-        case fullSyncNotComplete:
+        case FullSyncNotComplete:
             desc = "A full sync hasn't been completed"s;
             break;
-        case failoverInProgress:
+        case FailoverInProgress:
             desc = "A failover is in progress"s;
             break;
-        case redundancyDisabled:
+        case NoRedundancy:
             desc = "Redundancy is disabled"s;
+            break;
+        case None:
+            desc = "No reason"s;
             break;
     }
     return desc;

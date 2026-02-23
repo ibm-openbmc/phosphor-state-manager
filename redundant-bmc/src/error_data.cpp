@@ -47,8 +47,12 @@ void addRedundancyData(const RedundancyInterface& iface, AdditionalData& data)
             });
     }
 
-    // TODO: FailoverNotAllowedReasons: Move from addFileData() when
-    //       it is on D-Bus.
+    if (iface.failovers_not_allowed_reason() !=
+        RedundancyInterface::FailoversNotAllowedReason::None)
+    {
+        data["FONotAllowedReason"] =
+            getPDIEnumString(iface.failovers_not_allowed_reason());
+    }
 
     // Only save these when they're interesting.
     if (iface.failover_in_progress())
@@ -163,18 +167,6 @@ void addFileData(AdditionalData& data)
             {
                 data["RedOffAtRuntime"] = boolToYesOrNo(true);
             }
-        }
-
-        auto notAllowedReasons = data::read<std::set<std::string>>(
-            data::key::failoversNotAllowedReasons);
-        if (notAllowedReasons.has_value() && !notAllowedReasons.value().empty())
-        {
-            // TODO: Move to addRedundancyData() when this moves to D-Bus.
-            data["FONotAllowedReasons"] = std::ranges::fold_left(
-                notAllowedReasons.value(), std::string{},
-                [](const auto& front, const auto& r) {
-                    return front.empty() ? r : front + ' ' + r;
-                });
         }
     }
     catch (const std::exception& e)

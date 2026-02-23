@@ -26,7 +26,6 @@ constexpr auto roleReason = "RoleReason";
 constexpr auto noRedReasons = "NoRedundancyReasons";
 constexpr auto disableRed = "DisableRedundancy";
 constexpr auto redundancyOffAtRuntime = "RedundancyOffAtRuntime";
-constexpr auto failoversNotAllowedReasons = "FailoversNotAllowedReasons";
 constexpr auto failoverInProgress = "FailoverInProgress";
 } // namespace key
 

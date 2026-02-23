@@ -16,17 +16,7 @@ RedundancyMgr::RedundancyMgr(sdbusplus::async::context& ctx,
                              Providers& providers, RedundancyInterface& iface) :
     ctx(ctx), providers(providers), redundancyInterface(iface),
     manualDisable(iface.disable_redundancy_override())
-{
-    try
-    {
-        data::remove(data::key::failoversNotAllowedReasons);
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error("Failed removing failoversNotAllowedReasons: {ERROR}",
-                   "ERROR", e);
-    }
-}
+{}
 
 void RedundancyMgr::determineAndSetRedundancy()
 {
@@ -304,42 +294,24 @@ void RedundancyMgr::determineAndSetFailoversAllowed()
         .failoverInProgress = failoverInProgress,
         .systemState = systemState.value_or(SystemState::other)};
 
-    auto notAllowedReasons = fona::getFailoversNotAllowedReasons(input);
+    auto reason = fona::getFailoversNotAllowedReason(input);
 
-    // TODO: Put the reasons on D-Bus. For now, just save the
-    // descriptions in the normal spot for rbmctool.
+    redundancyInterface.failovers_not_allowed_reason(reason);
 
-    std::set<std::string> descs;
-    std::ranges::transform(
-        notAllowedReasons, std::inserter(descs, descs.begin()),
-        [](const auto& reason) {
-            auto desc = fona::getFailoversNotAllowedDescription(reason);
-            lg2::warning("Failovers not allowed because {REASON}", "REASON",
-                         desc);
-            return desc;
-        });
-
-    try
+    if (reason != FailoversNotAllowedReason::None)
     {
-        data::write(data::key::failoversNotAllowedReasons, descs);
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error("Failed saving failovers not allowed descriptions");
-    }
+        lg2::warning("Failovers not allowed because {REASON}", "REASON",
+                     fona::getFailoversNotAllowedDescription(reason));
 
-    if (notAllowedReasons.empty())
+        redundancyInterface.failovers_allowed(false);
+    }
+    else
     {
         if (!redundancyInterface.failovers_allowed())
         {
             lg2::info("Changing failovers to allowed");
             redundancyInterface.failovers_allowed(true);
         }
-    }
-    else
-    {
-        // Already traced above.
-        redundancyInterface.failovers_allowed(false);
     }
 }
 

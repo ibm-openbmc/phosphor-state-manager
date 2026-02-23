@@ -158,23 +158,23 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
 TEST(RedundancyTest, FailoversNotAllowedTest)
 {
     namespace fona = rbmc::fona;
-    using enum fona::FailoversNotAllowedReason;
+    using enum rbmc::FailoversNotAllowedReason;
 
-    std::map<rbmc::SystemState, fona::FailoversNotAllowedReasons> testStates{
-        {rbmc::SystemState::off, {}},
-        {rbmc::SystemState::booting, {systemState}},
-        {rbmc::SystemState::runtime, {}},
-        {rbmc::SystemState::other, {systemState}}};
+    std::map<rbmc::SystemState, rbmc::FailoversNotAllowedReason> testStates{
+        {rbmc::SystemState::off, None},
+        {rbmc::SystemState::booting, WrongSystemState},
+        {rbmc::SystemState::runtime, None},
+        {rbmc::SystemState::other, WrongSystemState}};
 
-    for (const auto& [state, expectedReasons] : testStates)
+    for (const auto& [state, expectedReason] : testStates)
     {
         fona::Input input{.redundancyEnabled = true,
                           .fullSyncComplete = true,
                           .failoverInProgress = false,
                           .systemState = state};
 
-        auto reasons = fona::getFailoversNotAllowedReasons(input);
-        EXPECT_EQ(reasons, expectedReasons);
+        auto reason = fona::getFailoversNotAllowedReason(input);
+        EXPECT_EQ(reason, expectedReason);
     }
 
     // Redundancy disabled
@@ -183,10 +183,8 @@ TEST(RedundancyTest, FailoversNotAllowedTest)
                           .fullSyncComplete = true,
                           .failoverInProgress = false,
                           .systemState = rbmc::SystemState::off};
-        auto reasons = fona::getFailoversNotAllowedReasons(input);
-        ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(),
-                  fona::FailoversNotAllowedReason::redundancyDisabled);
+        auto reason = fona::getFailoversNotAllowedReason(input);
+        EXPECT_EQ(reason, NoRedundancy);
     }
 
     // Full sync not complete
@@ -195,10 +193,8 @@ TEST(RedundancyTest, FailoversNotAllowedTest)
                           .fullSyncComplete = false,
                           .failoverInProgress = false,
                           .systemState = rbmc::SystemState::off};
-        auto reasons = fona::getFailoversNotAllowedReasons(input);
-        ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(),
-                  fona::FailoversNotAllowedReason::fullSyncNotComplete);
+        auto reason = fona::getFailoversNotAllowedReason(input);
+        EXPECT_EQ(reason, FullSyncNotComplete);
     }
 
     // Failover in progress
@@ -207,19 +203,17 @@ TEST(RedundancyTest, FailoversNotAllowedTest)
                           .fullSyncComplete = true,
                           .failoverInProgress = true,
                           .systemState = rbmc::SystemState::off};
-        auto reasons = fona::getFailoversNotAllowedReasons(input);
-        ASSERT_EQ(reasons.size(), 1);
-        EXPECT_EQ(*reasons.begin(),
-                  fona::FailoversNotAllowedReason::failoverInProgress);
+        auto reason = fona::getFailoversNotAllowedReason(input);
+        EXPECT_EQ(reason, FailoverInProgress);
     }
 }
 
 TEST(RedundancyTest, GetFailoversNotAllowedDescTest)
 {
     namespace fona = rbmc::fona;
+    using enum rbmc::FailoversNotAllowedReason;
 
-    EXPECT_EQ(fona::getFailoversNotAllowedDescription(
-                  fona::FailoversNotAllowedReason::systemState),
+    EXPECT_EQ(fona::getFailoversNotAllowedDescription(WrongSystemState),
               "System state is not off or runtime");
 }
 

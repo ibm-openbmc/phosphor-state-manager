@@ -14,6 +14,8 @@ using Role =
 
 using ReasonForNoRedundancy = sdbusplus::common::xyz::openbmc_project::state::
     bmc::Redundancy::ReasonForNoRedundancy;
+using FailoversNotAllowedReason = sdbusplus::common::xyz::openbmc_project::
+    state::bmc::Redundancy::FailoversNotAllowedReason;
 
 using BMCState = sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState;
 
@@ -66,24 +68,11 @@ struct Input
 };
 
 /**
- * @brief Reasons why failovers aren't allowed
- */
-enum class FailoversNotAllowedReason
-{
-    redundancyDisabled,
-    fullSyncNotComplete,
-    failoverInProgress,
-    systemState
-};
-
-using FailoversNotAllowedReasons = std::set<FailoversNotAllowedReason>;
-
-/**
- * @brief Returns the reasons that failovers aren't allowed
+ * @brief Returns the reason that failovers aren't allowed
  *
- * @return The reasons.  Empty if there are none.
+ * @return The reason.  None if there isn't any.
  */
-FailoversNotAllowedReasons getFailoversNotAllowedReasons(const Input& input);
+FailoversNotAllowedReason getFailoversNotAllowedReason(const Input& input);
 
 /**
  * @brief Return the string description of the reason
