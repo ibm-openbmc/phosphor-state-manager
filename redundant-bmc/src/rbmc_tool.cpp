@@ -81,6 +81,21 @@ void printJSONParam(const std::string& name, const nlohmann::json& value)
     }
 }
 
+template <typename T>
+std::string getPDIEnumString(T value)
+    requires(std::is_enum_v<T>)
+{
+    try
+    {
+        auto v = sdbusplus::message::convert_to_string(value);
+        return v.substr(v.find_last_of('.') + 1);
+    }
+    catch (const std::exception& e)
+    {
+        return "BadEnum:" + std::to_string(std::to_underlying(value));
+    }
+}
+
 // NOLINTNEXTLINE
 sdbusplus::async::task<std::string> getBMCState(const rbmc::Services& services)
 {
@@ -89,8 +104,7 @@ sdbusplus::async::task<std::string> getBMCState(const rbmc::Services& services)
         // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
         auto bmcState = co_await services.getBMCState();
 
-        auto stateString = BMCState::convertBMCStateToString(bmcState);
-        co_return stateString.substr(stateString.find_last_of('.') + 1);
+        co_return getPDIEnumString(bmcState);
     }
     catch (const sdbusplus::exception_t& e)
     {
@@ -106,10 +120,7 @@ void addNoRedReasons(const rbmc::redundancy::ReasonsForNoRedundancy& reasons,
     if (!reasons.empty())
     {
         std::ranges::for_each(reasons, [&reasonList](const auto& r) {
-            auto shortName =
-                Redundancy::convertReasonForNoRedundancyToString(r);
-            shortName = shortName.substr(shortName.find_last_of('.') + 1);
-            reasonList.push_back(shortName);
+            reasonList.push_back(getPDIEnumString(r));
         });
     }
     else
@@ -173,9 +184,7 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
                          .path(path.str)
                          .properties();
 
-        auto role = Redundancy::convertRoleToString(props.role);
-        // Strip off the sdbusplus prefix to get the final part, e.g. 'Active'.
-        role = role.substr(role.find_last_of('.') + 1);
+        auto role = getPDIEnumString(props.role);
         output["Role"] = role;
 
         rbmc::ServicesImpl services{ctx};
@@ -248,9 +257,7 @@ sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
                           .path(path.str)
                           .properties();
 
-        auto role = Redundancy::convertRoleToString(rProps.role);
-        role = role.substr(role.find_last_of('.') + 1);
-        output["Role"] = role;
+        output["Role"] = getPDIEnumString(rProps.role);
 
         if (!extended)
         {
@@ -267,12 +274,9 @@ sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
                          .path(path.str)
                          .current_bmc_state();
 
-        auto bmcState = BMCState::convertBMCStateToString(state);
-        bmcState = bmcState.substr(bmcState.find_last_of('.') + 1);
-
         output["Redundancy Enabled"] = rProps.redundancy_enabled;
         output["Failovers Allowed"] = rProps.failovers_allowed;
-        output["BMC State"] = bmcState;
+        output["BMC State"] = getPDIEnumString(state);
         output["FW Version Hash"] = fwVersion;
         output["Provisioned"] = true; // TODO
     }
