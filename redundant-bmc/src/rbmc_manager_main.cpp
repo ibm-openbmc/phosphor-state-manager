@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 #include "manager.hpp"
+#include "persistent_data.hpp"
 #include "providers_impl.hpp"
 
 #include <sdbusplus/async/context.hpp>
@@ -14,6 +15,8 @@ int main()
 
     std::unique_ptr<rbmc::Providers> providers =
         std::make_unique<rbmc::ProvidersImpl>(ctx);
+
+    data::setDataDirectory(providers->getServices().getPersistentDataPath());
 
     rbmc::Manager manager{ctx, std::move(providers)};
 

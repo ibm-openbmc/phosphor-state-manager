@@ -71,8 +71,9 @@ static std::string makeTimestampString(const time_t& timestamp)
 
 } // namespace util
 
-void remove(std::string_view name, const std::filesystem::path& path)
+void remove(std::string_view name)
 {
+    auto path = dataFile();
     auto json = util::readFile(path);
     if (!json)
     {

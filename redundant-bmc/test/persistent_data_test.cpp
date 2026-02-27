@@ -1,4 +1,5 @@
 #include "persistent_data.hpp"
+#include "persistent_data_test_fixture.hpp"
 #include "role_determination.hpp"
 
 #include <fstream>
@@ -6,85 +7,62 @@
 #include <gtest/gtest.h>
 
 using namespace rbmc;
+using namespace rbmc::test;
 using namespace role_determination;
 
-class PersistentDataTest : public ::testing::Test
-{
-  protected:
-    static void SetUpTestCase()
-    {
-        char d[] = "/tmp/datatestXXXXXX";
-        dataDir = mkdtemp(d);
-        saveFile = dataDir / "save.json";
-    }
-
-    static void TearDownTestCase()
-    {
-        std::filesystem::remove_all(dataDir);
-    }
-
-    static std::filesystem::path saveFile;
-    static std::filesystem::path dataDir;
-};
-
-std::filesystem::path PersistentDataTest::saveFile;
-std::filesystem::path PersistentDataTest::dataDir;
+class PersistentDataTest : public PersistentDataTestFixture
+{};
 
 TEST_F(PersistentDataTest, WriteAndReadTest)
 {
     // Write
-    data::write("Role", Role::Active, saveFile);
-    data::write("Bool", true, saveFile);
-    data::write("String", std::string{"String"}, saveFile);
-    data::write("Uint32", uint32_t{0xAABBCCDD}, saveFile);
+    data::write("Role", Role::Active);
+    data::write("Bool", true);
+    data::write("String", std::string{"String"});
+    data::write("Uint32", uint32_t{0xAABBCCDD});
 
     // Read back
-    EXPECT_EQ(data::read<Role>("Role", saveFile), Role::Active);
-    EXPECT_EQ(data::read<bool>("Bool", saveFile), true);
-    EXPECT_EQ(data::read<std::string>("String", saveFile),
-              std::string{"String"});
-    EXPECT_EQ(data::read<uint32_t>("Uint32", saveFile), 0xAABBCCDD);
+    EXPECT_EQ(data::read<Role>("Role"), Role::Active);
+    EXPECT_EQ(data::read<bool>("Bool"), true);
+    EXPECT_EQ(data::read<std::string>("String"), std::string{"String"});
+    EXPECT_EQ(data::read<uint32_t>("Uint32"), 0xAABBCCDD);
 
     // Write new values
-    data::write("Role", Role::Passive, saveFile);
-    data::write("Bool", false, saveFile);
-    data::write("String", std::string{"New"}, saveFile);
-    data::write("Uint32", uint32_t{0x12345678}, saveFile);
+    data::write("Role", Role::Passive);
+    data::write("Bool", false);
+    data::write("String", std::string{"New"});
+    data::write("Uint32", uint32_t{0x12345678});
 
     // Read back the new values
-    EXPECT_EQ(data::read<Role>("Role", saveFile), Role::Passive);
-    EXPECT_EQ(data::read<bool>("Bool", saveFile), false);
-    EXPECT_EQ(data::read<std::string>("String", saveFile), std::string{"New"});
-    EXPECT_EQ(data::read<uint32_t>("Uint32", saveFile), 0x12345678);
+    EXPECT_EQ(data::read<Role>("Role"), Role::Passive);
+    EXPECT_EQ(data::read<bool>("Bool"), false);
+    EXPECT_EQ(data::read<std::string>("String"), std::string{"New"});
+    EXPECT_EQ(data::read<uint32_t>("Uint32"), 0x12345678);
 
     // Some different types - write
-    data::write("EmptyString", std::string{}, saveFile);
-    data::write("VectorOfStrings", std::vector<std::string>{"a", "b"},
-                saveFile);
-    data::write("EmptyVector", std::vector<std::string>{}, saveFile);
-    data::write("Map", std::map<int, std::string>{{1, "one"}, {2, "two"}},
-                saveFile);
-    data::write("EmptyMap", std::map<int, std::string>{}, saveFile);
+    data::write("EmptyString", std::string{});
+    data::write("VectorOfStrings", std::vector<std::string>{"a", "b"});
+    data::write("EmptyVector", std::vector<std::string>{});
+    data::write("Map", std::map<int, std::string>{{1, "one"}, {2, "two"}});
+    data::write("EmptyMap", std::map<int, std::string>{});
 
     // Some different types - read back
-    EXPECT_EQ(data::read<std::string>("EmptyString", saveFile), std::string{});
-    EXPECT_EQ(data::read<std::vector<std::string>>("VectorOfStrings", saveFile),
+    EXPECT_EQ(data::read<std::string>("EmptyString"), std::string{});
+    EXPECT_EQ(data::read<std::vector<std::string>>("VectorOfStrings"),
               (std::vector<std::string>{"a", "b"}));
-    EXPECT_EQ(data::read<std::vector<std::string>>("EmptyVector", saveFile),
+    EXPECT_EQ(data::read<std::vector<std::string>>("EmptyVector"),
               (std::vector<std::string>{}));
 
-    EXPECT_EQ((data::read<std::map<int, std::string>>("Map", saveFile)),
+    EXPECT_EQ((data::read<std::map<int, std::string>>("Map")),
               (std::map<int, std::string>{{1, "one"}, {2, "two"}}));
-    EXPECT_EQ((data::read<std::map<int, std::string>>("EmptyMap", saveFile)),
+    EXPECT_EQ((data::read<std::map<int, std::string>>("EmptyMap")),
               (std::map<int, std::string>{}));
 
     // Key doesn't exist
-    EXPECT_EQ(data::read<Role>("Blah", saveFile), std::nullopt);
-
-    // File doesn't exist
-    EXPECT_EQ(data::read<Role>("Role", "/blah/blah"), std::nullopt);
+    EXPECT_EQ(data::read<Role>("Blah"), std::nullopt);
 
     // Invalid JSON
+    auto saveFile = data::dataFile();
     std::filesystem::remove(saveFile);
     std::ofstream file{saveFile};
     const char* data = R"(
@@ -96,30 +74,30 @@ TEST_F(PersistentDataTest, WriteAndReadTest)
     file << data;
     file.close();
 
-    EXPECT_EQ(data::read<Role>("Role", saveFile), std::nullopt);
+    EXPECT_EQ(data::read<Role>("Role"), std::nullopt);
 }
 
 TEST_F(PersistentDataTest, RemoveTest)
 {
     // Write three
-    data::write("Role", Role::Active, saveFile);
-    data::write("Bool", true, saveFile);
-    data::write("String", std::string{"String"}, saveFile);
+    data::write("Role", Role::Active);
+    data::write("Bool", true);
+    data::write("String", std::string{"String"});
 
     // Remove the last one
-    data::remove("String", saveFile);
-    EXPECT_EQ(data::read<std::string>("String", saveFile), std::nullopt);
+    data::remove("String");
+    EXPECT_EQ(data::read<std::string>("String"), std::nullopt);
 
     // Make sure other ones still there
-    EXPECT_EQ(data::read<Role>("Role", saveFile), Role::Active);
-    EXPECT_EQ(data::read<bool>("Bool", saveFile), true);
+    EXPECT_EQ(data::read<Role>("Role"), Role::Active);
+    EXPECT_EQ(data::read<bool>("Bool"), true);
 
     // now remove remaining ones
-    data::remove("Role", saveFile);
-    EXPECT_EQ(data::read<Role>("Role", saveFile), std::nullopt);
+    data::remove("Role");
+    EXPECT_EQ(data::read<Role>("Role"), std::nullopt);
 
-    data::remove("Bool", saveFile);
-    EXPECT_EQ(data::read<bool>("Bool", saveFile), std::nullopt);
+    data::remove("Bool");
+    EXPECT_EQ(data::read<bool>("Bool"), std::nullopt);
 
     // Not found
     data::remove("Blah");

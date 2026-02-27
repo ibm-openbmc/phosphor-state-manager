@@ -10,8 +10,34 @@
 namespace data
 {
 
-const std::filesystem::path dataFile{
-    "/var/lib/phosphor-state-manager/redundant-bmc/data.json"};
+// Default path for persistent data directory
+inline std::filesystem::path dataDirPath{
+    "/var/lib/phosphor-state-manager/redundant-bmc"};
+
+constexpr auto dataFileName = "data.json";
+
+/**
+ * @brief Get the full path to the data file
+ *
+ * @return The full path combining dataDirPath and dataFileName
+ */
+inline std::filesystem::path dataFile()
+{
+    return dataDirPath / dataFileName;
+}
+
+/**
+ * @brief Set the persistent data directory path
+ *
+ * This should be called early in initialization to set the directory
+ * where persistent data files will be stored.
+ *
+ * @param[in] dirPath - The directory path for persistent data
+ */
+inline void setDataDirectory(const std::filesystem::path& dirPath)
+{
+    dataDirPath = dirPath;
+}
 
 using FailoverLogs = std::vector<std::pair<std::string, std::string>>;
 
@@ -62,9 +88,9 @@ void writeFile(const nlohmann::json& json, const std::filesystem::path& path);
  * @param[in] value - The value to save
  */
 template <typename T>
-void write(std::string_view name, const T& value,
-           const std::filesystem::path& path = dataFile)
+void write(std::string_view name, const T& value)
 {
+    auto path = dataFile();
     auto json = util::readFile(path).value_or(nlohmann::json::object());
     if constexpr (std::is_enum_v<T>)
     {
@@ -85,16 +111,14 @@ void write(std::string_view name, const T& value,
  *
  * @tparam T - The data type
  * @param[in] name - The key the value is saved under
- * @param[in] path - The path to the file
  *
  * @return optional<T> - The value, or std::nullopt if the file or
  *                       key isn't present.
  */
 template <typename T>
-std::optional<T> read(std::string_view name,
-                      const std::filesystem::path& path = dataFile)
+std::optional<T> read(std::string_view name)
 {
-    auto json = util::readFile(path);
+    auto json = util::readFile(dataFile());
     if (!json)
     {
         return std::nullopt;
@@ -121,11 +145,8 @@ std::optional<T> read(std::string_view name,
  * @brief Remove an entry from the file
  *
  * @param[in] name - The key for the entry to remove
- *
- * @param[in] path - The path to the file
  */
-void remove(std::string_view name,
-            const std::filesystem::path& path = dataFile);
+void remove(std::string_view name);
 
 /**
  * @brief Log the requester and timestamp of a failover.
