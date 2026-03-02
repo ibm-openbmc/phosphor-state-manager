@@ -36,7 +36,7 @@ class RedundancyMgr
      */
     ~RedundancyMgr()
     {
-        providers.getServices().clearSystemStateCallbacks();
+        providers.getServices().removeSystemStateCallback(Role::Active);
     }
 
     /**

@@ -389,8 +389,8 @@ void ServicesImpl::updateSystemState()
                        "NEW_STATE", getSystemStateName(newState));
         }
         systemState = newState;
-        std::ranges::for_each(systemStateCBs, [newState](const auto& callback) {
-            callback(newState);
+        std::ranges::for_each(systemStateCBs, [newState](const auto& entry) {
+            entry.second(newState);
         });
     }
 }

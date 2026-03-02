@@ -3,12 +3,17 @@
 #include "errors.hpp"
 
 #include <sdbusplus/async.hpp>
+#include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
 
 #include <filesystem>
+#include <map>
 
 namespace rbmc
 {
+
+using Role =
+    sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy::Role;
 
 enum class SystemState
 {
@@ -165,19 +170,22 @@ class Services
     /**
      * @brief Add a function that gets called when the system state changes.
      *
+     * @param[in] role - The role to register with
      * @param[in] callback - The function to call
      */
-    void addSystemStateCallback(SystemStateCallback&& callback)
+    void addSystemStateCallback(Role role, SystemStateCallback&& callback)
     {
-        systemStateCBs.push_back(std::move(callback));
+        systemStateCBs.emplace(role, std::move(callback));
     }
 
     /**
-     * @brief Clears all system state change callbacks.
+     * @brief Remove a specific system state change callback by role.
+     *
+     * @param[in] role - The role of the callback to remove
      */
-    void clearSystemStateCallbacks()
+    void removeSystemStateCallback(Role role)
     {
-        systemStateCBs.clear();
+        systemStateCBs.erase(role);
     }
 
     /**
@@ -203,7 +211,7 @@ class Services
     /**
      * @brief The functions to call when the system state changes
      */
-    std::vector<SystemStateCallback> systemStateCBs;
+    std::map<Role, SystemStateCallback> systemStateCBs;
 };
 
 } // namespace rbmc

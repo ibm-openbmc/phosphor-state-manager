@@ -203,7 +203,7 @@ void RedundancyMgr::initSystemState()
     auto& services = providers.getServices();
 
     services.addSystemStateCallback(
-        std::bind_front(&RedundancyMgr::systemStateChange, this));
+        Role::Active, std::bind_front(&RedundancyMgr::systemStateChange, this));
 
     try
     {
