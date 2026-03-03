@@ -3,6 +3,7 @@
 
 #include "services.hpp"
 
+#include <xyz/openbmc_project/Provisioning/Provisioning/common.hpp>
 #include <xyz/openbmc_project/State/Boot/Progress/common.hpp>
 #include <xyz/openbmc_project/State/Host/common.hpp>
 
@@ -30,6 +31,12 @@ class ServicesImpl : public Services
     ServicesImpl& operator=(const ServicesImpl&) = delete;
     ServicesImpl(ServicesImpl&&) = delete;
     ServicesImpl& operator=(ServicesImpl&&) = delete;
+
+    using ProvisioningCommon =
+        sdbusplus::common::xyz::openbmc_project::provisioning::Provisioning;
+    using ProvisioningPropMap =
+        std::unordered_map<std::string, ProvisioningCommon::PropertiesVariant>;
+    using ProvisioningInterfaceMap = std::map<std::string, ProvisioningPropMap>;
 
     /**
      * @brief Constructor
@@ -97,6 +104,21 @@ class ServicesImpl : public Services
      * @return The system state
      */
     SystemState getSystemState() const override;
+
+    /**
+     * @brief Returns if the peer is connected
+     *
+     * @return true if PeerConnected status is Connected, false otherwise
+     */
+    bool getPeerConnected() const override
+    {
+        return peerConnected;
+    }
+
+    /**
+     * @brief Waits for the PeerConnected property to reach Connected
+     */
+    sdbusplus::async::task<> waitForPeerConnection() override;
 
     /**
      * @brief Reads the BMC state
@@ -204,6 +226,23 @@ class ServicesImpl : public Services
     sdbusplus::async::task<> watchBootProgressPropertiesChanged();
 
     /**
+     * @brief Starts the InterfacesAdded watch for the Provisioning interface
+     */
+    sdbusplus::async::task<> watchProvisioningInterfacesAdded();
+
+    /**
+     * @brief Starts the PropertiesChanged watch for the Provisioning interface
+     */
+    sdbusplus::async::task<> watchProvisioningPropertiesChanged();
+
+    /**
+     * @brief Reads the Provisioning interface properties
+     */
+    sdbusplus::async::task<> readProvisioningProperties();
+
+    void loadProvisioningProps(const ProvisioningPropMap& propertyMap);
+
+    /**
      * @brief Called when either the host state or boot progress property
      *        changes value to calculate the system state.
      */
@@ -238,6 +277,16 @@ class ServicesImpl : public Services
      * @brief The current system state value
      */
     std::optional<SystemState> systemState;
+
+    /**
+     * @brief Tracks peer connection state
+     */
+    bool peerConnected{false};
+
+    /**
+     * @brief The provisioned status value
+     */
+    bool provisioned;
 
     /**
      * @brief D-Bus path for the Item.System object

@@ -45,6 +45,7 @@ class Services
     Services& operator=(Services&&) = delete;
 
     using SystemStateCallback = std::function<void(SystemState)>;
+    using PeerConnectedCallback = std::function<void(bool)>;
 
     /**
      * @brief Sets up the D-Bus matches
@@ -115,6 +116,18 @@ class Services
      * @return The system state
      */
     virtual SystemState getSystemState() const = 0;
+
+    /**
+     * @brief Returns if the peer network is connected
+     *
+     * @return true if PeerConnected status is Connected, false otherwise
+     */
+    virtual bool getPeerConnected() const = 0;
+
+    /**
+     * @brief Waits for the PeerConnected property to reach Connected
+     */
+    virtual sdbusplus::async::task<> waitForPeerConnection() = 0;
 
     /**
      * @brief Execute the 'failover imminent' delay to the other BMC
@@ -189,6 +202,28 @@ class Services
     }
 
     /**
+     * @brief Add a function that gets called when the peer connected status
+     *        changes.
+     *
+     * @param[in] role - The role to register with
+     * @param[in] callback - The function to call
+     */
+    void addPeerConnectedCallback(Role role, PeerConnectedCallback&& callback)
+    {
+        peerConnectedCBs.emplace(role, std::move(callback));
+    }
+
+    /**
+     * @brief Remove a specific peer connected change callback by role.
+     *
+     * @param[in] role - The role of the callback to remove
+     */
+    void removePeerConnectedCallback(Role role)
+    {
+        peerConnectedCBs.erase(role);
+    }
+
+    /**
      * @brief On the system inventory object, check that its Progress
      *        Status property is 'Completed'.
      *
@@ -212,6 +247,11 @@ class Services
      * @brief The functions to call when the system state changes
      */
     std::map<Role, SystemStateCallback> systemStateCBs;
+
+    /**
+     * @brief The functions to call when the peer connected status changes
+     */
+    std::map<Role, PeerConnectedCallback> peerConnectedCBs;
 };
 
 } // namespace rbmc

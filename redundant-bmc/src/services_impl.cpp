@@ -10,6 +10,7 @@
 #include <xyz/openbmc_project/Inventory/Item/System/common.hpp>
 #include <xyz/openbmc_project/Logging/Create/client.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
+#include <xyz/openbmc_project/Provisioning/Provisioning/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
 #include <xyz/openbmc_project/State/Boot/Progress/client.hpp>
 #include <xyz/openbmc_project/State/Host/client.hpp>
@@ -29,6 +30,10 @@ using SystemInv =
 using InvProgress = sdbusplus::client::xyz::openbmc_project::common::Progress<>;
 using SidebandBus =
     sdbusplus::client::xyz::openbmc_project::control::SideBandBus<>;
+using Provisioning =
+    sdbusplus::client::xyz::openbmc_project::provisioning::Provisioning<>;
+using PeerConnectionStatus = sdbusplus::common::xyz::openbmc_project::
+    provisioning::Provisioning::PeerConnectionStatus;
 
 using HostProperties =
     std::variant<std::string, HostState::HostState, HostState::RestartCause,
@@ -194,8 +199,11 @@ sdbusplus::async::task<> ServicesImpl::init()
     ctx.spawn(watchHostInterfacesAdded());
     ctx.spawn(watchHostStatePropertiesChanged());
     ctx.spawn(watchBootProgressPropertiesChanged());
+    ctx.spawn(watchProvisioningInterfacesAdded());
+    ctx.spawn(watchProvisioningPropertiesChanged());
     co_await readHostState();
     co_await readBootProgress();
+    co_await readProvisioningProperties();
     updateSystemState();
 
     co_await waitForSystemInventoryPath();
@@ -317,6 +325,29 @@ sdbusplus::async::task<> ServicesImpl::readBootProgress()
     co_return;
 }
 
+sdbusplus::async::task<> ServicesImpl::readProvisioningProperties()
+{
+    try
+    {
+        auto service = co_await util::getService(
+            ctx, Provisioning::instance_path, Provisioning::interface);
+        auto props = co_await Provisioning(ctx)
+                         .service(service)
+                         .path(Provisioning::instance_path)
+                         .properties();
+
+        provisioned = props.provisioned;
+        peerConnected = props.peer_connected == PeerConnectionStatus::Connected;
+
+        lg2::debug("Initial Provisioned = {PROV} and PeerConnected = {STATUS}",
+                   "PROV", props.provisioned, "STATUS", props.peer_connected);
+    }
+    catch (const sdbusplus::exception_t& e)
+    {
+        // Not on D-Bus yet
+    }
+}
+
 // NOLINTNEXTLINE
 sdbusplus::async::task<> ServicesImpl::watchBootProgressPropertiesChanged()
 {
@@ -341,6 +372,72 @@ sdbusplus::async::task<> ServicesImpl::watchBootProgressPropertiesChanged()
     }
 
     co_return;
+}
+
+void ServicesImpl::loadProvisioningProps(const ProvisioningPropMap& propertyMap)
+{
+    auto it = propertyMap.find("PeerConnected");
+    if (it != propertyMap.end())
+    {
+        auto prevConnected = peerConnected;
+
+        auto rawStatus =
+            std::get<Provisioning::PeerConnectionStatus>(it->second);
+
+        lg2::info("The new PeerConnected value is {STATUS}", "STATUS",
+                  rawStatus);
+
+        peerConnected = rawStatus == PeerConnectionStatus::Connected;
+
+        if (prevConnected != peerConnected)
+        {
+            std::ranges::for_each(peerConnectedCBs, [this](const auto& entry) {
+                entry.second(peerConnected);
+            });
+        }
+    }
+
+    it = propertyMap.find("Provisioned");
+    if (it != propertyMap.end())
+    {
+        provisioned = std::get<bool>(it->second);
+
+        lg2::info("The new Provisioned value is {PROV}", "PROV", provisioned);
+    }
+}
+
+sdbusplus::async::task<> ServicesImpl::watchProvisioningInterfacesAdded()
+{
+    sdbusplus::async::match match(
+        ctx, rules::interfacesAddedAtPath(Provisioning::instance_path));
+
+    while (!ctx.stop_requested())
+    {
+        auto [_, interfaces] =
+            co_await match.next<sdbusplus::message::object_path,
+                                ProvisioningInterfaceMap>();
+
+        auto it = interfaces.find(Provisioning::interface);
+        if (it != interfaces.end())
+        {
+            lg2::info("Provisioning interface added");
+            loadProvisioningProps(it->second);
+        }
+    }
+}
+
+sdbusplus::async::task<> ServicesImpl::watchProvisioningPropertiesChanged()
+{
+    sdbusplus::async::match match(
+        ctx, rules::propertiesChanged(Provisioning::instance_path,
+                                      Provisioning::interface));
+
+    while (!ctx.stop_requested())
+    {
+        auto [_, properties] =
+            co_await match.next<std::string, ProvisioningPropMap>();
+        loadProvisioningProps(properties);
+    }
 }
 
 void ServicesImpl::updateSystemState()
@@ -584,7 +681,8 @@ sdbusplus::async::task<> ServicesImpl::startUnit(
 
 bool ServicesImpl::getProvisioned() const
 {
-    // TODO: Eventually get this from somewhere.
+    // TODO: Return the actual value.
+    // return provisioned;
     return true;
 }
 
@@ -828,6 +926,44 @@ sdbusplus::async::task<> ServicesImpl::logError(
         lg2::error("Failed to create event log {MSG}: {ERROR}", "MSG", error,
                    "ERROR", e);
     }
+}
+
+sdbusplus::async::task<> ServicesImpl::waitForPeerConnection()
+{
+    using namespace std::chrono_literals;
+    std::chrono::minutes timeout{10};
+
+    lg2::info("waitForPeerConnection initial peerConnected value = {STATUS}",
+              "STATUS", peerConnected);
+
+    if (peerConnected)
+    {
+        co_return;
+    }
+
+    auto end = std::chrono::steady_clock::now() + timeout;
+    bool tracedWait = false;
+
+    while (std::chrono::steady_clock::now() < end)
+    {
+        if (peerConnected)
+        {
+            lg2::info("Peer now connected");
+            co_return;
+        }
+
+        if (!tracedWait)
+        {
+            tracedWait = true;
+            lg2::info("Waiting up to {MIN} minutes for peer connection", "MIN",
+                      timeout.count());
+        }
+
+        co_await sdbusplus::async::sleep_for(ctx, 500ms);
+    }
+
+    lg2::error("Timed out waiting for peer connection after {MIN} minutes",
+               "MIN", timeout.count());
 }
 
 } // namespace rbmc
