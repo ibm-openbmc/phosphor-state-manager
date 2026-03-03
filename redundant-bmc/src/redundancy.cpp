@@ -13,9 +13,6 @@ ReasonsForNoRedundancy getNoRedundancyReasons(const Input& input)
     using enum ReasonForNoRedundancy;
     ReasonsForNoRedundancy reasons;
 
-    // TODO:
-    // - Network health
-
     if (input.role != Role::Active)
     {
         reasons.insert(BMCNotActive);
@@ -56,6 +53,11 @@ ReasonsForNoRedundancy getNoRedundancyReasons(const Input& input)
             if (!input.codeVersionsMatch)
             {
                 reasons.insert(CodeVersionMismatch);
+            }
+
+            if (!input.peerConnected)
+            {
+                reasons.insert(NetworkError);
             }
 
             if (input.siblingState != BMCState::Ready)

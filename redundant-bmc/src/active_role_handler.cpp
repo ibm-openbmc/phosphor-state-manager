@@ -50,11 +50,13 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
 
     if (sibling.alive())
     {
-        // Make sure the sibling had time to get its role assigned, and
-        // also wait for it to hit steady state as redundancy can only
-        // be enabled if the sibling BMC is at the Ready state.
+        // Before trying to enable redundancy, wait for:
+        // 1. Sibling to have its role assigned.
+        // 2. Sibling to hit steady state (Ready needed for redundancy)
+        // 3. The network to connect to the sibling BMC.
         co_await sdbusplus::async::execution::when_all(
-            sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState());
+            sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState(),
+            services.waitForPeerConnection());
     }
 
     co_await redMgr.determineRedundancyAndSync();
@@ -109,8 +111,10 @@ sdbusplus::async::task<> ActiveRoleHandler::siblingHealthy()
     stopSiblingWatches();
 
     auto& sibling = providers.getSibling();
+    auto& services = providers.getServices();
     co_await sdbusplus::async::execution::when_all(
-        sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState());
+        sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState(),
+        services.waitForPeerConnection());
 
     lg2::info("Attempting to enable redundancy now that sibling is back");
     providers.getSyncInterface().clearFullSyncComplete();
@@ -214,18 +218,24 @@ sdbusplus::async::task<> ActiveRoleHandler::failoverStartActiveTarget()
 // NOLINTNEXTLINE
 sdbusplus::async::task<> ActiveRoleHandler::failoverWaitForSibling()
 {
+    auto& sibling = providers.getSibling();
+    auto& services = providers.getServices();
+
     // Wait a bit to ensure the sibling reset is detected before we
     // start waiting for it to come back. After the active target
     // has real code in it that runs longer than a few seconds,
     // this could be removed.
-    co_await providers.getSibling().pauseForHeartbeatChange();
+    co_await sibling.pauseForHeartbeatChange();
 
     // Wait for the sibling heartbeat to come back
-    co_await providers.getSibling().waitForSiblingUp();
+    co_await sibling.waitForSiblingUp();
 
-    // Wait for the sibling to get to a steady state so redundancy can
-    // be determined.
-    co_await providers.getSibling().waitForBMCSteadyState();
+    // If heartbeat came back, wait for steady state and the network.
+    if (sibling.alive())
+    {
+        co_await sdbusplus::async::execution::when_all(
+            sibling.waitForBMCSteadyState(), services.waitForPeerConnection());
+    }
 }
 
 // NOLINTNEXTLINE

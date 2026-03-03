@@ -38,6 +38,7 @@ struct Input
     bool manualDisable;
     bool redundancyOffAtRuntimeStart;
     bool syncFailed;
+    bool peerConnected;
 };
 
 using ReasonsForNoRedundancy = std::set<ReasonForNoRedundancy>;

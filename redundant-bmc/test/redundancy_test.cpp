@@ -21,7 +21,8 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         .codeVersionsMatch = true,
         .manualDisable = false,
         .redundancyOffAtRuntimeStart = false,
-        .syncFailed = false};
+        .syncFailed = false,
+        .peerConnected = true};
 
     // Nothing stopping redundancy
     {
@@ -127,6 +128,16 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
         EXPECT_EQ(*reasons.begin(), RedundancyOffAtRuntimeStart);
+    }
+
+    // Network failure
+    {
+        auto input = golden;
+        input.peerConnected = false;
+
+        auto reasons = getNoRedundancyReasons(input);
+        ASSERT_EQ(reasons.size(), 1);
+        EXPECT_EQ(*reasons.begin(), NetworkError);
     }
 
     // Sync failed

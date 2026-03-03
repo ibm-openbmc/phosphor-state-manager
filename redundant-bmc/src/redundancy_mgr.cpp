@@ -137,7 +137,8 @@ redundancy::ReasonsForNoRedundancy RedundancyMgr::getNoRedundancyReasons()
             services.getFWVersion() == sibling.getFWVersion().value_or(""),
         .manualDisable = manualDisable,
         .redundancyOffAtRuntimeStart = isRedundancyOffAtRuntime(),
-        .syncFailed = syncFailed};
+        .syncFailed = syncFailed,
+        .peerConnected = services.getPeerConnected()};
 
     return redundancy::getNoRedundancyReasons(input);
 }

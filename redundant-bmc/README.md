@@ -94,6 +94,7 @@ items to see if redundancy can be enabled:
    so.
 1. The sibling BMC has been provisioned.
 1. The firmware versions are the same on the BMCs.
+1. The network between the BMCs is connected.
 1. If attempting to enable any time at runtime, redundancy must have been
    enabled when runtime was first reached.
 
