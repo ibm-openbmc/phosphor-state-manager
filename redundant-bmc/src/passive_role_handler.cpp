@@ -210,7 +210,24 @@ sdbusplus::async::task<> PassiveRoleHandler::startSync()
         co_return;
     }
 
-    if (co_await providers.getSyncInterface().doFullSync())
+    bool syncSucceeded = false;
+
+    try
+    {
+        syncSucceeded = co_await providers.getSyncInterface().doFullSync();
+        if (!syncSucceeded)
+        {
+            lg2::error("Full sync on passive BMC failed");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Full sync on passive BMC failed with exception: {ERROR}",
+                   "ERROR", e);
+        syncSucceeded = false;
+    }
+
+    if (syncSucceeded)
     {
         fullSyncDone = true;
 
@@ -220,7 +237,6 @@ sdbusplus::async::task<> PassiveRoleHandler::startSync()
     }
     else
     {
-        lg2::error("Full sync on passive BMC failed");
         co_await stopSync();
     }
 }
