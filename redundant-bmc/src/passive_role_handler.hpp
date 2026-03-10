@@ -39,6 +39,7 @@ class PassiveRoleHandler : public RoleHandler
     {
         providers.getSibling().clearCallbacks(Role::Passive);
         providers.getSyncInterface().stopSyncHealthWatch(Role::Passive);
+        providers.getServices().removePeerConnectedCallback(Role::Passive);
     }
 
     /**
@@ -107,7 +108,18 @@ class PassiveRoleHandler : public RoleHandler
     inline void setupSiblingHealthWatch()
     {
         providers.getSibling().addHealthCallback(
-            Role::Passive, [this](bool hb) { siblingHealthChange(hb); });
+            Role::Passive,
+            std::bind_front(&PassiveRoleHandler::siblingHealthChange, this));
+    }
+
+    /**
+     * @brief Setup watching the PeerConnected property
+     */
+    inline void setupPeerConnectedWatch()
+    {
+        providers.getServices().addPeerConnectedCallback(
+            Role::Passive,
+            std::bind_front(&PassiveRoleHandler::peerConnectedChange, this));
     }
 
     /**
@@ -151,6 +163,13 @@ class PassiveRoleHandler : public RoleHandler
      *        to stop background sync if it was running.
      */
     sdbusplus::async::task<> syncHealthCritical();
+
+    /**
+     * @brief Called when the PeerConnected property changes.
+     *
+     * Tries to either start or stop a sync.
+     */
+    void peerConnectedChange(bool connected);
 
     /**
      * @brief Tracks if a full sync has already been done since

@@ -101,6 +101,8 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
 
     setupSiblingHealthWatch();
 
+    setupPeerConnectedWatch();
+
     try
     {
         // This is only valid on the active BMC
@@ -192,7 +194,8 @@ sdbusplus::async::task<> PassiveRoleHandler::tryFullSync()
     if (providers.getSibling().alive() &&
         providers.getSibling().getRedundancyEnabled().value_or(false) &&
         (providers.getSibling().getRole().value_or(Role::Unknown) ==
-         Role::Active))
+         Role::Active) &&
+        providers.getServices().getPeerConnected())
     {
         co_await startSync();
     }
@@ -348,6 +351,15 @@ auto PassiveRoleHandler::getFailoverBlockedReason(
         .lastKnownRedundancyEnabled = redundancyInterface.redundancy_enabled()};
 
     co_return fo_blocked::getFailoverBlockedReason(input);
+}
+
+void PassiveRoleHandler::peerConnectedChange([[maybe_unused]] bool connected)
+{
+    // If connected and all other conditions succeed for a full sync,
+    // will start one, otherwise will stop background syncing.
+    // If the active BMC just came back from a reboot, most likely
+    // redundancy won't be enabled yet though.
+    ctx.spawn(tryFullSync());
 }
 
 } // namespace rbmc
