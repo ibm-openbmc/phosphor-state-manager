@@ -93,6 +93,9 @@ void ActiveRoleHandler::siblingHealthChange(bool alive)
                 "Disabling redundancy in {TIME} minutes if sibling doesn't come back",
                 "TIME", siblingHealthTimeout.count());
             siblingHealthTimer.start(siblingHealthTimeout);
+
+            // Background sync won't work without a healthy sibling
+            ctx.spawn(providers.getSyncInterface().disableBackgroundSync());
         }
     }
 }
