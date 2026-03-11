@@ -33,7 +33,10 @@ class ActiveRoleHandler : public RoleHandler
         RoleHandler(ctx, providers, iface), redMgr(ctx, providers, iface),
         siblingHealthTimer(
             ctx,
-            std::bind_front(&ActiveRoleHandler::siblingHealthCritical, this))
+            std::bind_front(&ActiveRoleHandler::siblingHealthCritical, this)),
+        peerConnectionTimer(
+            ctx,
+            std::bind_front(&ActiveRoleHandler::peerConnectionCritical, this))
     {}
 
     /**
@@ -42,7 +45,9 @@ class ActiveRoleHandler : public RoleHandler
     ~ActiveRoleHandler() override
     {
         stopSiblingWatches();
+        peerConnectionTimer.stop();
         providers.getSyncInterface().stopSyncHealthWatch(Role::Active);
+        stopPeerConnectedWatch();
     }
 
     /**
@@ -138,6 +143,14 @@ class ActiveRoleHandler : public RoleHandler
         providers.getSibling().clearCallbacks(Role::Active);
     }
 
+    /**
+     * @brief Stops the peer connected property callbacks/watches
+     */
+    inline void stopPeerConnectedWatch()
+    {
+        providers.getServices().removePeerConnectedCallback(Role::Active);
+    }
+
     using BMCState =
         sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState;
 
@@ -187,6 +200,32 @@ class ActiveRoleHandler : public RoleHandler
     }
 
     /**
+     * @brief Starts watching the peer connection property
+     */
+    void startPeerConnectedWatch()
+    {
+        providers.getServices().addPeerConnectedCallback(
+            Role::Active,
+            std::bind_front(&ActiveRoleHandler::peerConnectionChange, this));
+    }
+
+    /**
+     * @brief Called when the peer connection property changes
+     *
+     * Manages the peer connection timer and attempts recovery when
+     * the connection is restored.
+     *
+     * @param[in] connected - The new value.
+     */
+    void peerConnectionChange(bool connected);
+
+    /**
+     * @brief Called when the peer connection stays bad
+     *        long enough to explicitly disable redundancy.
+     */
+    void peerConnectionCritical();
+
+    /**
      * @brief Called when the sync health property changes
      *
      * Spawns syncHealthCritical() on critical health.
@@ -222,6 +261,13 @@ class ActiveRoleHandler : public RoleHandler
      * Upon expiration redundancy will be disabled.
      */
     Timer siblingHealthTimer;
+
+    /**
+     * @brief Timer used when the peer connection changes to bad
+     *
+     * Upon expiration redundancy will be disabled.
+     */
+    Timer peerConnectionTimer;
 };
 
 } // namespace rbmc

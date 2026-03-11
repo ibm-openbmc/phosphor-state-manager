@@ -61,6 +61,16 @@ class Timer :
         source.reset();
     }
 
+    /**
+     * @brief Check if the timer is currently running
+     *
+     * @return true if timer is running, false otherwise
+     */
+    bool isRunning() const
+    {
+        return source != nullptr;
+    }
+
   private:
     /**
      * @brief RAII wrapper for sdbusplus::source

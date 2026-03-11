@@ -82,6 +82,10 @@ will wait up to ten minutes total for the passive BMC to get to a steady state
 (assuming the passive BMC is alive), which would either be `Ready` or
 `Quiesced`.
 
+There is also a ten minute wait for the network connection between the BMCs.
+This is in parallel with the steady state wait so if one is complete first it
+will still wait for the other.
+
 After the passive BMC reaches steady state, it will then check the following
 items to see if redundancy can be enabled:
 
@@ -130,6 +134,21 @@ wasn't running.
 Note that redundancy cannot be enabled at runtime if the system wasn't booted
 with redundancy enabled. A concurrent maintenance operation would be necessary
 in that case.
+
+### Passive BMC loses network connection
+
+A loss of the network connection between the BMCs will start a five minute timer
+similar to how it was done for a heartbeat loss. At five minutes, redundancy
+will be disabled and an event log will be created. If it comes back before then,
+it will go through the code to calculate redundancy followed by a full sync to
+sync over any files that might have changed when the network was down.
+
+The heartbeat timer will take precedence over this one. So if the heartbeat
+isn't currently active when the network loss occurs, the new timer won't be
+started since the overall loss of the passive BMC is already being handled.
+
+In addition, if the network loss timer is already running when the heartbeat
+loss is noticed, it will be canceled when the heartbeat loss timer is started.
 
 ## Interacting with Data Sync on the Active BMC
 

@@ -65,7 +65,7 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
 
     startSyncHealthWatch();
 
-    co_return;
+    startPeerConnectedWatch();
 }
 
 void ActiveRoleHandler::siblingStateChange(BMCState state)
@@ -81,6 +81,7 @@ void ActiveRoleHandler::siblingHealthChange(bool alive)
 {
     if (alive)
     {
+        lg2::info("Sibling BMC health changed to good");
         siblingHealthTimer.stop();
         ctx.spawn(siblingHealthy());
     }
@@ -92,6 +93,14 @@ void ActiveRoleHandler::siblingHealthChange(bool alive)
             lg2::warning(
                 "Disabling redundancy in {TIME} minutes if sibling doesn't come back",
                 "TIME", siblingHealthTimeout.count());
+
+            // Just use the sibling health timer if neither indicator is good.
+            if (peerConnectionTimer.isRunning())
+            {
+                lg2::info("Stopping peer connection timer");
+                peerConnectionTimer.stop();
+            }
+
             siblingHealthTimer.start(siblingHealthTimeout);
 
             // Background sync won't work without a healthy sibling
@@ -106,15 +115,18 @@ void ActiveRoleHandler::siblingHealthCritical()
     redMgr.determineAndSetRedundancy();
 }
 
-// NOLINTNEXTLINE
 sdbusplus::async::task<> ActiveRoleHandler::siblingHealthy()
 {
-    lg2::info("Passive BMC health changed to good");
-
     stopSiblingWatches();
+    stopPeerConnectedWatch();
 
     auto& sibling = providers.getSibling();
     auto& services = providers.getServices();
+
+    // Before trying to enable redundancy, wait for:
+    // 1. Sibling to have its role assigned.
+    // 2. Sibling to hit steady state (Ready needed for redundancy)
+    // 3. Peer connection to be established.
     co_await sdbusplus::async::execution::when_all(
         sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState(),
         services.waitForPeerConnection());
@@ -124,8 +136,54 @@ sdbusplus::async::task<> ActiveRoleHandler::siblingHealthy()
     co_await redMgr.determineRedundancyAndSync();
 
     startSiblingWatches();
+    startPeerConnectedWatch();
 
     co_return;
+}
+
+void ActiveRoleHandler::peerConnectionChange(bool connected)
+{
+    lg2::info("PeerConnected changed to {C}", "C", connected);
+
+    if (connected)
+    {
+        peerConnectionTimer.stop();
+
+        // If sibling is already alive, attempt to re-enable redundancy.
+        if (providers.getSibling().alive())
+        {
+            ctx.spawn(siblingHealthy());
+        }
+    }
+    else
+    {
+        if (!redundancyInterface.redundancy_enabled())
+        {
+            return;
+        }
+
+        // Always disable background sync when network is down
+        ctx.spawn(providers.getSyncInterface().disableBackgroundSync());
+
+        // If sibling is alive, this is only a network issue at this
+        // point so start the timer to disabling redundancy. Otherwise,
+        // this problem is already being handled by the sibling
+        // health timer code.
+        if (providers.getSibling().alive())
+        {
+            lg2::warning(
+                "Disabling redundancy in {TIME} minutes if peer connection doesn't come back",
+                "TIME", siblingHealthTimeout.count());
+            peerConnectionTimer.start(siblingHealthTimeout);
+        }
+    }
+}
+
+void ActiveRoleHandler::peerConnectionCritical()
+{
+    lg2::error("Peer connection timer expired, disabling redundancy");
+    // Disables redundancy because peerConnected is false
+    redMgr.determineAndSetRedundancy();
 }
 
 void ActiveRoleHandler::syncHealthPropertyChanged(
@@ -155,15 +213,18 @@ sdbusplus::async::task<> ActiveRoleHandler::syncHealthCritical()
 
     // A passive BMC reboot should not result in redundancy being
     // disabled, so wait a bit for the passive BMC's heartbeat
-    // to change.  If it's still running, then this is a valid
-    // sync fail so disable redundancy.  If it isn't running then
-    // then the code that deals with the sibling heartbeat will
-    // deal with it.
-    // TODO: Also do network failure detection.
+    // to change to see if that is the cause.
+    // After that:
+    // - If heartbeat (alive) and peer connection are OK, then
+    //   disable redundancy due to a sync fail.
+    //   If heartbeat or peer connection are bad then then the code
+    //   that deals with those will handle everything.
+
     lg2::info("Waiting to see if sibling heartbeat stops");
     co_await providers.getSibling().pauseForHeartbeatChange();
 
-    if (providers.getSibling().alive())
+    if (providers.getSibling().alive() &&
+        providers.getServices().getPeerConnected())
     {
         lg2::error("Disabling redundancy due to critical sync health");
 
@@ -172,11 +233,12 @@ sdbusplus::async::task<> ActiveRoleHandler::syncHealthCritical()
     }
     else
     {
+        // The siblingHealthTimer/peerConnectionTimer will handle this.
         lg2::warning(
-            "Sync health is critical, but there is also a sibling heartbeat loss");
+            "Sync fail caused by sibling alive = {ALIVE} or peer connected = {CONN}",
+            "ALIVE", providers.getSibling().alive(), "CONN",
+            providers.getServices().getPeerConnected());
     }
-
-    co_return;
 }
 
 // NOLINTNEXTLINE
@@ -257,6 +319,7 @@ sdbusplus::async::task<> ActiveRoleHandler::failoverDetermineRedundancy()
 
     startSiblingWatches();
     startSyncHealthWatch();
+    startPeerConnectedWatch();
 }
 
 void ActiveRoleHandler::siblingFailoverImminent(bool imminent)
