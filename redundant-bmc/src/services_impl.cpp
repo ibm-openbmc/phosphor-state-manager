@@ -527,15 +527,33 @@ sdbusplus::async::task<> ServicesImpl::startUnit(
     const std::string& unitName, std::chrono::seconds timeout) const
 {
     using namespace std::chrono_literals;
+
+    auto currentState = co_await getUnitState(unitName);
+    if (currentState == "active")
+    {
+        lg2::info("Unit {UNIT} is already active, not starting again", "UNIT",
+                  unitName);
+        co_return;
+    }
+
     constexpr auto systemd = sdbusplus::async::proxy()
                                  .service(service::systemd)
                                  .path(object_path::systemd)
                                  .interface(interface::systemdMgr);
 
-    lg2::info("Starting unit {UNIT}", "UNIT", unitName);
+    // Don't need to start the unit if activating, but still
+    // need to wait for it to complete.
+    if (currentState != "activating")
+    {
+        lg2::info("Starting unit {UNIT}", "UNIT", unitName);
 
-    co_await systemd.call<sdbusplus::message::object_path>(
-        ctx, "StartUnit", unitName, std::string{"replace"});
+        co_await systemd.call<sdbusplus::message::object_path>(
+            ctx, "StartUnit", unitName, std::string{"replace"});
+    }
+    else
+    {
+        lg2::info("Unit is already activating");
+    }
 
     std::string state;
     auto end = std::chrono::steady_clock::now() + timeout;
