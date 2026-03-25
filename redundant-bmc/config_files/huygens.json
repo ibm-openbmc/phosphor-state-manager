@@ -1,0 +1,22 @@
+{
+    "sibling_bmc_reset_gpio": {
+        "name": "sibling-bmc-reset-n",
+        "polarity": "low"
+    },
+    "bmc_configs": [
+        {
+            "bmc_pos": 0,
+            "sibling_bmc_present_gpio": {
+                "name": "presence-chassis2",
+                "polarity": "low"
+            }
+        },
+        {
+            "bmc_pos": 1,
+            "sibling_bmc_present_gpio": {
+                "name": "presence-chassis1",
+                "polarity": "low"
+            }
+        }
+    ]
+}

@@ -1,0 +1,6 @@
+{
+    "sibling_bmc_reset_gpio": {
+        "name": "sibling-bmc-reset",
+        "polarity": "high"
+    }
+}

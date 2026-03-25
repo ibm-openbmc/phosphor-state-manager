@@ -217,3 +217,10 @@ option (
     value 'enabled',
     description: 'Enable redundant BMC state management',
 )
+
+option(
+    'rbmc-config-file',
+    type: 'string',
+    value: 'default.json',
+    description: 'Redundant BMC config file to install (relative to redundant-bmc/config_files/)',
+)
