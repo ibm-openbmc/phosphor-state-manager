@@ -11,4 +11,10 @@ namespace rbmc
 
 using FailoverOptions = std::map<std::string, std::variant<bool>>;
 
+enum class GPIOPolarity
+{
+    low,
+    high
+};
+
 } // namespace rbmc
