@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include "config_parser.hpp"
 #include "providers.hpp"
 #include "services_impl.hpp"
 #include "sibling_impl.hpp"
 #include "sibling_reset_impl.hpp"
 #include "sync_interface_impl.hpp"
+
+#include <phosphor-logging/lg2.hpp>
 
 namespace rbmc
 {
@@ -31,7 +34,8 @@ class ProvidersImpl : public Providers
      * @param[in] ctx - The async context object
      */
     explicit ProvidersImpl(sdbusplus::async::context& ctx) :
-        services(ctx), sibling(ctx), syncInterface(ctx), siblingReset(ctx)
+        config(config_parser::readConfig()), services(ctx), sibling(ctx),
+        syncInterface(ctx), siblingReset(ctx)
     {}
 
     /**
@@ -66,7 +70,20 @@ class ProvidersImpl : public Providers
         return siblingReset;
     }
 
+    /**
+     * @brief Returns the config file data structures.
+     */
+    const RedundantBMCConfig& getConfig() const override
+    {
+        return config;
+    }
+
   private:
+    /**
+     * @brief The parsed configuration
+     */
+    RedundantBMCConfig config;
+
     /**
      * @brief The Services implementation
      */
