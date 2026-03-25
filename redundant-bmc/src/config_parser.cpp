@@ -185,4 +185,11 @@ RedundantBMCConfig parse(const std::filesystem::path& path)
     }
 }
 
+RedundantBMCConfig readConfig()
+{
+    constexpr auto configPath =
+        "/usr/share/phosphor-state-manager/redundant-bmc/config.json";
+    return parse(configPath);
+}
+
 } // namespace rbmc::config_parser

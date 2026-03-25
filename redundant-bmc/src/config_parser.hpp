@@ -20,4 +20,13 @@ namespace rbmc::config_parser
  */
 RedundantBMCConfig parse(const std::filesystem::path& path);
 
+/**
+ * @brief Reads the config from file.
+ *
+ * Uses /usr/share/phosphor-state-manager/redundant-bmc/config.json
+ *
+ * @return The parsed configuration
+ */
+RedundantBMCConfig readConfig();
+
 } // namespace rbmc::config_parser
