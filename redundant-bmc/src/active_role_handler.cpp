@@ -123,6 +123,12 @@ sdbusplus::async::task<> ActiveRoleHandler::siblingHealthy()
     auto& sibling = providers.getSibling();
     auto& services = providers.getServices();
 
+    // As redundancy could be enabled here if passive
+    // wasn't gone long, hold off failovers until the
+    // full sync is done.
+    providers.getSyncInterface().clearFullSyncComplete();
+    redMgr.determineAndSetFailoversAllowed();
+
     // Before trying to enable redundancy, wait for:
     // 1. Sibling to have its role assigned.
     // 2. Sibling to hit steady state (Ready needed for redundancy)
@@ -132,7 +138,6 @@ sdbusplus::async::task<> ActiveRoleHandler::siblingHealthy()
         services.waitForPeerConnection());
 
     lg2::info("Attempting to enable redundancy now that sibling is back");
-    providers.getSyncInterface().clearFullSyncComplete();
     co_await redMgr.determineRedundancyAndSync();
 
     startSiblingWatches();
