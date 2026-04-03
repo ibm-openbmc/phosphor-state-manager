@@ -61,11 +61,7 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
 
     co_await redMgr.determineRedundancyAndSync();
 
-    startSiblingWatches();
-
-    startSyncHealthWatch();
-
-    startPeerConnectedWatch();
+    startAllWatches();
 }
 
 void ActiveRoleHandler::siblingStateChange(BMCState state)
@@ -117,8 +113,7 @@ void ActiveRoleHandler::siblingHealthCritical()
 
 sdbusplus::async::task<> ActiveRoleHandler::siblingHealthy()
 {
-    stopSiblingWatches();
-    stopPeerConnectedWatch();
+    stopAllWatches();
 
     auto& sibling = providers.getSibling();
     auto& services = providers.getServices();
@@ -140,10 +135,7 @@ sdbusplus::async::task<> ActiveRoleHandler::siblingHealthy()
     lg2::info("Attempting to enable redundancy now that sibling is back");
     co_await redMgr.determineRedundancyAndSync();
 
-    startSiblingWatches();
-    startPeerConnectedWatch();
-
-    co_return;
+    startAllWatches();
 }
 
 void ActiveRoleHandler::peerConnectionChange(bool connected)
@@ -322,9 +314,7 @@ sdbusplus::async::task<> ActiveRoleHandler::failoverDetermineRedundancy()
     // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
     co_await redMgr.determineRedundancyAndSync();
 
-    startSiblingWatches();
-    startSyncHealthWatch();
-    startPeerConnectedWatch();
+    startAllWatches();
 }
 
 void ActiveRoleHandler::siblingFailoverImminent(bool imminent)

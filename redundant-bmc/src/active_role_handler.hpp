@@ -44,10 +44,7 @@ class ActiveRoleHandler : public RoleHandler
      */
     ~ActiveRoleHandler() override
     {
-        stopSiblingWatches();
-        peerConnectionTimer.stop();
-        providers.getSyncInterface().stopSyncHealthWatch(Role::Active);
-        stopPeerConnectedWatch();
+        stopAllWatches();
     }
 
     /**
@@ -116,38 +113,48 @@ class ActiveRoleHandler : public RoleHandler
 
   private:
     /**
-     * @brief Starts the Sibling property watches/callbacks
+     * @brief Starts all property watches/callbacks
      */
-    inline void startSiblingWatches()
+    inline void startAllWatches()
     {
+        // Start sibling watches
         auto& sibling = providers.getSibling();
         sibling.addBMCStateCallback(
             Role::Active,
             std::bind_front(&ActiveRoleHandler::siblingStateChange, this));
-
         sibling.addHealthCallback(
             Role::Active,
             std::bind_front(&ActiveRoleHandler::siblingHealthChange, this));
-
         sibling.addFailoverImminentCallback(
             Role::Active,
             std::bind_front(&ActiveRoleHandler::siblingFailoverImminent, this));
+
+        // Start sync health watch
+        providers.getSyncInterface().watchSyncHealth(
+            Role::Active,
+            std::bind_front(&ActiveRoleHandler::syncHealthPropertyChanged,
+                            this));
+
+        // Start peer connected watch
+        providers.getServices().addPeerConnectedCallback(
+            Role::Active,
+            std::bind_front(&ActiveRoleHandler::peerConnectionChange, this));
     }
 
     /**
-     * @brief Stops the sibling property callbacks/watches
+     * @brief Stops all property watches/callbacks
      */
-    inline void stopSiblingWatches()
+    inline void stopAllWatches()
     {
+        // Stop sibling watches
         siblingHealthTimer.stop();
         providers.getSibling().clearCallbacks(Role::Active);
-    }
 
-    /**
-     * @brief Stops the peer connected property callbacks/watches
-     */
-    inline void stopPeerConnectedWatch()
-    {
+        // Stop sync health watch
+        providers.getSyncInterface().stopSyncHealthWatch(Role::Active);
+
+        // Stop peer connected watch
+        peerConnectionTimer.stop();
         providers.getServices().removePeerConnectedCallback(Role::Active);
     }
 
@@ -187,27 +194,6 @@ class ActiveRoleHandler : public RoleHandler
      *        long enough to explicitly disable redundancy.
      */
     void siblingHealthCritical();
-
-    /**
-     * @brief Starts watching the data sync health status property
-     */
-    void startSyncHealthWatch()
-    {
-        providers.getSyncInterface().watchSyncHealth(
-            Role::Active,
-            std::bind_front(&ActiveRoleHandler::syncHealthPropertyChanged,
-                            this));
-    }
-
-    /**
-     * @brief Starts watching the peer connection property
-     */
-    void startPeerConnectedWatch()
-    {
-        providers.getServices().addPeerConnectedCallback(
-            Role::Active,
-            std::bind_front(&ActiveRoleHandler::peerConnectionChange, this));
-    }
 
     /**
      * @brief Called when the peer connection property changes
