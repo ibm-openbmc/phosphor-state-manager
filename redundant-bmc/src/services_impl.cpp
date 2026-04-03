@@ -389,7 +389,11 @@ void ServicesImpl::loadProvisioningProps(const ProvisioningPropMap& propertyMap)
 
         peerConnected = rawStatus == PeerConnectionStatus::Connected;
 
-        if (prevConnected != peerConnected)
+        // Ignore the intermediate states when doing callbacks to deal
+        // with Connected->InProgress->Connected flapping.
+        if (prevConnected != peerConnected &&
+            (rawStatus == PeerConnectionStatus::Connected ||
+             rawStatus == PeerConnectionStatus::NotConnected))
         {
             std::ranges::for_each(peerConnectedCBs, [this](const auto& entry) {
                 entry.second(peerConnected);
