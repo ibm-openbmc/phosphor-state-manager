@@ -193,6 +193,7 @@ executable(
 chassis_sources = [
     'chassis_state_manager.cpp',
     'chassis_state_manager_main.cpp',
+    'utils.cpp',
 ]
 
 if get_option('multi-chassis-smp').allowed()

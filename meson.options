@@ -224,3 +224,18 @@ option(
     value: 'default.json',
     description: 'Redundant BMC config file to install (relative to redundant-bmc/config_files/)',
 )
+
+
+option(
+    'multi-chassis-smp',
+    type: 'feature',
+    value: 'enabled',
+    description: 'Enable multi-chassis SMP support where chassis instance 0 aggregates state from chassis instances 1-N',
+)
+
+option(
+    'num-chassis-smp',
+    type: 'integer',
+    value: 12,
+    description: 'Maximum number of chassis instances to aggregate in multi-chassis SMP mode (1-N)',
+)
