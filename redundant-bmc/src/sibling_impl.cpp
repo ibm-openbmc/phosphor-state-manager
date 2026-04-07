@@ -34,11 +34,15 @@ sdbusplus::async::task<> SiblingImpl::init()
         co_return;
     }
 
+    auto barrier = std::make_shared<sdbusplus::async::barrier>(4);
+
     // Start the D-Bus watches for the signals that don't
     // need a service name.
-    ctx.spawn(watchInterfaceAdded());
-    ctx.spawn(watchInterfaceRemoved());
-    ctx.spawn(watchPropertyChanged());
+    ctx.spawn(watchInterfaceAdded(barrier));
+    ctx.spawn(watchInterfaceRemoved(barrier));
+    ctx.spawn(watchPropertyChanged(barrier));
+
+    co_await barrier->wait();
 
     serviceName = co_await lookupServiceName();
 
@@ -205,12 +209,15 @@ void SiblingImpl::loadAvailabilityProps(
     }
 }
 
-// NOLINTNEXTLINE
-sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded()
+sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded(
+    std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
     namespace rules = sdbusplus::bus::match::rules;
     sdbusplus::async::match match(ctx,
                                   rules::interfacesAddedAtPath(objectPath));
+
+    co_await barrier->wait();
+
     while (!ctx.stop_requested())
     {
         auto [_, interfaces] =
@@ -250,12 +257,14 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded()
     }
 }
 
-// NOLINTNEXTLINE
-sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved()
+sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved(
+    std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
     namespace rules = sdbusplus::bus::match::rules;
     sdbusplus::async::match match(ctx,
                                   rules::interfacesRemovedAtPath(objectPath));
+
+    co_await barrier->wait();
 
     while (!ctx.stop_requested())
     {
@@ -293,12 +302,14 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved()
     }
 }
 
-// NOLINTNEXTLINE
-sdbusplus::async::task<> SiblingImpl::watchPropertyChanged()
+sdbusplus::async::task<> SiblingImpl::watchPropertyChanged(
+    std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
     sdbusplus::async::match match(
         ctx, std::format("type='signal',member='PropertiesChanged',path='{}'",
                          objectPath));
+
+    co_await barrier->wait();
 
     while (!ctx.stop_requested())
     {

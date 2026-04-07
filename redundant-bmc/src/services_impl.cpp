@@ -193,14 +193,18 @@ sdbusplus::async::task<int> runAsyncCmd(sdbusplus::async::context& ctx,
 
 } // namespace util
 
-// NOLINTNEXTLINE
 sdbusplus::async::task<> ServicesImpl::init()
 {
-    ctx.spawn(watchHostInterfacesAdded());
-    ctx.spawn(watchHostStatePropertiesChanged());
-    ctx.spawn(watchBootProgressPropertiesChanged());
-    ctx.spawn(watchProvisioningInterfacesAdded());
-    ctx.spawn(watchProvisioningPropertiesChanged());
+    auto barrier = std::make_shared<sdbusplus::async::barrier>(6);
+
+    ctx.spawn(watchHostInterfacesAdded(barrier));
+    ctx.spawn(watchHostStatePropertiesChanged(barrier));
+    ctx.spawn(watchBootProgressPropertiesChanged(barrier));
+    ctx.spawn(watchProvisioningInterfacesAdded(barrier));
+    ctx.spawn(watchProvisioningPropertiesChanged(barrier));
+
+    co_await barrier->wait();
+
     co_await readHostState();
     co_await readBootProgress();
     co_await readProvisioningProperties();
@@ -231,11 +235,13 @@ sdbusplus::async::task<> ServicesImpl::readHostState()
     co_return;
 }
 
-// NOLINTNEXTLINE
-sdbusplus::async::task<> ServicesImpl::watchHostInterfacesAdded()
+sdbusplus::async::task<> ServicesImpl::watchHostInterfacesAdded(
+    std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
     sdbusplus::async::match match(
         ctx, rules::interfacesAddedAtPath(object_path::hostState));
+
+    co_await barrier->wait();
 
     while (!ctx.stop_requested())
     {
@@ -276,12 +282,14 @@ sdbusplus::async::task<> ServicesImpl::watchHostInterfacesAdded()
     co_return;
 }
 
-// NOLINTNEXTLINE
-sdbusplus::async::task<> ServicesImpl::watchHostStatePropertiesChanged()
+sdbusplus::async::task<> ServicesImpl::watchHostStatePropertiesChanged(
+    std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
     sdbusplus::async::match match(
         ctx,
         rules::propertiesChanged(object_path::hostState, HostState::interface));
+
+    co_await barrier->wait();
 
     while (!ctx.stop_requested())
     {
@@ -348,12 +356,14 @@ sdbusplus::async::task<> ServicesImpl::readProvisioningProperties()
     }
 }
 
-// NOLINTNEXTLINE
-sdbusplus::async::task<> ServicesImpl::watchBootProgressPropertiesChanged()
+sdbusplus::async::task<> ServicesImpl::watchBootProgressPropertiesChanged(
+    std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
     sdbusplus::async::match match(
         ctx, rules::propertiesChanged(object_path::hostState,
                                       BootProgress::interface));
+
+    co_await barrier->wait();
 
     while (!ctx.stop_requested())
     {
@@ -410,10 +420,13 @@ void ServicesImpl::loadProvisioningProps(const ProvisioningPropMap& propertyMap)
     }
 }
 
-sdbusplus::async::task<> ServicesImpl::watchProvisioningInterfacesAdded()
+sdbusplus::async::task<> ServicesImpl::watchProvisioningInterfacesAdded(
+    std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
     sdbusplus::async::match match(
         ctx, rules::interfacesAddedAtPath(Provisioning::instance_path));
+
+    co_await barrier->wait();
 
     while (!ctx.stop_requested())
     {
@@ -430,11 +443,14 @@ sdbusplus::async::task<> ServicesImpl::watchProvisioningInterfacesAdded()
     }
 }
 
-sdbusplus::async::task<> ServicesImpl::watchProvisioningPropertiesChanged()
+sdbusplus::async::task<> ServicesImpl::watchProvisioningPropertiesChanged(
+    std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
     sdbusplus::async::match match(
         ctx, rules::propertiesChanged(Provisioning::instance_path,
                                       Provisioning::interface));
+
+    co_await barrier->wait();
 
     while (!ctx.stop_requested())
     {

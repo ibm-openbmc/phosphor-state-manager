@@ -3,6 +3,7 @@
 
 #include "services.hpp"
 
+#include <sdbusplus/async/barrier.hpp>
 #include <xyz/openbmc_project/Provisioning/Provisioning/common.hpp>
 #include <xyz/openbmc_project/State/Boot/Progress/common.hpp>
 #include <xyz/openbmc_project/State/Host/common.hpp>
@@ -210,13 +211,19 @@ class ServicesImpl : public Services
 
     /**
      * @brief Starts the InterfacesAdded watch for the host state
+     *
+     * @param[in] barrier - Initialization barrier
      */
-    sdbusplus::async::task<> watchHostInterfacesAdded();
+    sdbusplus::async::task<> watchHostInterfacesAdded(
+        std::shared_ptr<sdbusplus::async::barrier> barrier);
 
     /**
      * @brief Starts the PropertiesChanged watch for the host state
+     *
+     * @param[in] barrier - Initialization barrier
      */
-    sdbusplus::async::task<> watchHostStatePropertiesChanged();
+    sdbusplus::async::task<> watchHostStatePropertiesChanged(
+        std::shared_ptr<sdbusplus::async::barrier> barrier);
 
     /**
      * @brief Reads the CurrentHostState property
@@ -230,18 +237,27 @@ class ServicesImpl : public Services
 
     /**
      * @brief Starts the PropertiesChanged watch for the BootProgress property
+     *
+     * @param[in] barrier - Initialization barrier
      */
-    sdbusplus::async::task<> watchBootProgressPropertiesChanged();
+    sdbusplus::async::task<> watchBootProgressPropertiesChanged(
+        std::shared_ptr<sdbusplus::async::barrier> barrier);
 
     /**
      * @brief Starts the InterfacesAdded watch for the Provisioning interface
+     *
+     * @param[in] barrier - Initialization barrier
      */
-    sdbusplus::async::task<> watchProvisioningInterfacesAdded();
+    sdbusplus::async::task<> watchProvisioningInterfacesAdded(
+        std::shared_ptr<sdbusplus::async::barrier> barrier);
 
     /**
      * @brief Starts the PropertiesChanged watch for the Provisioning interface
+     *
+     * @param[in] barrier - Initialization barrier
      */
-    sdbusplus::async::task<> watchProvisioningPropertiesChanged();
+    sdbusplus::async::task<> watchProvisioningPropertiesChanged(
+        std::shared_ptr<sdbusplus::async::barrier> barrier);
 
     /**
      * @brief Reads the Provisioning interface properties

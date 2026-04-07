@@ -2,6 +2,8 @@
 #pragma once
 #include "sibling.hpp"
 
+#include <sdbusplus/async/barrier.hpp>
+
 #include <vector>
 
 namespace rbmc
@@ -247,13 +249,19 @@ class SiblingImpl : public Sibling
   private:
     /**
      * @brief Starts a Sibling InterfacesAdded watch
+     *
+     * @param[in] barrier - Initialization barrier
      */
-    sdbusplus::async::task<> watchInterfaceAdded();
+    sdbusplus::async::task<> watchInterfaceAdded(
+        std::shared_ptr<sdbusplus::async::barrier> barrier);
 
     /**
      * @brief Starts a Sibling InterfacesRemoved watch
+     *
+     * @param[in] barrier - Initialization barrier
      */
-    sdbusplus::async::task<> watchInterfaceRemoved();
+    sdbusplus::async::task<> watchInterfaceRemoved(
+        std::shared_ptr<sdbusplus::async::barrier> barrier);
 
     /**
      * @brief Starts a Sibling NameOwnerChanged watch
@@ -262,8 +270,11 @@ class SiblingImpl : public Sibling
 
     /**
      * @brief Starts a PropertyChanged watch for all interfaces
+     *
+     * @param[in] barrier - Initialization barrier
      */
-    sdbusplus::async::task<> watchPropertyChanged();
+    sdbusplus::async::task<> watchPropertyChanged(
+        std::shared_ptr<sdbusplus::async::barrier> barrier);
 
     /**
      * @brief Sets initial values for all properties
