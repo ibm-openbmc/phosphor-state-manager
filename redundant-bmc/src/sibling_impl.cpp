@@ -166,7 +166,7 @@ void SiblingImpl::loadRedundancyProps(
     if (it != propertyMap.end())
     {
         const auto& reasons =
-            std::get<std::set<ReasonForNoRedundancy>>(it->second);
+            std::get<std::vector<ReasonForNoRedundancy>>(it->second);
         redundancy.hasReasonForNoRedundancy = !reasons.empty();
     }
 }

@@ -65,7 +65,7 @@ class RedundancyInterface :
      * @return If the property value changed
      */
     bool set_property(reasons_for_no_redundancy_t type,
-                      const std::set<ReasonForNoRedundancy>& reasons);
+                      const std::vector<ReasonForNoRedundancy>& reasons);
 
   private:
     /**

@@ -110,7 +110,7 @@ bool RedundancyInterface::set_property(
 
 bool RedundancyInterface::set_property(
     [[maybe_unused]] reasons_for_no_redundancy_t type,
-    const std::set<ReasonForNoRedundancy>& reasons)
+    const std::vector<ReasonForNoRedundancy>& reasons)
 {
     if (reasons == reasons_for_no_redundancy_)
     {
@@ -118,12 +118,12 @@ bool RedundancyInterface::set_property(
     }
 
     // Use the last segment of the string name to trace and save for debug
-    std::set<std::string> names;
+    std::vector<std::string> names;
     std::ranges::for_each(reasons, [&names](const auto& reason) {
         auto shortName = convertReasonForNoRedundancyToString(reason);
         shortName = shortName.substr(shortName.find_last_of('.') + 1);
         lg2::info("No redundancy because: {DESC}", "DESC", shortName);
-        names.insert(shortName);
+        names.push_back(shortName);
     });
 
     try

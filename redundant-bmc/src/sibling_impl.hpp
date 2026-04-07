@@ -2,7 +2,7 @@
 #pragma once
 #include "sibling.hpp"
 
-#include <set>
+#include <vector>
 
 namespace rbmc
 {
@@ -19,7 +19,7 @@ class SiblingImpl : public Sibling
   public:
     using PropertyVariant =
         std::variant<std::string, bool, Role, size_t, BMCState,
-                     std::set<ReasonForNoRedundancy>>;
+                     std::vector<ReasonForNoRedundancy>>;
     using PropertyMap = std::unordered_map<std::string, PropertyVariant>;
     using InterfaceMap = std::map<std::string, PropertyMap>;
     using ManagedObjects =

@@ -15,66 +15,66 @@ ReasonsForNoRedundancy getNoRedundancyReasons(const Input& input)
 
     if (input.role != Role::Active)
     {
-        reasons.insert(BMCNotActive);
+        reasons.push_back(BMCNotActive);
     }
 
     if (input.manualDisable)
     {
-        reasons.insert(ManuallyDisabled);
+        reasons.push_back(ManuallyDisabled);
     }
 
     if (!input.siblingPresent)
     {
-        reasons.insert(SiblingMissing);
+        reasons.push_back(SiblingMissing);
     }
     else
     {
         if (!input.siblingAlive)
         {
-            reasons.insert(SiblingNotAlive);
+            reasons.push_back(SiblingNotAlive);
         }
         else
         {
             if (!input.siblingProvisioned)
             {
-                reasons.insert(SiblingNotProvisioned);
+                reasons.push_back(SiblingNotProvisioned);
             }
 
             if (input.siblingRole != Role::Passive)
             {
-                reasons.insert(SiblingNotPassive);
+                reasons.push_back(SiblingNotPassive);
             }
 
             if (input.siblingCannotBeActive)
             {
-                reasons.insert(SiblingCannotBeActive);
+                reasons.push_back(SiblingCannotBeActive);
             }
 
             if (!input.codeVersionsMatch)
             {
-                reasons.insert(CodeVersionMismatch);
+                reasons.push_back(CodeVersionMismatch);
             }
 
             if (!input.peerConnected)
             {
-                reasons.insert(NetworkError);
+                reasons.push_back(NetworkError);
             }
 
             if (input.siblingState != BMCState::Ready)
             {
-                reasons.insert(SiblingNotAtReady);
+                reasons.push_back(SiblingNotAtReady);
             }
 
             if (input.syncFailed)
             {
-                reasons.insert(DataSyncFailed);
+                reasons.push_back(DataSyncFailed);
             }
         }
     }
 
     if (input.redundancyOffAtRuntimeStart)
     {
-        reasons.insert(RedundancyOffAtRuntimeStart);
+        reasons.push_back(RedundancyOffAtRuntimeStart);
     }
 
     return reasons;

@@ -41,7 +41,7 @@ struct Input
     bool peerConnected;
 };
 
-using ReasonsForNoRedundancy = std::set<ReasonForNoRedundancy>;
+using ReasonsForNoRedundancy = std::vector<ReasonForNoRedundancy>;
 
 /**
  * @brief Returns the reasons that redundancy can't be enabled.
