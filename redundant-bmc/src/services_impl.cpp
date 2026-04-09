@@ -970,4 +970,35 @@ sdbusplus::async::task<> ServicesImpl::waitForPeerConnection()
                "MIN", timeout.count());
 }
 
+void ServicesImpl::setRedundancyDetermined()
+{
+    namespace fs = std::filesystem;
+
+    const fs::path runDir = "/run/openbmc";
+    const fs::path markerFile = runDir / "bmc_redundancy_determined";
+
+    try
+    {
+        if (!fs::exists(runDir))
+        {
+            fs::create_directories(runDir);
+        }
+
+        std::ofstream file(markerFile);
+        if (!file)
+        {
+            lg2::error(
+                "Failed to create redundancy determined marker file {FILE}",
+                "FILE", markerFile.string());
+            return;
+        }
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error(
+            "Exception creating redundancy determined marker file: {ERROR}",
+            "ERROR", e);
+    }
+}
+
 } // namespace rbmc

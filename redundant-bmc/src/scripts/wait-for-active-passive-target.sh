@@ -2,6 +2,8 @@
 
 # Wait for the Role property to get set to Active or Passive and
 # then wait for the corresponding obmc-bmc-<role>.target to start.
+# On the active BMC, then wait up to an additional 15 minutes for
+# the file /run/openbmc/bmc_redundancy_determined to be present.
 
 retries=600 # Wait max 20 minutes for role to be set
 passive=0
@@ -46,11 +48,37 @@ do
     if echo "$state" | grep -q -e '\"active\"' -e '\"failed\"' ;
     then
         echo "Done waiting for $target"
-        exit 0
+        break
     fi
     retries="$((retries - 1))"
     sleep 2
 done
 
-echo "Timed out waiting for $target to start"
-exit 1
+if [ "$retries" -eq 0 ];
+then
+    echo "Timed out waiting for $target to start"
+    exit 1
+fi
+
+# If this is the active BMC, wait for redundancy to be determined
+if [ "$passive" -eq 0 ];
+then
+    echo "Active BMC target started, now waiting for redundancy to be determined"
+
+    retries=450 # Wait max 15 minutes for redundancy determined file
+    while [ "$retries" -ne 0 ]
+    do
+        if [ -f /run/openbmc/bmc_redundancy_determined ];
+        then
+            echo "Redundancy determined file found"
+            exit 0
+        fi
+        retries="$((retries - 1))"
+        sleep 2
+    done
+
+    echo "Timed out waiting for redundancy to be determined"
+    exit 1
+fi
+
+exit 0

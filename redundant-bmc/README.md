@@ -23,10 +23,17 @@ first in this case would ensure BMC 0 remains passive.
 
 ### Holding off BMC Ready
 
-A service file linked into multi-user.target that polls for the active and
-passive systemd targets to complete will prevent the system from reaching the
-BMC ready state before the role has been determined. On the active BMC this
-would also wait for all of the active applications to be started.
+The phosphor-wait-for-active-passive-target.service prevents the BMC from
+reaching the Ready state until the initial role determination and redundancy
+work is complete. This service runs a script that:
+
+1. Polls the Role D-Bus property until it becomes Active or Passive (max 20
+   minutes)
+2. Waits for the corresponding systemd target (obmc-bmc-active.target or
+   obmc-bmc-passive.target) to complete (max 60 minutes)
+3. On the active BMC only, waits for the /run/openbmc/bmc_redundancy_determined
+   marker file to be created, indicating redundancy determination is complete
+   (max 15 minutes)
 
 ## Role Determination Rules
 

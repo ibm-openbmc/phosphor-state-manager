@@ -110,6 +110,8 @@ sdbusplus::async::task<> RedundancyMgr::determineRedundancyAndSync()
             determineAndSetFailoversAllowed();
         }
     }
+
+    providers.getServices().setRedundancyDetermined();
 }
 
 void RedundancyMgr::handleBackgroundSyncFailed()

@@ -180,6 +180,14 @@ class ServicesImpl : public Services
         std::string error, errors::Level severity,
         errors::AdditionalData data) const override;
 
+    /**
+     * @brief Creates the redundancy determined marker file
+     *
+     * Creates /run/openbmc/bmc_redundancy_determined to indicate
+     * that redundancy determination is complete.
+     */
+    void setRedundancyDetermined() override;
+
   private:
     /**
      * @brief Returns the D-Bus object path for the unit in the

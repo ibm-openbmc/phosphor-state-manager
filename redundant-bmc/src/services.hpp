@@ -242,6 +242,14 @@ class Services
      */
     virtual sdbusplus::async::task<> acquireFullHardwareAccess() = 0;
 
+    /**
+     * @brief Creates the redundancy determined marker file
+     *
+     * Creates /run/openbmc/bmc_redundancy_determined to indicate
+     * that redundancy determination is complete.
+     */
+    virtual void setRedundancyDetermined() = 0;
+
   protected:
     /**
      * @brief The functions to call when the system state changes
