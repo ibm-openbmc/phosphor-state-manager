@@ -37,9 +37,12 @@ class Manager :
      *
      * @param[in] ctx - The async context object
      * @param[in] providers - The Providers access object
+     * @param[in] heartbeatInterval - Interval between heartbeats (default: 1s)
      */
     Manager(sdbusplus::async::context& ctx,
-            std::unique_ptr<Providers>&& providers);
+            std::unique_ptr<Providers>&& providers,
+            std::chrono::milliseconds heartbeatInterval = std::chrono::seconds{
+                1});
 
     /**
      * @brief Handler for the DisableRedundancyOverride
@@ -197,6 +200,11 @@ class Manager :
      */
     role_determination::RoleReason roleReason{
         role_determination::RoleReason::unknown};
+
+    /**
+     * @brief The interval between heartbeats
+     */
+    std::chrono::milliseconds heartbeatInterval;
 };
 
 } // namespace rbmc
