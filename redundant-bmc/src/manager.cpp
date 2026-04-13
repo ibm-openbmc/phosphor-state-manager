@@ -18,10 +18,12 @@ const std::string failoverPath =
     RedundancyInterface::namespace_path::bmc;
 
 Manager::Manager(sdbusplus::async::context& ctx,
-                 std::unique_ptr<Providers>&& providers) :
+                 std::unique_ptr<Providers>&& providers,
+                 std::chrono::milliseconds heartbeatInterval) :
     sdbusplus::aserver::xyz::openbmc_project::control::Failover<Manager>(
         ctx, failoverPath.c_str()),
-    ctx(ctx), redundancyInterface(ctx, *this), providers(std::move(providers))
+    ctx(ctx), redundancyInterface(ctx, *this), providers(std::move(providers)),
+    heartbeatInterval(heartbeatInterval)
 {
     try
     {
@@ -164,16 +166,12 @@ void Manager::startHeartbeat()
     ctx.spawn(doHeartBeat());
 }
 
-// clang-tidy currently mangles this into something unreadable
-// NOLINTNEXTLINE
 sdbusplus::async::task<> Manager::doHeartBeat()
 {
-    using namespace std::chrono_literals;
-
     while (!ctx.stop_requested())
     {
         redundancyInterface.heartbeat();
-        co_await sdbusplus::async::sleep_for(ctx, 1s);
+        co_await sdbusplus::async::sleep_for(ctx, heartbeatInterval);
     }
 
     co_return;
