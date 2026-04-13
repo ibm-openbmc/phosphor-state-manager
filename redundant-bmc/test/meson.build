@@ -8,15 +8,6 @@ test(
         'persistent_data_test.cpp',
         'redundancy_test.cpp',
         'role_determination_test.cpp',
-        '../src/active_role_handler.cpp',
-        '../src/error_data.cpp',
-        '../src/manager.cpp',
-        '../src/passive_role_handler.cpp',
-        '../src/persistent_data.cpp',
-        '../src/redundancy.cpp',
-        '../src/redundancy_interface.cpp',
-        '../src/redundancy_mgr.cpp',
-        '../src/role_determination.cpp',
         dependencies: [
             gtest,
             gmock,
@@ -25,6 +16,7 @@ test(
             phosphordbusinterfaces,
             phosphorlogging,
         ],
+        link_with: rbmc_lib,
         include_directories: ['../src', 'mocks'],
     ),
 )
