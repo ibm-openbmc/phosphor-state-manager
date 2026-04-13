@@ -172,14 +172,17 @@ class Manager :
     RedundancyInterface redundancyInterface;
 
     /**
+     * @brief Contains the various provider helpers
+     *
+     * NOTE: Must be declared before handler so it's destroyed
+     * after handler, since handler's destructor accesses providers.
+     */
+    std::unique_ptr<Providers> providers;
+
+    /**
      * @brief The role handler class
      */
     std::unique_ptr<RoleHandler> handler;
-
-    /**
-     * @brief Contains the various provider helpers
-     */
-    std::unique_ptr<Providers> providers;
 
     /**
      * @brief The previously serialized role value.
