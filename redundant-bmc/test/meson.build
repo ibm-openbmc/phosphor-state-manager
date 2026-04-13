@@ -9,11 +9,6 @@ test(
         'persistent_data_test.cpp',
         'redundancy_test.cpp',
         'role_determination_test.cpp',
-        '../src/config_parser.cpp',
-        '../src/error_data.cpp',
-        '../src/persistent_data.cpp',
-        '../src/redundancy.cpp',
-        '../src/role_determination.cpp',
         dependencies: [
             gtest,
             nlohmann_json_dep,
@@ -22,5 +17,6 @@ test(
             phosphorlogging,
         ],
         include_directories: '../src',
+        link_with: rbmc_lib,
     ),
 )

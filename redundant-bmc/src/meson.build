@@ -14,8 +14,8 @@ rbmc_deps = [
     ssl_dep,
 ]
 
-executable(
-    'phosphor-rbmc-state-manager',
+rbmc_lib = static_library(
+    'rbmc',
     'active_role_handler.cpp',
     'config_parser.cpp',
     'error_data.cpp',
@@ -23,7 +23,6 @@ executable(
     'manager.cpp',
     'passive_role_handler.cpp',
     'persistent_data.cpp',
-    'rbmc_manager_main.cpp',
     'redundancy.cpp',
     'redundancy_interface.cpp',
     'redundancy_mgr.cpp',
@@ -33,17 +32,22 @@ executable(
     'sibling_reset_impl.cpp',
     'sync_interface_impl.cpp',
     dependencies: rbmc_deps,
+)
+
+executable(
+    'phosphor-rbmc-state-manager',
+    'rbmc_manager_main.cpp',
+    dependencies: rbmc_deps,
+    link_with: rbmc_lib,
     install: true,
     install_dir: execinstalldir,
 )
 
 executable(
     'rbmctool',
-    'persistent_data.cpp',
     'rbmc_tool.cpp',
-    'services_impl.cpp',
-    'sibling_reset_impl.cpp',
     dependencies: [rbmc_deps, CLI11],
+    link_with: rbmc_lib,
     install: true,
 )
 
