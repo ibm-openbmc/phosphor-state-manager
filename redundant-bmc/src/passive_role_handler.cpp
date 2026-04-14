@@ -115,7 +115,7 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
             "ERROR", e);
     }
 
-    co_return;
+    providers.getEventRecorder().record(Event::passiveHandlerStartComplete);
 }
 
 void PassiveRoleHandler::setupSiblingRedEnabledWatch()

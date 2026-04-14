@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include "event_recorder.hpp"
 #include "services.hpp"
 #include "sibling.hpp"
 #include "sibling_reset.hpp"
@@ -44,6 +45,20 @@ class Providers
      * @brief Returns the SiblingReset provider
      */
     virtual SiblingReset& getSiblingReset() = 0;
+
+    /**
+     * @brief Returns the EventRecorder
+     */
+    EventRecorder& getEventRecorder()
+    {
+        return eventRecorder;
+    }
+
+  private:
+    /**
+     * @brief Holds interesting events that occurred
+     */
+    EventRecorder eventRecorder;
 };
 
 }; // namespace rbmc

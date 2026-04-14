@@ -453,6 +453,8 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive(Requester requester)
     redundancyInterface.failover_in_progress(false);
 
     co_await active->failoverDetermineRedundancy();
+
+    providers->getEventRecorder().record(Event::failoverComplete);
 }
 
 } // namespace rbmc
