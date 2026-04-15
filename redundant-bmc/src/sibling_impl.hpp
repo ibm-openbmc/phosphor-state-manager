@@ -1,9 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #pragma once
+#include "config_data.hpp"
+#include "services.hpp"
 #include "sibling.hpp"
 
 #include <sdbusplus/async/barrier.hpp>
 
+#include <optional>
 #include <vector>
 
 namespace rbmc
@@ -37,8 +40,11 @@ class SiblingImpl : public Sibling
      * @brief Constructor
      *
      * @param[in] ctx - The async context object
+     * @param[in] config - The redundant BMC configuration
+     * @param[in] services - The Services provider for BMC position lookup
      */
-    explicit SiblingImpl(sdbusplus::async::context& ctx);
+    explicit SiblingImpl(sdbusplus::async::context& ctx,
+                         const RedundantBMCConfig& config, Services& services);
 
     /**
      * @brief Returns if the sibling BMC has a good heartbeat
@@ -218,10 +224,7 @@ class SiblingImpl : public Sibling
      *
      * @return bool - if present
      */
-    bool isBMCPresent() override
-    {
-        return availability.available;
-    }
+    bool isBMCPresent() override;
 
     /**
      * @brief Waits for up to 10 minutes for the sibling BMC to
@@ -353,9 +356,26 @@ class SiblingImpl : public Sibling
     sdbusplus::async::task<std::string> lookupServiceName() const;
 
     /**
+     * @brief Get the GPIO config for the sibling BMC
+     *
+     * @return The GPIO config if available, nullopt otherwise
+     */
+    std::optional<GPIOConfig> getSibPresentGPIOConfig() const;
+
+    /**
      * @brief The async context object
      */
     sdbusplus::async::context& ctx;
+
+    /**
+     * @brief The redundant BMC configuration
+     */
+    const RedundantBMCConfig& config;
+
+    /**
+     * @brief The Services provider for system information
+     */
+    Services& services;
 
     /**
      * @brief The sibling's D-Bus service name.

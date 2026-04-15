@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "sibling_impl.hpp"
 
+#include "gpio.hpp"
+
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
 #include <xyz/openbmc_project/Provisioning/Provisioning/common.hpp>
@@ -23,9 +25,11 @@ using AvailIntf =
 using ProvisioningIntf =
     sdbusplus::common::xyz::openbmc_project::provisioning::Provisioning;
 
-SiblingImpl::SiblingImpl(sdbusplus::async::context& ctx) :
-    ctx(ctx), objectPath(std::string{RedIntf::namespace_path::value} + '/' +
-                         RedIntf::namespace_path::sibling_bmc)
+SiblingImpl::SiblingImpl(sdbusplus::async::context& ctx,
+                         const RedundantBMCConfig& config, Services& services) :
+    ctx(ctx), config(config), services(services),
+    objectPath(std::string{RedIntf::namespace_path::value} + '/' +
+               RedIntf::namespace_path::sibling_bmc)
 {}
 
 // NOLINTNEXTLINE
@@ -524,6 +528,67 @@ sdbusplus::async::task<> SiblingImpl::waitForBMCSteadyState() const
 }
 // NOLINTEND(clang-analyzer-core.uninitialized.Branch,
 //           readability-static-accessed-through-instance)
+
+bool SiblingImpl::isBMCPresent()
+{
+    // The GPIO:
+    // 1. May not be defined for this system
+    // 2. May be in use by someone else for too long, or
+    // 3. May have something wrong with the hardware (like an IO expander)
+    //    it's on.
+    // So, only use the GPIO 'present = true' value, otherwise
+    // fall back to looking at other hints in an effort to get
+    // the right answer.
+
+    std::optional<bool> gpioActive;
+
+    auto gpioConfig = getSibPresentGPIOConfig();
+    if (gpioConfig.has_value())
+    {
+        gpioActive =
+            readGPIO(gpioConfig.value().name, gpioConfig.value().polarity);
+    }
+
+    if (gpioActive.value_or(false))
+    {
+        return true;
+    }
+
+    bool fallbackPresent = availability.available ||
+                           services.getPeerConnected();
+
+    if (gpioActive.has_value() && !gpioActive.value() && fallbackPresent)
+    {
+        lg2::warning(
+            "Sibling present GPIO indicates not present, but fallback data "
+            "{AVAILABILITY}/{PEER_CONNECTED} indicates present",
+            "AVAILABILITY", availability.available, "PEER_CONNECTED",
+            services.getPeerConnected());
+    }
+
+    return fallbackPresent;
+}
+
+std::optional<GPIOConfig> SiblingImpl::getSibPresentGPIOConfig() const
+{
+    auto bmcPos = services.getBMCPosition();
+    if (!bmcPos.has_value())
+    {
+        return std::nullopt;
+    }
+
+    auto it = config.bmcConfigs.find(bmcPos.value());
+    if (it != config.bmcConfigs.end())
+    {
+        return it->second.siblingBMCPresentGPIO;
+    }
+    else
+    {
+        lg2::warning("BMC pos {POS} not in config file", "POS", bmcPos.value());
+    }
+
+    return std::nullopt;
+}
 
 // NOLINTNEXTLINE
 sdbusplus::async::task<> SiblingImpl::pauseForHeartbeatChange() const
