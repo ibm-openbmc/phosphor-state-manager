@@ -19,6 +19,7 @@ executable(
     'active_role_handler.cpp',
     'config_parser.cpp',
     'error_data.cpp',
+    'gpio.cpp',
     'manager.cpp',
     'passive_role_handler.cpp',
     'persistent_data.cpp',
