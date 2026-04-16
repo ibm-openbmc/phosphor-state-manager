@@ -79,7 +79,7 @@ sdbusplus::async::task<> SiblingResetImpl::toggleReset()
 
     using namespace std::chrono_literals;
 
-    co_await sdbusplus::async::sleep_for(ctx, 1ms);
+    co_await sdbusplus::async::sleep_for(ctx, 200ms);
 
     resetLine.set_value(0);
 
