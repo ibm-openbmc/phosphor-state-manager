@@ -202,22 +202,27 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
         output["Failovers Allowed"] = props.failovers_allowed;
         output["Failover In Progress"] = props.failover_in_progress;
         output["FW Version Hash"] = services.getFWVersion();
-        output["Provisioned"] = services.getProvisioned();
 
         try
         {
-            auto peerConnected = co_await Provisioning(ctx)
-                                     .service(provService)
-                                     .path(Provisioning::instance_path)
-                                     .peer_connected();
-
-            if (peerConnected != PeerConnectionStatus::Connected)
+            auto provProps = co_await Provisioning(ctx)
+                                 .service(provService)
+                                 .path(Provisioning::instance_path)
+                                 .properties();
+            if (!provProps.provisioned)
             {
-                output["Peer Connected"] = getPDIEnumString(peerConnected);
+                output["Paired"] = provProps.provisioned;
+            }
+
+            if (provProps.peer_connected != PeerConnectionStatus::Connected)
+            {
+                output["Peer Connected"] =
+                    getPDIEnumString(provProps.peer_connected);
             }
         }
         catch (const std::exception& e)
         {
+            output["Paired"] = e.what();
             output["PeerConnected"] = e.what();
         }
 
@@ -293,7 +298,7 @@ sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
         output["Failovers Allowed"] = rProps.failovers_allowed;
         output["BMC State"] = getPDIEnumString(state);
         output["FW Version Hash"] = fwVersion;
-        output["Provisioned"] = true; // TODO
+        output["Paired"] = true; // TODO
     }
     catch (const std::exception& e)
     {
