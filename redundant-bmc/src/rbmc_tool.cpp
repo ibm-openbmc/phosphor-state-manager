@@ -8,7 +8,9 @@
 
 #include <CLI/CLI.hpp>
 #include <nlohmann/json.hpp>
+#include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/Control/Failover/client.hpp>
+#include <xyz/openbmc_project/Provisioning/Provisioning/client.hpp>
 #include <xyz/openbmc_project/Software/Version/client.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
@@ -22,9 +24,14 @@ using BMCState = sdbusplus::client::xyz::openbmc_project::state::BMC<>;
 using Role = Redundancy::Role;
 using Failover = sdbusplus::client::xyz::openbmc_project::control::Failover<>;
 using Version = sdbusplus::client::xyz::openbmc_project::software::Version<>;
+using Provisioning =
+    sdbusplus::client::xyz::openbmc_project::provisioning::Provisioning<>;
+using PeerConnectionStatus = sdbusplus::common::xyz::openbmc_project::
+    provisioning::Provisioning::PeerConnectionStatus;
 
 constexpr auto siblingService =
     "xyz.openbmc_project.State.BMC.Redundancy.Sibling";
+constexpr auto provService = "xyz.openbmc_project.Provisioning";
 
 template <typename T>
 void printParam(std::string key, const T& value)
@@ -196,6 +203,23 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
         output["Failover In Progress"] = props.failover_in_progress;
         output["FW Version Hash"] = services.getFWVersion();
         output["Provisioned"] = services.getProvisioned();
+
+        try
+        {
+            auto peerConnected = co_await Provisioning(ctx)
+                                     .service(provService)
+                                     .path(Provisioning::instance_path)
+                                     .peer_connected();
+
+            if (peerConnected != PeerConnectionStatus::Connected)
+            {
+                output["Peer Connected"] = getPDIEnumString(peerConnected);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            output["PeerConnected"] = e.what();
+        }
 
         if (role != "Unknown")
         {
