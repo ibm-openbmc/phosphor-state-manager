@@ -510,4 +510,11 @@ sdbusplus::async::task<> SiblingImpl::pauseForHeartbeatChange() const
     co_return co_await sdbusplus::async::sleep_for(ctx, 5s);
 }
 
+sdbusplus::async::task<> SiblingImpl::pauseForDataPropagation() const
+{
+    using namespace std::chrono_literals;
+    // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+    co_return co_await sdbusplus::async::sleep_for(ctx, 4s);
+}
+
 } // namespace rbmc

@@ -237,6 +237,11 @@ class SiblingImpl : public Sibling
     sdbusplus::async::task<> pauseForHeartbeatChange() const override;
 
     /**
+     * @brief Pause to allow time for data from the sibling BMC to propagate.
+     */
+    sdbusplus::async::task<> pauseForDataPropagation() const override;
+
+    /**
      * @brief Returns the D-Bus service name for the sibling service.
      *
      * Returns an empty string if it isn't on D-Bus.

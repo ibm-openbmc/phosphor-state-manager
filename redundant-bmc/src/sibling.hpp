@@ -157,6 +157,11 @@ class Sibling
     virtual sdbusplus::async::task<> pauseForHeartbeatChange() const = 0;
 
     /**
+     * @brief Pause to allow time for data from the sibling BMC to propagate.
+     */
+    virtual sdbusplus::async::task<> pauseForDataPropagation() const = 0;
+
+    /**
      * @brief Returns the D-Bus service name for the sibling service.
      *
      * Returns an empty string if it isn't on D-Bus.

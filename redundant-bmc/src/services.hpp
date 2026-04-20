@@ -46,6 +46,7 @@ class Services
 
     using SystemStateCallback = std::function<void(SystemState)>;
     using PeerConnectedCallback = std::function<void(bool)>;
+    using ProvisionedCallback = std::function<void(bool)>;
 
     /**
      * @brief Sets up the D-Bus matches
@@ -224,6 +225,28 @@ class Services
     }
 
     /**
+     * @brief Add a function that gets called when the provisioned status
+     *        changes.
+     *
+     * @param[in] role - The role to register with
+     * @param[in] callback - The function to call
+     */
+    void addProvisionedCallback(Role role, ProvisionedCallback&& callback)
+    {
+        provisionedCBs.emplace(role, std::move(callback));
+    }
+
+    /**
+     * @brief Remove a specific provisioned change callback by role.
+     *
+     * @param[in] role - The role of the callback to remove
+     */
+    void removeProvisionedCallback(Role role)
+    {
+        provisionedCBs.erase(role);
+    }
+
+    /**
      * @brief On the system inventory object, check that its Progress
      *        Status property is 'Completed'.
      *
@@ -260,6 +283,11 @@ class Services
      * @brief The functions to call when the peer connected status changes
      */
     std::map<Role, PeerConnectedCallback> peerConnectedCBs;
+
+    /**
+     * @brief The functions to call when the provisioned status changes
+     */
+    std::map<Role, ProvisionedCallback> provisionedCBs;
 };
 
 } // namespace rbmc

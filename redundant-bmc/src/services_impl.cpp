@@ -414,9 +414,18 @@ void ServicesImpl::loadProvisioningProps(const ProvisioningPropMap& propertyMap)
     it = propertyMap.find("Provisioned");
     if (it != propertyMap.end())
     {
+        auto prevProvisioned = provisioned;
         provisioned = std::get<bool>(it->second);
 
         lg2::info("The new Provisioned value is {PROV}", "PROV", provisioned);
+
+        // Invoke callbacks if value changed
+        if (prevProvisioned != provisioned)
+        {
+            std::ranges::for_each(provisionedCBs, [this](const auto& entry) {
+                entry.second(provisioned);
+            });
+        }
     }
 }
 
