@@ -21,11 +21,6 @@ RoleInfo determineRole(const Input& input)
         result = {Role::Active, RoleReason::siblingNotAlive};
     }
 
-    else if (!input.siblingProvisioned)
-    {
-        result = {Role::Active, RoleReason::siblingNotProvisioned};
-    }
-
     else if (input.siblingRole == Role::Passive)
     {
         result = {Role::Active, RoleReason::siblingPassive};
@@ -81,9 +76,6 @@ std::string getRoleReasonDescription(RoleReason reason)
             break;
         case RoleReason::siblingNotAlive:
             desc = "Sibling not alive"s;
-            break;
-        case RoleReason::siblingNotProvisioned:
-            desc = "Sibling is not provisioned"s;
             break;
         case RoleReason::siblingPassive:
             desc = "Sibling is already passive"s;

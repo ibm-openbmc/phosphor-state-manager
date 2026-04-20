@@ -41,7 +41,6 @@ The current rules for role determination are:
 
 1. If the sibling BMC doesn't have a heartbeat, choose active. It could be the
    sibling isn't even present.
-1. If the sibling isn't provisioned, choose active.
 1. If the sibling is already passive, choose active.
 1. If the sibling is already active, choose passive.
 1. If there was previously a failover in progress, choose active. See
