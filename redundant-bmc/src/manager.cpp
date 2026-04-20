@@ -105,6 +105,11 @@ sdbusplus::async::task<> Manager::startup()
     co_await postStartupClearFOInProgress();
 
     spawnRoleHandler();
+
+    if (!services.getProvisioned())
+    {
+        setupProvisionedWatch();
+    }
 }
 
 // NOLINTNEXTLINE
@@ -453,6 +458,61 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive(Requester requester)
     redundancyInterface.failover_in_progress(false);
 
     co_await active->failoverDetermineRedundancy();
+}
+
+void Manager::setupProvisionedWatch()
+{
+    providers->getServices().addProvisionedCallback(
+        Role::Passive,
+        std::bind_front(&Manager::provisionedChangeHandler, this));
+}
+
+void Manager::provisionedChangeHandler(bool provisioned)
+{
+    ctx.spawn(handleProvisionedChange(provisioned));
+}
+
+sdbusplus::async::task<> Manager::handleProvisionedChange(bool provisioned)
+{
+    if (!provisioned)
+    {
+        co_return;
+    }
+
+    // Doublecheck the BMC is passive.  It should be.
+    if (redundancyInterface.role() != Role::Passive)
+    {
+        lg2::warning(
+            "Provisioned just changed to true but BMC not already passive?");
+        providers->getServices().removeProvisionedCallback(Role::Passive);
+        co_return;
+    }
+
+    // If being passive isn't still required, clear the
+    // reasons_for_no_redundancy property which will let the other BMC
+    // know this BMC can be active again.
+
+    auto passiveRoleInfo = co_await determinePassiveRoleIfRequired();
+
+    if (!passiveRoleInfo.has_value())
+    {
+        lg2::info("This BMC is no longer required to be passive");
+
+        // Note: Leave chosePassiveDueToError so the next reboot still sees it.
+
+        redundancyInterface.reasons_for_no_redundancy({});
+
+        // No need for future callbacks.
+        providers->getServices().removeProvisionedCallback(Role::Passive);
+    }
+    else
+    {
+        lg2::warning(
+            "After provisioned property change to true, BMC still required to be passive: {REASON}",
+            "REASON",
+            role_determination::getRoleReasonDescription(
+                passiveRoleInfo->reason));
+    }
 }
 
 } // namespace rbmc

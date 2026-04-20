@@ -140,6 +140,25 @@ class Manager :
         const FailoverOptions& options);
 
     /**
+     * @brief Setup watch for provisioning changes
+     */
+    void setupProvisionedWatch();
+
+    /**
+     * @brief Handler for provisioned property changes
+     *
+     * @param[in] provisioned - The new provisioned value
+     */
+    void provisionedChangeHandler(bool provisioned);
+
+    /**
+     * @brief Async handler spawned by provisionedChangeHandler
+     *
+     * @param[in] provisioned - The new provisioned value
+     */
+    sdbusplus::async::task<> handleProvisionedChange(bool provisioned);
+
+    /**
      * @brief The async context object
      */
     sdbusplus::async::context& ctx;

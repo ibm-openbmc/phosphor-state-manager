@@ -57,6 +57,15 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
         co_await sdbusplus::async::execution::when_all(
             sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState(),
             services.waitForPeerConnection());
+
+        // If PeerConnected == true and sibling provisioned == false
+        // a small delay will be needed to let the new provisioned
+        // value propagate to this BMC.
+        if (services.getPeerConnected() &&
+            !sibling.getProvisioned().value_or(true))
+        {
+            co_await sibling.pauseForDataPropagation();
+        }
     }
 
     co_await redMgr.determineRedundancyAndSync();
@@ -131,6 +140,13 @@ sdbusplus::async::task<> ActiveRoleHandler::siblingHealthy()
     co_await sdbusplus::async::execution::when_all(
         sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState(),
         services.waitForPeerConnection());
+
+    // Just like in start(), a delay may be needed to let
+    // the sibling provisioned value propagate.
+    if (services.getPeerConnected() && !sibling.getProvisioned().value_or(true))
+    {
+        co_await sibling.pauseForDataPropagation();
+    }
 
     lg2::info("Attempting to enable redundancy now that sibling is back");
     co_await redMgr.determineRedundancyAndSync();
