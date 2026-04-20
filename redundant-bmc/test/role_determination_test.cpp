@@ -17,7 +17,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Unknown,
                     .siblingRole = Unknown,
                     .siblingAlive = true,
-                    .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
 
@@ -32,7 +31,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Unknown,
                     .siblingRole = Unknown,
                     .siblingAlive = true,
-                    .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
         RoleInfo info{Passive, positionNonzero};
@@ -47,7 +45,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Unknown,
                     .siblingRole = Unknown,
                     .siblingAlive = false,
-                    .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
 
@@ -56,29 +53,12 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
         EXPECT_EQ(getRoleReasonDescription(info.reason), "Sibling not alive");
     }
 
-    // Sibling not provisioned
-    {
-        Input input{.bmcPosition = 1,
-                    .previousRole = Unknown,
-                    .siblingRole = Unknown,
-                    .siblingAlive = true,
-                    .siblingProvisioned = false,
-                    .failoverInProgress = false,
-                    .siblingFailoverInProgress = false};
-
-        RoleInfo info{Active, siblingNotProvisioned};
-        EXPECT_EQ(determineRole(input), info);
-        EXPECT_EQ(getRoleReasonDescription(info.reason),
-                  "Sibling is not provisioned");
-    }
-
     // Sibling already active, this pos = 0
     {
         Input input{.bmcPosition = 0,
                     .previousRole = Unknown,
                     .siblingRole = Active,
                     .siblingAlive = true,
-                    .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
 
@@ -94,7 +74,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Unknown,
                     .siblingRole = Passive,
                     .siblingAlive = true,
-                    .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
 
@@ -110,7 +89,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Passive,
                     .siblingRole = Unknown,
                     .siblingAlive = true,
-                    .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
 
@@ -127,7 +105,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Active,
                     .siblingRole = Unknown,
                     .siblingAlive = true,
-                    .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = false};
 
@@ -145,7 +122,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Active,
                     .siblingRole = Unknown,
                     .siblingAlive = true,
-                    .siblingProvisioned = true,
                     .failoverInProgress = true,
                     .siblingFailoverInProgress = false};
 
@@ -164,7 +140,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
                     .previousRole = Active,
                     .siblingRole = Unknown,
                     .siblingAlive = true,
-                    .siblingProvisioned = true,
                     .failoverInProgress = false,
                     .siblingFailoverInProgress = true};
 

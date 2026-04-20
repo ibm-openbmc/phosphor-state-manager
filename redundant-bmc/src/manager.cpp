@@ -189,7 +189,6 @@ sdbusplus::async::task<role_determination::RoleInfo> Manager::determineRole()
         // Note:  If these returned nullopts, the algorithm wouldn't use
         //        them anyway because there would be no heartbeat.
         auto siblingRole = sibling.getRole().value_or(Role::Unknown);
-        auto siblingProvisioned = sibling.getProvisioned().value_or(false);
         auto siblingFailoverInProgress =
             sibling.getFailoverInProgress().value_or(false);
 
@@ -207,7 +206,6 @@ sdbusplus::async::task<role_determination::RoleInfo> Manager::determineRole()
             .previousRole = previousRole,
             .siblingRole = siblingRole,
             .siblingAlive = sibling.alive(),
-            .siblingProvisioned = siblingProvisioned,
             .failoverInProgress = redundancyInterface.failover_in_progress(),
             .siblingFailoverInProgress = siblingFailoverInProgress};
 

@@ -21,7 +21,6 @@ struct Input
     Role previousRole;
     Role siblingRole;
     bool siblingAlive;
-    bool siblingProvisioned;
     bool failoverInProgress;
     bool siblingFailoverInProgress;
 };
@@ -33,7 +32,6 @@ enum class RoleReason
 {
     unknown,
     siblingNotAlive,
-    siblingNotProvisioned,
     siblingPassive,
     siblingActive,
     resumePrevious,
