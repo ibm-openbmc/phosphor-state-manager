@@ -132,8 +132,7 @@ class SiblingImpl : public Sibling
     {
         if (alive())
         {
-            // TBD which interface to use.
-            return true;
+            return provisioning.provisioned;
         }
 
         return std::nullopt;
@@ -316,6 +315,14 @@ class SiblingImpl : public Sibling
     void loadAvailabilityProps(const PropertyMap& propertyMap);
 
     /**
+     * @brief Sets Provisioning data members with whatever is in the property
+     * map
+     *
+     * @param[in] propertyMap - The property name -> value map
+     */
+    void loadProvisioningProps(const PropertyMap& propertyMap);
+
+    /**
      * @brief Sets data members with whatever is in the property map
      *
      * @param[in] interface - The interface name
@@ -333,6 +340,7 @@ class SiblingImpl : public Sibling
         bmcState.present = false;
         version.present = false;
         availability.present = false;
+        provisioning.present = false;
     }
 
     /**
@@ -407,6 +415,17 @@ class SiblingImpl : public Sibling
      * @brief Availability presence and value
      */
     Availability availability;
+
+    struct Provisioning
+    {
+        bool present = false;
+        bool provisioned = false;
+    };
+
+    /**
+     * @brief Provisioning presence and value
+     */
+    Provisioning provisioning;
 
     /**
      * @brief The D-Bus object path for the sibling.
