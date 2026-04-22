@@ -294,11 +294,19 @@ sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
                          .path(path.str)
                          .current_bmc_state();
 
+        auto provProps = co_await Provisioning(ctx)
+                             .service(siblingService)
+                             .path(path.str)
+                             .properties();
+
         output["Redundancy Enabled"] = rProps.redundancy_enabled;
         output["Failovers Allowed"] = rProps.failovers_allowed;
         output["BMC State"] = getPDIEnumString(state);
         output["FW Version Hash"] = fwVersion;
-        output["Paired"] = true; // TODO
+        if (!provProps.provisioned)
+        {
+            output["Paired"] = provProps.provisioned;
+        }
     }
     catch (const std::exception& e)
     {

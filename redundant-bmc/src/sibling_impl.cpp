@@ -3,6 +3,7 @@
 
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
+#include <xyz/openbmc_project/Provisioning/Provisioning/common.hpp>
 #include <xyz/openbmc_project/Software/Version/common.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
@@ -19,6 +20,8 @@ using VersionIntf = sdbusplus::common::xyz::openbmc_project::software::Version;
 using BMCStateIntf = sdbusplus::common::xyz::openbmc_project::state::BMC;
 using AvailIntf =
     sdbusplus::common::xyz::openbmc_project::state::decorator::Availability;
+using ProvisioningIntf =
+    sdbusplus::common::xyz::openbmc_project::provisioning::Provisioning;
 
 SiblingImpl::SiblingImpl(sdbusplus::async::context& ctx) :
     ctx(ctx), objectPath(std::string{RedIntf::namespace_path::value} + '/' +
@@ -218,6 +221,18 @@ void SiblingImpl::loadAvailabilityProps(
     }
 }
 
+void SiblingImpl::loadProvisioningProps(
+    const SiblingImpl::PropertyMap& propertyMap)
+{
+    provisioning.present = true;
+
+    auto it = propertyMap.find("Provisioned");
+    if (it != propertyMap.end())
+    {
+        provisioning.provisioned = std::get<bool>(it->second);
+    }
+}
+
 sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded(
     std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
@@ -298,6 +313,10 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved(
         if (std::ranges::contains(interfaces, AvailIntf::interface))
         {
             availability.present = false;
+        }
+        if (std::ranges::contains(interfaces, ProvisioningIntf::interface))
+        {
+            provisioning.present = false;
         }
 
         // If alive before and all interfaces are now gone invoke the callbacks
@@ -405,6 +424,10 @@ void SiblingImpl::loadFromPropertyMap(const std::string& interface,
     else if (interface == AvailIntf::interface)
     {
         loadAvailabilityProps(propertyMap);
+    }
+    else if (interface == ProvisioningIntf::interface)
+    {
+        loadProvisioningProps(propertyMap);
     }
 }
 
