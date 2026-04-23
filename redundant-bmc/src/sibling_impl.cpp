@@ -190,10 +190,19 @@ void SiblingImpl::loadStateProps(const SiblingImpl::PropertyMap& propertyMap)
 {
     bmcState.present = true;
 
+    auto old = bmcState.state;
     auto it = propertyMap.find("CurrentBMCState");
     if (it != propertyMap.end())
     {
         bmcState.state = std::get<BMCState>(it->second);
+    }
+
+    if (bmcState.state != old)
+    {
+        for (const auto& callback : std::ranges::views::values(bmcStateCBs))
+        {
+            callback(bmcState.state);
+        }
     }
 }
 
