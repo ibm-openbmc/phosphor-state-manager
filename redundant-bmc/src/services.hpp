@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #pragma once
 #include "errors.hpp"
+#include "system_state.hpp"
 
 #include <sdbusplus/async.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
@@ -14,14 +15,6 @@ namespace rbmc
 
 using Role =
     sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy::Role;
-
-enum class SystemState
-{
-    off,
-    booting,
-    runtime,
-    other
-};
 
 /**
  * @class Services
@@ -157,29 +150,6 @@ class Services
     virtual sdbusplus::async::task<> logError(
         std::string error, errors::Level severity,
         errors::AdditionalData data) const = 0;
-
-    /**
-     * @brief Returns the string name for the system state enum
-     *
-     * @param[in] state - The state enum
-     *
-     * @return The string name
-     */
-    static inline std::string getSystemStateName(SystemState state)
-    {
-        switch (state)
-        {
-            case SystemState::off:
-                return "Off";
-            case SystemState::booting:
-                return "Booting";
-            case SystemState::runtime:
-                return "Runtime";
-            case SystemState::other:
-                return "Other";
-        }
-        return std::string{"Unknown"};
-    }
 
     /**
      * @brief Add a function that gets called when the system state changes.

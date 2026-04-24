@@ -4,6 +4,7 @@
 #include "error_data.hpp"
 
 #include "persistent_data.hpp"
+#include "system_state.hpp"
 
 namespace rbmc::errors
 {
@@ -123,8 +124,7 @@ void addServicesData(const Services& services, bool isActive,
     {
         try
         {
-            data["SysState"] =
-                Services::getSystemStateName(services.getSystemState());
+            data["SysState"] = getSystemStateName(services.getSystemState());
         }
         catch (const std::exception& e)
         {
