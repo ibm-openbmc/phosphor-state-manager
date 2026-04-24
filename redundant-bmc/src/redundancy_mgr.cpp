@@ -213,8 +213,7 @@ void RedundancyMgr::initSystemState()
         systemState = services.getSystemState();
 
         lg2::info("RedundancyMgr: Initial system state is {STATE}", "STATE",
-                  Services::getSystemStateName(
-                      systemState.value_or(SystemState::other)));
+                  getSystemStateName(systemState.value_or(SystemState::other)));
     }
     catch (const std::exception& e)
     {
@@ -233,7 +232,7 @@ void RedundancyMgr::initSystemState()
 void RedundancyMgr::systemStateChange(SystemState newState)
 {
     lg2::info("System state change to {NEW}", "NEW",
-              Services::getSystemStateName(newState));
+              getSystemStateName(newState));
 
     if (newState == SystemState::off)
     {

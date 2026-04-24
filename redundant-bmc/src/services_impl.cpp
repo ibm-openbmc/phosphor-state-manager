@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "services_impl.hpp"
 
+#include "system_state.hpp"
+
 #include <openssl/evp.h>
 
 #include <phosphor-logging/lg2.hpp>
@@ -470,37 +472,14 @@ sdbusplus::async::task<> ServicesImpl::watchPairingPropertiesChanged(
 
 void ServicesImpl::updateSystemState()
 {
-    using BProgress = BootProgress::ProgressStages;
-    using HState = HostState::HostState;
-
     if (!hostState.has_value() || !bootProgress.has_value())
     {
         lg2::debug("Cannot calculate system state yet");
         return;
     }
 
-    SystemState newState = SystemState::other;
-
-    if (hostState == HState::Off)
-    {
-        newState = SystemState::off;
-    }
-    else if (hostState == HState::TransitioningToRunning)
-    {
-        newState = SystemState::booting;
-    }
-    else if (hostState == HState::Running)
-    {
-        if ((bootProgress.value() == BProgress::SystemInitComplete) ||
-            (bootProgress.value() == BProgress::OSRunning))
-        {
-            newState = SystemState::runtime;
-        }
-        else
-        {
-            newState = SystemState::booting;
-        }
-    }
+    SystemState newState =
+        calculateSystemState(hostState.value(), bootProgress.value());
 
     lg2::info("Calculated system state is {STATE}", "STATE",
               getSystemStateName(newState));

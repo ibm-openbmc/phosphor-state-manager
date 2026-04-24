@@ -9,6 +9,7 @@ test(
         'persistent_data_test.cpp',
         'redundancy_test.cpp',
         'role_determination_test.cpp',
+        'system_state_test.cpp',
         dependencies: [
             gtest,
             nlohmann_json_dep,

@@ -4,6 +4,7 @@
 #include "providers.hpp"
 #include "redundancy.hpp"
 #include "redundancy_interface.hpp"
+#include "system_state.hpp"
 
 namespace rbmc
 {
