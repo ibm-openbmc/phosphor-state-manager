@@ -55,6 +55,18 @@ class Manager :
     void disableRedPropChanged(bool disable);
 
     /**
+     * @brief Handler for external redundancy input changes
+     *
+     * Called when an external application signals a hardware
+     * configuration issue that should disable redundancy.
+     *
+     * @param[in] input - The external input type
+     * @param[in] value - The value to set it to
+     */
+    void setExternalRedundancyInput(RedundancyInterface::RedundancyInput input,
+                                    bool value);
+
+    /**
      * @brief Implements the StartFailover D-Bus method.
      *
      * @param[in] requester - For logging who requested the failover

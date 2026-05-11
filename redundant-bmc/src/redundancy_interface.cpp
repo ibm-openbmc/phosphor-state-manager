@@ -142,9 +142,9 @@ bool RedundancyInterface::set_property(
 
 sdbusplus::async::task<> RedundancyInterface::method_call(
     RedundancyInterface::set_redundancy_input_t /* unused */,
-    RedundancyInterface::RedundancyInput /* input */, bool /* unused */)
+    RedundancyInterface::RedundancyInput input, bool value)
 {
-    // TODO
+    manager.setExternalRedundancyInput(input, value);
     co_return;
 }
 
