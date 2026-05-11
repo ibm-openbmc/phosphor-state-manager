@@ -6,6 +6,7 @@
 #include "errors.hpp"
 #include "passive_role_handler.hpp"
 #include "persistent_data.hpp"
+#include "util.hpp"
 
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/Common/error.hpp>
@@ -332,6 +333,30 @@ void Manager::disableRedPropChanged(bool disable)
     }
 
     handler->disableRedPropChanged(disable);
+}
+
+void Manager::setExternalRedundancyInput(
+    RedundancyInterface::RedundancyInput input, bool value)
+{
+    lg2::info("SetRedundancyInput called: {INPUT}={VALUE}", "INPUT", input,
+              "VALUE", value);
+
+    if (redundancyInterface.role() != Role::Active)
+    {
+        lg2::error("SetRedundancyInput can only be called on active BMC");
+        throw sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed();
+    }
+
+    if (!handler)
+    {
+        lg2::error(
+            "SetRedundancyInput cannot be called yet, role handler not initialized");
+        throw sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed();
+    }
+
+    util::writeExternalRedundancyInput(input, value);
+
+    handler->externalRedundancyInputChanged();
 }
 
 sdbusplus::async::task<fo_blocked::Reason> Manager::validateFailoverRequest(

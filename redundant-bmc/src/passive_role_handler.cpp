@@ -188,6 +188,12 @@ void PassiveRoleHandler::disableRedPropChanged(bool /*disable*/)
     throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
 }
 
+void PassiveRoleHandler::externalRedundancyInputChanged()
+{
+    // Not supported on the passive BMC
+    throw sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed();
+}
+
 // NOLINTNEXTLINE
 sdbusplus::async::task<> PassiveRoleHandler::tryFullSync()
 {

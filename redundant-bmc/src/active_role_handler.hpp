@@ -67,6 +67,16 @@ class ActiveRoleHandler : public RoleHandler
     }
 
     /**
+     * @brief Called when external redundancy input changes
+     *
+     * Triggers redundancy re-evaluation.
+     */
+    void externalRedundancyInputChanged() override
+    {
+        ctx.spawn(redMgr.determineRedundancyAndSync());
+    }
+
+    /**
      * @brief Called when a failover is requested, this will return
      *        Reason::none if a failover is allowed right now, or the
      *        reason that it isn't.

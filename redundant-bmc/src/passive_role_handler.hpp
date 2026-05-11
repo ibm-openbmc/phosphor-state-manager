@@ -103,6 +103,14 @@ class PassiveRoleHandler : public RoleHandler
     void disableRedPropChanged(bool disable) override;
 
     /**
+     * @brief Handler for external redundancy input changes
+     *
+     * Not supported on the passive BMC so an error will
+     * be thrown.
+     */
+    void externalRedundancyInputChanged() override;
+
+    /**
      * @brief Setup watching the sibling BMC's health
      */
     inline void setupSiblingHealthWatch()

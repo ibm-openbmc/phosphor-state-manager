@@ -55,6 +55,14 @@ class RoleHandler
     virtual void disableRedPropChanged(bool disable) = 0;
 
     /**
+     * @brief Handler for external redundancy input changes
+     *
+     * Called when an external application signals a hardware
+     * configuration issue that should affect redundancy.
+     */
+    virtual void externalRedundancyInputChanged() = 0;
+
+    /**
      * @brief Called when a failover is requested, this will return
      *        Reason::none if a failover is allowed right now, or the
      *        reason that it isn't.
