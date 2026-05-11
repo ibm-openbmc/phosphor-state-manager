@@ -32,6 +32,7 @@ rbmc_lib = static_library(
     'sibling_reset_impl.cpp',
     'sync_interface_impl.cpp',
     'system_state.cpp',
+    'util.cpp',
     dependencies: rbmc_deps,
 )
 

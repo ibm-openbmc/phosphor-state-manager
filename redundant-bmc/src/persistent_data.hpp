@@ -3,9 +3,11 @@
 
 #include <nlohmann/json.hpp>
 #include <xyz/openbmc_project/Control/Failover/common.hpp>
+#include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 
 #include <filesystem>
 #include <optional>
+#include <set>
 
 namespace data
 {
@@ -53,6 +55,7 @@ constexpr auto noRedReasons = "NoRedundancyReasons";
 constexpr auto disableRed = "DisableRedundancy";
 constexpr auto redundancyOffAtRuntime = "RedundancyOffAtRuntime";
 constexpr auto failoverInProgress = "FailoverInProgress";
+constexpr auto externalRedundancyInputs = "ExternalRedundancyInputs";
 } // namespace key
 
 namespace util
