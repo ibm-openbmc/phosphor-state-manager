@@ -4,6 +4,7 @@
 
 #include "error_data.hpp"
 #include "errors.hpp"
+#include "util.hpp"
 
 #include <persistent_data.hpp>
 #include <phosphor-logging/lg2.hpp>
@@ -11,6 +12,9 @@
 
 namespace rbmc
 {
+
+using RedundancyInput = sdbusplus::common::xyz::openbmc_project::state::bmc::
+    Redundancy::RedundancyInput;
 
 RedundancyMgr::RedundancyMgr(sdbusplus::async::context& ctx,
                              Providers& providers, RedundancyInterface& iface) :
@@ -221,11 +225,40 @@ void RedundancyMgr::initSystemState()
         systemState = SystemState::other;
     }
 
-    // Ensure a value for redundancy off at runtime isn't
-    // still valid if system is off, as may have lost AC.
+    bool wasHostOff = false;
+    try
+    {
+        wasHostOff = data::read<bool>(data::key::hostOff).value_or(true);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed trying to obtain HostOff: {ERROR}", "ERROR", e);
+    }
+
     if (systemState == SystemState::off)
     {
+        // Ensure a value for redundancy off at runtime isn't
+        // still valid if system is off, as may have lost AC.
         clearRedundancyOffAtRuntime();
+
+        // Only clear the redundancy inputs on an AC loss so
+        // they don't get cleared in a failover.
+        if (!wasHostOff)
+        {
+            if (util::clearExternalRedundancyInputs())
+            {
+                lg2::info("Cleared external redundancy inputs on an AC loss");
+            }
+        }
+    }
+
+    try
+    {
+        data::write(data::key::hostOff, systemState == SystemState::off);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed serializing HostOff: {ERROR}", "ERROR", e);
     }
 }
 
@@ -234,9 +267,22 @@ void RedundancyMgr::systemStateChange(SystemState newState)
     lg2::info("System state change to {NEW}", "NEW",
               getSystemStateName(newState));
 
+    try
+    {
+        data::write(data::key::hostOff, newState == SystemState::off);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed serializing HostOff: {ERROR}", "ERROR", e);
+    }
+
+    bool inputsCleared = false;
+
     if (newState == SystemState::off)
     {
         clearRedundancyOffAtRuntime();
+
+        inputsCleared = util::clearExternalRedundancyInputs();
     }
     else if (newState == SystemState::runtime)
     {
@@ -255,7 +301,16 @@ void RedundancyMgr::systemStateChange(SystemState newState)
 
     systemState = newState;
 
-    determineAndSetFailoversAllowed();
+    if (newState == SystemState::off && inputsCleared)
+    {
+        lg2::info(
+            "Re-evaluating redundancy since external inputs were cleared");
+        ctx.spawn(determineRedundancyAndSync());
+    }
+    else
+    {
+        determineAndSetFailoversAllowed();
+    }
 }
 
 void RedundancyMgr::setRedundancyOffAtRuntime(bool valid, bool off)

@@ -2,6 +2,7 @@
 #include "passive_role_handler.hpp"
 
 #include "persistent_data.hpp"
+#include "util.hpp"
 
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/Common/error.hpp>
@@ -77,6 +78,8 @@ PassiveRoleHandler::PassiveRoleHandler(sdbusplus::async::context& ctx,
                    "ERROR", e);
         iface.reasons_for_no_redundancy({});
     }
+
+    util::clearExternalRedundancyInputs();
 }
 
 // NOLINTNEXTLINE
