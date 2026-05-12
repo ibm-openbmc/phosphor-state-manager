@@ -56,3 +56,15 @@ It is then installed into
 - **name** (string, required): Name of the GPIO line.
 - **polarity** (string, required): Either "low" or "high" - indicates the active
   state of the GPIO.
+
+### Validating Config Files
+
+Validate the config files with `validate_configs.py`.
+
+```bash
+# Validate all config files in the current directory
+python3 validate_configs.py schema/schema.json .
+
+# Validate a specific config file
+python3 validate_configs.py schema/schema.json default.json
+```

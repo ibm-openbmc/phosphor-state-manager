@@ -1,0 +1,61 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://github.com/ibm-openbmc/phosphor-state-manager/redundant-bmc/config-schema.json",
+    "title": "Schema for Redundant BMC Configuration Files",
+    "description": "Configuration schema for OpenBMC redundant BMC functionality",
+    "type": "object",
+    "required": ["sibling_bmc_reset_gpio"],
+    "properties": {
+        "sibling_bmc_reset_gpio": {
+            "description": "GPIO configuration for resetting the sibling BMC",
+            "$ref": "#/$defs/gpio_config"
+        },
+        "bmc_configs": {
+            "description": "Array of BMC configuration objects. Required when sibling_bmc_present_gpio is necessary, optional otherwise.",
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/bmc_config"
+            },
+            "minItems": 0,
+            "uniqueItems": true
+        }
+    },
+    "additionalProperties": false,
+    "$defs": {
+        "gpio_config": {
+            "type": "object",
+            "description": "Configuration for a GPIO line",
+            "required": ["name", "polarity"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "The GPIO line name",
+                    "minLength": 1
+                },
+                "polarity": {
+                    "type": "string",
+                    "description": "The polarity of the GPIO line. 'low' means active when the GPIO reads low, 'high' means active when the GPIO reads high.",
+                    "enum": ["low", "high"]
+                }
+            },
+            "additionalProperties": false
+        },
+        "bmc_config": {
+            "type": "object",
+            "description": "Configuration for a single BMC in the redundant system",
+            "required": ["bmc_pos", "sibling_bmc_present_gpio"],
+            "properties": {
+                "bmc_pos": {
+                    "type": "integer",
+                    "description": "Position/index of this BMC (0-based). Typically 0 or 1 for dual BMC systems.",
+                    "minimum": 0
+                },
+                "sibling_bmc_present_gpio": {
+                    "description": "GPIO configuration for detecting sibling BMC presence",
+                    "$ref": "#/$defs/gpio_config"
+                }
+            },
+            "additionalProperties": false
+        }
+    }
+}
