@@ -343,7 +343,7 @@ auto PassiveRoleHandler::getFailoverBlockedReason(
 
     auto& sibling = providers.getSibling();
 
-    fo_blocked::Input input{
+    fo_blocked::PassiveInput input{
         .siblingAlive = sibling.alive(),
         .siblingState = sibling.getBMCState().value_or(BMCState::NotReady),
         .redundancyEnabled = sibling.getRedundancyEnabled().value_or(false),
@@ -359,7 +359,7 @@ auto PassiveRoleHandler::getFailoverBlockedReason(
         // data from the active BMC.
         .lastKnownRedundancyEnabled = redundancyInterface.redundancy_enabled()};
 
-    co_return fo_blocked::getFailoverBlockedReason(input);
+    co_return fo_blocked::getPassiveFailoverBlockedReason(input);
 }
 
 void PassiveRoleHandler::peerConnectedChange([[maybe_unused]] bool connected)

@@ -89,9 +89,9 @@ namespace fo_blocked
 {
 
 /**
- * @brief Inputs to the is failover blocked  function
+ * @brief Inputs to the passive failover blocked function
  */
-struct Input
+struct PassiveInput
 {
     bool siblingAlive;
     BMCState siblingState;
@@ -125,7 +125,7 @@ enum class Reason
  *
  * @return Reason::none if blocked, else the reason it is.
  */
-Reason getFailoverBlockedReason(const Input& input);
+Reason getPassiveFailoverBlockedReason(const PassiveInput& input);
 
 /**
  * @brief Return the string description of the reason

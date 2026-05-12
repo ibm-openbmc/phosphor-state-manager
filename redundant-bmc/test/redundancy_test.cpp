@@ -239,9 +239,9 @@ TEST(RedundancyTest, GetFailoversNotAllowedDescTest)
               "System state is not off or runtime");
 }
 
-TEST(RedundancyTest, FailoverBlockedTest)
+TEST(RedundancyTest, PassiveFailoverBlockedTest)
 {
-    rbmc::fo_blocked::Input golden{
+    rbmc::fo_blocked::PassiveInput golden{
         .siblingAlive = true,
         .siblingState = rbmc::BMCState::Ready,
         .redundancyEnabled = true,
@@ -251,14 +251,14 @@ TEST(RedundancyTest, FailoverBlockedTest)
         .failoverInProgress = false,
         .lastKnownRedundancyEnabled = true};
 
-    EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(golden),
+    EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(golden),
               rbmc::fo_blocked::Reason::none);
 
     // Redundancy not enabled
     {
         auto input = golden;
         input.redundancyEnabled = false;
-        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::redundancyNotEnabled);
     }
 
@@ -266,7 +266,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
     {
         auto input = golden;
         input.failoversNotAllowed = true;
-        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::failoversNotAllowed);
     }
 
@@ -275,7 +275,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
         auto input = golden;
         input.failoversNotAllowed = true;
         input.forceOption = true;
-        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::none);
     }
 
@@ -284,7 +284,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
         auto input = golden;
         input.failoversNotAllowed = true;
         input.siblingState = rbmc::BMCState::Quiesced;
-        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::none);
     }
 
@@ -292,7 +292,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
     {
         auto input = golden;
         input.siblingAlive = false;
-        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::none);
     }
 
@@ -301,7 +301,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
         auto input = golden;
         input.siblingAlive = false;
         input.failoversNotAllowed = true;
-        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::none);
     }
 
@@ -310,7 +310,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
         auto input = golden;
         input.siblingAlive = false;
         input.state = rbmc::BMCState::Quiesced;
-        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::notAtReady);
     }
 
@@ -319,7 +319,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
         auto input = golden;
         input.siblingAlive = false;
         input.lastKnownRedundancyEnabled = false;
-        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::siblingDeadButRedundancyNotEnabled);
     }
 
@@ -327,7 +327,7 @@ TEST(RedundancyTest, FailoverBlockedTest)
     {
         auto input = golden;
         input.failoverInProgress = true;
-        EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedReason(input),
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::failoverAlreadyInProgress);
     }
 }
