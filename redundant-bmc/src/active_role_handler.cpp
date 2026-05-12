@@ -2,11 +2,15 @@
 #include "active_role_handler.hpp"
 
 #include "persistent_data.hpp"
+#include "util.hpp"
 
 #include <phosphor-logging/lg2.hpp>
+#include <xyz/openbmc_project/Control/Failover/common.hpp>
 
 namespace rbmc
 {
+
+using Failover = sdbusplus::common::xyz::openbmc_project::control::Failover;
 
 constexpr auto bmcActiveTarget = "obmc-bmc-active.target";
 const std::chrono::minutes siblingHealthTimeout{5};
@@ -255,15 +259,20 @@ sdbusplus::async::task<> ActiveRoleHandler::syncHealthCritical()
     }
 }
 
-// NOLINTNEXTLINE
-auto ActiveRoleHandler::getFailoverBlockedReason(
-    [[maybe_unused]] const FailoverOptions& options)
+auto ActiveRoleHandler::getFailoverBlockedReason(const FailoverOptions& options)
     -> sdbusplus::async::task<fo_blocked::Reason>
 {
-    // At some point in the future we may allow triggering
-    // a failover from the active BMC, but not at the moment.
-    lg2::error("Active BMC cannot trigger a failover now");
-    co_return fo_blocked::Reason::bmcNotPassive;
+    auto force =
+        util::getFailoverOption<bool>(Failover::Options::Force, options)
+            .value_or(false);
+
+    fo_blocked::ActiveInput input{
+        .redundancyEnabled = redundancyInterface.redundancy_enabled(),
+        .failoversAllowed = redundancyInterface.failovers_allowed(),
+        .failoverInProgress = redundancyInterface.failover_in_progress(),
+        .forceOption = force};
+
+    co_return fo_blocked::getActiveFailoverBlockedReason(input);
 }
 
 // NOLINTNEXTLINE

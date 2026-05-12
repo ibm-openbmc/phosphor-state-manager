@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include "types.hpp"
+
+#include <xyz/openbmc_project/Control/Failover/common.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 
+#include <optional>
 #include <set>
 
 namespace rbmc::util
@@ -58,5 +62,34 @@ void writeExternalRedundancyInput(RedundancyInput input, bool set);
  * @return bool - True if inputs were cleared, false otherwise
  */
 bool clearExternalRedundancyInputs();
+
+/**
+ * @brief Look for the specified failover option in the contents of
+ *        the Options parameter from the StartFailover method.
+ *
+ * @tparam - The type of the option's value.
+ * @param[in] option - The option to look for
+ * @param[in] options - The options that were passed into StartFailover
+ *
+ * @return std::optional<type> - The value, or nullopt if not present
+ */
+template <typename T>
+std::optional<T> getFailoverOption(
+    sdbusplus::common::xyz::openbmc_project::control::Failover::Options option,
+    const FailoverOptions& options)
+{
+    using Failover = sdbusplus::common::xyz::openbmc_project::control::Failover;
+    std::optional<T> value;
+    auto it = options.find(Failover::convertOptionsToString(option));
+    if (it != options.end())
+    {
+        if (const T* o = std::get_if<T>(&it->second); o != nullptr)
+        {
+            value = *o;
+        }
+    }
+
+    return value;
+}
 
 } // namespace rbmc::util

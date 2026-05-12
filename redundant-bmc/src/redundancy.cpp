@@ -166,14 +166,14 @@ Reason getPassiveFailoverBlockedReason(const PassiveInput& input)
             if (input.forceOption)
             {
                 // Trace it but don't block it.
-                lg2::info(
+                lg2::warning(
                     "The failover 'Force' option is set while failovers are not allowed");
             }
             else if (input.siblingState == BMCState::Quiesced)
             {
                 // If the active BMC is quiesced, it may be stuck in
                 // failovers-not-allowed so don't block it, just trace it.
-                lg2::info(
+                lg2::warning(
                     "The sibling BMC is quiesced while failovers are not allowed");
             }
             else
@@ -214,6 +214,35 @@ Reason getPassiveFailoverBlockedReason(const PassiveInput& input)
     if (input.state != BMCState::Ready)
     {
         return Reason::notAtReady;
+    }
+
+    return Reason::none;
+}
+
+Reason getActiveFailoverBlockedReason(const ActiveInput& input)
+{
+    if (!input.redundancyEnabled)
+    {
+        return Reason::redundancyNotEnabled;
+    }
+
+    if (!input.failoversAllowed)
+    {
+        if (input.forceOption)
+        {
+            // Trace it but don't block it.
+            lg2::warning(
+                "The failover 'Force' option is set while failovers are not allowed");
+        }
+        else
+        {
+            return Reason::failoversNotAllowed;
+        }
+    }
+
+    if (input.failoverInProgress)
+    {
+        return Reason::failoverAlreadyInProgress;
     }
 
     return Reason::none;

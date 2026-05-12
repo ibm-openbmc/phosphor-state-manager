@@ -1,10 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
 #include "persistent_data_test_fixture.hpp"
+#include "types.hpp"
 #include "util.hpp"
 
 #include <gtest/gtest.h>
 
 using namespace rbmc::util;
 using namespace rbmc::test;
+using Failover = sdbusplus::common::xyz::openbmc_project::control::Failover;
 
 class UtilTest : public PersistentDataTestFixture
 {};
@@ -94,4 +97,45 @@ TEST_F(UtilTest, ExternalRedundancyInputTest)
     // Clearing when already empty should return false
     cleared = clearExternalRedundancyInputs();
     EXPECT_FALSE(cleared);
+}
+
+TEST_F(UtilTest, GetFailoverOption_EmptyOptions)
+{
+    // Test with empty FailoverOptions
+    rbmc::FailoverOptions options;
+
+    auto result = getFailoverOption<bool>(Failover::Options::Force, options);
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(UtilTest, GetFailoverOption_OptionNotPresent)
+{
+    // Test when the requested option is not in the map
+    rbmc::FailoverOptions options{{"SomeOtherOption", true}};
+
+    auto result = getFailoverOption<bool>(Failover::Options::Force, options);
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(UtilTest, GetFailoverOption_MultipleOptions)
+{
+    rbmc::FailoverOptions options{
+        {Failover::convertOptionsToString(Failover::Options::Force), true},
+        {Failover::convertOptionsToString(
+             Failover::Options::UseRedundancyInput),
+         "PassiveBMCHardwareProblem"}};
+
+    auto forceResult =
+        getFailoverOption<bool>(Failover::Options::Force, options);
+
+    auto hwProblemResult = getFailoverOption<std::string>(
+        Failover::Options::UseRedundancyInput, options);
+
+    ASSERT_TRUE(forceResult.has_value());
+    EXPECT_TRUE(forceResult.value());
+
+    ASSERT_TRUE(hwProblemResult.has_value());
+    EXPECT_EQ(hwProblemResult.value(), "PassiveBMCHardwareProblem");
 }

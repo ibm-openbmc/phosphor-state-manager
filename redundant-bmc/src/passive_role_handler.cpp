@@ -18,38 +18,6 @@ using Failover = sdbusplus::common::xyz::openbmc_project::control::Failover;
 using Redundancy =
     sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy;
 
-namespace util
-{
-
-/**
- * @brief Look for the specified failover option in the
- *   contents of the Options parameter from the StartFailover method.
- *
- * @tparam - The type of the option's value.
- * @param[in] option - The option to look for
- * @param[in] options - The options that were passed into StartFailover
- *
- * @return std::optional<type> - The value, or nullopt if not present
- */
-template <typename T>
-std::optional<T> getFailoverOption(Failover::Options option,
-                                   const FailoverOptions& options)
-{
-    std::optional<T> value;
-    auto it = options.find(Failover::convertOptionsToString(option));
-    if (it != options.end())
-    {
-        if (const T* o = std::get_if<T>(&it->second); o != nullptr)
-        {
-            value = *o;
-        }
-    }
-
-    return value;
-}
-
-} // namespace util
-
 PassiveRoleHandler::PassiveRoleHandler(sdbusplus::async::context& ctx,
                                        Providers& providers,
                                        RedundancyInterface& iface) :
