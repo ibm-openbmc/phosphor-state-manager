@@ -108,6 +108,9 @@ items to see if redundancy can be enabled:
 1. The network between the BMCs is connected.
 1. If attempting to enable any time at runtime, redundancy must have been
    enabled when runtime was first reached.
+1. The 'passive hardware problem'
+   [external redundancy input](#another-application-needs-to-disable-redundancy)
+   isn't set.
 
 ## Scenarios
 
@@ -156,6 +159,24 @@ started since the overall loss of the passive BMC is already being handled.
 
 In addition, if the network loss timer is already running when the heartbeat
 loss is noticed, it will be canceled when the heartbeat loss timer is started.
+
+### Another application needs to disable redundancy
+
+There is a `SetRedundancyInput` D-Bus method that can be used by another
+application to provide inputs to the redundancy algorithm.
+
+The possible inputs are:
+
+- `PassiveBMCHardwareProblem`: There is a hardware problem with the passive BMC
+  preventing it from being active so redundancy can't be enabled. An example is
+  the passive BMC can't talk to its connected host processor.
+- `PassiveBMCHostProcessorProblem`: There is a hardware problem related to the
+  passive BMC's connected host processor preventing it from being active so
+  redundancy can't be enabled. An example is the host processor is deconfigured.
+
+If redundancy was enabled when called, it will immediately be disabled, and
+remain so until the next time the host is powered off, at which point this input
+will be cleared and redundancy calculated again.
 
 ## Interacting with Data Sync on the Active BMC
 

@@ -77,6 +77,11 @@ ReasonsForNoRedundancy getNoRedundancyReasons(const Input& input)
         reasons.push_back(RedundancyOffAtRuntimeStart);
     }
 
+    if (input.passiveHWIssue)
+    {
+        reasons.push_back(SystemHWConfigIssue);
+    }
+
     return reasons;
 }
 
