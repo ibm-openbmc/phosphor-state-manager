@@ -39,6 +39,7 @@ struct Input
     bool redundancyOffAtRuntimeStart;
     bool syncFailed;
     bool peerConnected;
+    bool passiveHWIssue;
 };
 
 using ReasonsForNoRedundancy = std::vector<ReasonForNoRedundancy>;

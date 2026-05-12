@@ -144,7 +144,10 @@ redundancy::ReasonsForNoRedundancy RedundancyMgr::getNoRedundancyReasons()
         .manualDisable = manualDisable,
         .redundancyOffAtRuntimeStart = isRedundancyOffAtRuntime(),
         .syncFailed = syncFailed,
-        .peerConnected = services.getPeerConnected()};
+        .peerConnected = services.getPeerConnected(),
+        .passiveHWIssue = util::hasExternalRedundancyInput(
+            RedundancyInput::PassiveBMCHardwareProblem,
+            RedundancyInput::PassiveBMCHostProcessorProblem)};
 
     return redundancy::getNoRedundancyReasons(input);
 }

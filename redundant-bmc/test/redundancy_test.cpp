@@ -22,7 +22,8 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         .manualDisable = false,
         .redundancyOffAtRuntimeStart = false,
         .syncFailed = false,
-        .peerConnected = true};
+        .peerConnected = true,
+        .passiveHWIssue = false};
 
     // Nothing stopping redundancy
     {
@@ -148,6 +149,16 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
         EXPECT_EQ(*reasons.begin(), DataSyncFailed);
+    }
+
+    // Passive hardware issue
+    {
+        auto input = golden;
+        input.passiveHWIssue = true;
+
+        auto reasons = getNoRedundancyReasons(input);
+        ASSERT_EQ(reasons.size(), 1);
+        EXPECT_EQ(*reasons.begin(), SystemHWConfigIssue);
     }
 
     // Multiple fails
