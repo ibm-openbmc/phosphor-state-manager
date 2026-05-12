@@ -104,6 +104,17 @@ struct PassiveInput
 };
 
 /**
+ * @brief Inputs to the active failover blocked function
+ */
+struct ActiveInput
+{
+    bool redundancyEnabled;
+    bool failoversAllowed;
+    bool failoverInProgress;
+    bool forceOption;
+};
+
+/**
  * @brief Reasons why a failover is blocked
  */
 enum class Reason
@@ -126,6 +137,15 @@ enum class Reason
  * @return Reason::none if blocked, else the reason it is.
  */
 Reason getPassiveFailoverBlockedReason(const PassiveInput& input);
+
+/**
+ * @brief Returns the reason a failover is blocked by the active BMC
+ *
+ * @param[in] input - The current system states that will be checked.
+ *
+ * @return Reason::none if blocked, else the reason it is.
+ */
+Reason getActiveFailoverBlockedReason(const ActiveInput& input);
 
 /**
  * @brief Return the string description of the reason

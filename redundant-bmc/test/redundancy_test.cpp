@@ -332,6 +332,50 @@ TEST(RedundancyTest, PassiveFailoverBlockedTest)
     }
 }
 
+TEST(RedundancyTest, ActiveFailoverBlockedTest)
+{
+    rbmc::fo_blocked::ActiveInput golden{.redundancyEnabled = true,
+                                         .failoversAllowed = true,
+                                         .failoverInProgress = false,
+                                         .forceOption = false};
+
+    EXPECT_EQ(rbmc::fo_blocked::getActiveFailoverBlockedReason(golden),
+              rbmc::fo_blocked::Reason::none);
+
+    // Redundancy not enabled
+    {
+        auto input = golden;
+        input.redundancyEnabled = false;
+        EXPECT_EQ(rbmc::fo_blocked::getActiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::redundancyNotEnabled);
+    }
+
+    // Failovers not allowed
+    {
+        auto input = golden;
+        input.failoversAllowed = false;
+        EXPECT_EQ(rbmc::fo_blocked::getActiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::failoversNotAllowed);
+    }
+
+    // Failovers not allowed but force option set
+    {
+        auto input = golden;
+        input.failoversAllowed = false;
+        input.forceOption = true;
+        EXPECT_EQ(rbmc::fo_blocked::getActiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::none);
+    }
+
+    // Failover in progress
+    {
+        auto input = golden;
+        input.failoverInProgress = true;
+        EXPECT_EQ(rbmc::fo_blocked::getActiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::failoverAlreadyInProgress);
+    }
+}
+
 TEST(RedundancyTest, GetNoFailoverDescTest)
 {
     EXPECT_EQ(rbmc::fo_blocked::getFailoverBlockedDescription(
