@@ -150,7 +150,7 @@ std::string getFailoversNotAllowedDescription(FailoversNotAllowedReason reason)
 namespace fo_blocked
 {
 
-Reason getFailoverBlockedReason(const Input& input)
+Reason getPassiveFailoverBlockedReason(const PassiveInput& input)
 {
     if (input.siblingAlive)
     {
