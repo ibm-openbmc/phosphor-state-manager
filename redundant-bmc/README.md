@@ -321,6 +321,17 @@ The failover sequence is:
    issues a full sync. Otherwise it sets `RedundancyEnabled` to false.
 1. When the full sync is complete, `FailoversAllowed` is now set to true.
 
+### Disabling redundancy after the failover
+
+The `StartFailover` D-Bus method accepts an optional `UseRedundancyInput`
+parameter that can set any of the [redundancy inputs]
+(#another-application-needs-to-disable-redundancy) when the new active BMC
+calculates redundancy.
+
+This is used in scenarios where something is wrong with hardware around the
+original active BMC such that it cannot be active and a failover is necessary.
+Since it cannot be active, redundancy has to be disabled after the failover.
+
 ### Failover History
 
 The BMC driving the failover logs the requester and timestamp of each failover

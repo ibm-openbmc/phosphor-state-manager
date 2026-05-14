@@ -112,4 +112,32 @@ bool clearExternalRedundancyInputs()
     return false;
 }
 
+bool validateFailoverRedundancyInput(const FailoverOptions& options)
+{
+    using Failover = sdbusplus::common::xyz::openbmc_project::control::Failover;
+    using RedundancyInterface =
+        sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy;
+
+    auto redInputString = getFailoverOption<std::string>(
+        Failover::Options::UseRedundancyInput, options);
+
+    if (!redInputString.has_value())
+    {
+        return true;
+    }
+
+    auto redInput = RedundancyInterface::convertStringToRedundancyInput(
+        redInputString.value());
+
+    if (!redInput.has_value())
+    {
+        lg2::error(
+            "Invalid redundancy input {INPUT} passed in as failover option",
+            "INPUT", redInputString.value());
+        return false;
+    }
+
+    return true;
+}
+
 } // namespace rbmc::util
