@@ -14,6 +14,44 @@
 namespace rbmc
 {
 
+namespace
+{
+/**
+ * @brief Persists the UseRedundancyInput failover option
+ *        if there is one.
+ *
+ * @param[in] options - The options passed to StartFailover
+ */
+void persistFailoverRedundancyInput(const FailoverOptions& options)
+{
+    using Failover = sdbusplus::common::xyz::openbmc_project::control::Failover;
+
+    auto redInputString = util::getFailoverOption<std::string>(
+        Failover::Options::UseRedundancyInput, options);
+
+    if (!redInputString.has_value())
+    {
+        return;
+    }
+
+    auto redInput = RedundancyInterface::convertStringToRedundancyInput(
+        redInputString.value());
+
+    if (!redInput.has_value())
+    {
+        lg2::error(
+            "Invalid redundancy input {INPUT} passed in as failover option",
+            "INPUT", redInputString.value());
+        return;
+    }
+
+    lg2::info("Failover called with redundancy input {INPUT}", "INPUT",
+              redInput.value());
+
+    util::writeExternalRedundancyInput(redInput.value(), true);
+}
+} // namespace
+
 const std::string failoverPath =
     std::string{RedundancyInterface::namespace_path::value} + '/' +
     RedundancyInterface::namespace_path::bmc;
@@ -365,6 +403,11 @@ void Manager::setExternalRedundancyInput(
 sdbusplus::async::task<fo_blocked::Reason> Manager::validateFailoverRequest(
     const FailoverOptions& options)
 {
+    if (!util::validateFailoverRedundancyInput(options))
+    {
+        co_return fo_blocked::Reason::invalidFailoverOption;
+    }
+
     if (!handler)
     {
         co_return fo_blocked::Reason::tooEarly;
@@ -421,6 +464,10 @@ sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
         co_await providers->getServices().logError(
             errors::error_msg::failoverStarted, errors::Level::Informational,
             data);
+
+        // If any redundancy inputs were passed in with the
+        // failover options, persist them for later use.
+        persistFailoverRedundancyInput(options);
 
         ctx.spawn(doFailoverFromPassive(requester));
     }

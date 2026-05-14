@@ -92,4 +92,14 @@ std::optional<T> getFailoverOption(
     return value;
 }
 
+/**
+ * @brief Validates the UseRedundancyInput failover option if present
+ *
+ * @param[in] options - The options passed to StartFailover
+ *
+ * @return bool - True if option not present or has valid value, false if
+ *                invalid
+ */
+bool validateFailoverRedundancyInput(const FailoverOptions& options);
+
 } // namespace rbmc::util

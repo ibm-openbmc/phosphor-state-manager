@@ -278,6 +278,10 @@ std::string getFailoverBlockedDescription(Reason reason)
             break;
         case Reason::tooEarly:
             desc = "It is too early in the BMC boot to start a failover"s;
+            break;
+        case Reason::invalidFailoverOption:
+            desc = "Invalid failover option provided"s;
+            break;
     }
     return desc;
 }

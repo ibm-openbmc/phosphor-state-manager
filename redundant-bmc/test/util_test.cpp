@@ -139,3 +139,39 @@ TEST_F(UtilTest, GetFailoverOption_MultipleOptions)
     ASSERT_TRUE(hwProblemResult.has_value());
     EXPECT_EQ(hwProblemResult.value(), "PassiveBMCHardwareProblem");
 }
+
+TEST_F(UtilTest, ValidateFailoverRedundancyInput_OptionNotPassed)
+{
+    rbmc::FailoverOptions options;
+
+    bool result = validateFailoverRedundancyInput(options);
+
+    EXPECT_TRUE(result);
+}
+
+TEST_F(UtilTest, ValidateFailoverRedundancyInput_ValidValue)
+{
+    using RedundancyInterface =
+        sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy;
+
+    rbmc::FailoverOptions options{
+        {Failover::convertOptionsToString(
+             Failover::Options::UseRedundancyInput),
+         RedundancyInterface::convertRedundancyInputToString(
+             RedundancyInterface::RedundancyInput::PassiveBMCHardwareProblem)}};
+
+    bool result = validateFailoverRedundancyInput(options);
+
+    EXPECT_TRUE(result);
+}
+
+TEST_F(UtilTest, ValidateFailoverRedundancyInput_InvalidValue)
+{
+    rbmc::FailoverOptions options{{Failover::convertOptionsToString(
+                                       Failover::Options::UseRedundancyInput),
+                                   "InvalidRedundancyInputValue"}};
+
+    bool result = validateFailoverRedundancyInput(options);
+
+    EXPECT_FALSE(result);
+}

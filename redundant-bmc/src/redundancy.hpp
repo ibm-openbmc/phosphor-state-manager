@@ -126,7 +126,8 @@ enum class Reason
     notAtReady,
     bmcNotPassive,
     failoverAlreadyInProgress,
-    tooEarly
+    tooEarly,
+    invalidFailoverOption
 };
 
 /**
