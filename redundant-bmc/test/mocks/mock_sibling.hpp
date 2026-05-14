@@ -51,6 +51,12 @@ class MockSibling : public testing::NiceMock<Sibling>
                 (const, override));
     MOCK_METHOD(sdbusplus::async::task<>, pauseForDataPropagation, (),
                 (const, override));
+
+    MOCK_METHOD(
+        sdbusplus::async::task<>, startFailover,
+        (sdbusplus::common::xyz::openbmc_project::control::Failover::Requester,
+         const FailoverOptions&),
+        (override));
 };
 
 } // namespace rbmc

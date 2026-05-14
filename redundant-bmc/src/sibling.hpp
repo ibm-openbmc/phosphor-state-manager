@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #pragma once
+#include "types.hpp"
+
 #include <sdbusplus/async.hpp>
+#include <xyz/openbmc_project/Control/Failover/common.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
 
@@ -167,6 +170,25 @@ class Sibling
      * Returns an empty string if it isn't on D-Bus.
      */
     virtual const std::string& getServiceName() const = 0;
+
+    /**
+     * @brief Initiates a failover on the sibling BMC
+     *
+     * Calls the StartFailover D-Bus method on the sibling BMC's
+     * Failover interface, passing through the failover options.
+     *
+     * Meant to be called on the active BMC to start a failover
+     * on the passive.
+     *
+     * @param[in] requester - Who is requesting the failover
+     * @param[in] options - The failover options to pass through
+     *
+     * @return The task object
+     */
+    virtual sdbusplus::async::task<> startFailover(
+        sdbusplus::common::xyz::openbmc_project::control::Failover::Requester
+            requester,
+        const FailoverOptions& options) = 0;
 
     /**
      * @brief Clears callbacks held based on role
