@@ -253,6 +253,25 @@ class SiblingImpl : public Sibling
         return serviceName;
     }
 
+    /**
+     * @brief Initiates a failover on the sibling (passive) BMC
+     *
+     * Calls the StartFailover D-Bus method on the sibling BMC's
+     * Failover interface, passing through the failover options.
+     *
+     * Meant to be called on the active BMC to start a failover
+     * on the passive.
+     *
+     * @param[in] requester - Who is requesting the failover
+     * @param[in] options - The failover options to pass through
+     *
+     * @return The task object
+     */
+    sdbusplus::async::task<> startFailover(
+        sdbusplus::common::xyz::openbmc_project::control::Failover::Requester
+            requester,
+        const FailoverOptions& options) override;
+
   private:
     /**
      * @brief Starts a Sibling InterfacesAdded watch

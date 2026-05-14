@@ -35,6 +35,9 @@ const std::string bmcIsPassiveDueToError =
 const std::string noRedundancy =
     "xyz.openbmc_project.State.BMC.Redundancy.NoRedundancy";
 
+const std::string failoverFailed =
+    "xyz.openbmc_project.State.BMC.Redundancy.FailoverFailed";
+
 } // namespace error_msg
 
 } // namespace errors

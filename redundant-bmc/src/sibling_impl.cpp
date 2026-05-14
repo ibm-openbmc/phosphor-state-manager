@@ -4,6 +4,7 @@
 #include "gpio.hpp"
 
 #include <phosphor-logging/lg2.hpp>
+#include <xyz/openbmc_project/Control/Failover/client.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
 #include <xyz/openbmc_project/Provisioning/Provisioning/common.hpp>
 #include <xyz/openbmc_project/Software/Version/common.hpp>
@@ -610,6 +611,20 @@ sdbusplus::async::task<> SiblingImpl::pauseForDataPropagation() const
     using namespace std::chrono_literals;
     // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
     co_return co_await sdbusplus::async::sleep_for(ctx, 4s);
+}
+
+sdbusplus::async::task<> SiblingImpl::startFailover(
+    sdbusplus::common::xyz::openbmc_project::control::Failover::Requester
+        requester,
+    const FailoverOptions& options)
+{
+    using Failover =
+        sdbusplus::client::xyz::openbmc_project::control::Failover<>;
+
+    co_await Failover(ctx)
+        .service(serviceName)
+        .path(objectPath)
+        .start_failover(requester, options);
 }
 
 } // namespace rbmc

@@ -258,6 +258,11 @@ not be re-enabled afterwards, depending on if something is preventing it or not.
 The failover is always driven by the original passive BMC, which then takes over
 as active.
 
+Though driven by the passive BMC, a failover can still be initiated on the
+active BMC by calling its `StartFailover` D-Bus method. After checking for
+itself if the failover should be [rejected](#rejecting-a-failover-request) it
+will forward the request to the passive BMC.
+
 ### Allowing Failovers
 
 Even when redundancy is enabled, there are periods when failovers will not be
@@ -272,14 +277,7 @@ Failovers aren't allowed when:
 4. A failover is in progress.
 5. More coming.
 
-When failovers aren't allowed, rbmctool can be used to display the reasons why.
-
-Future work to be done:
-
-- Put the reasons on D-Bus and in Redfish so the HMC can get them.
-- Determine if the other BMC needs the reasons, or just if FOs aren't allowed.
-- When writing the failover code, reject the failover if it isn't allowed,
-  though there still needs to be a method to force it for use by field support.
+When failovers aren't allowed, rbmctool can be used to display the reason why.
 
 ### Rejecting a failover request
 
@@ -291,7 +289,6 @@ the request if any of the following are true.
 1. FailoversAllowed is false. Exceptions are:
    - The `force` option was passed into the `StartFailover` method.
    - The active BMC is in the `Quiesced` state.
-1. A full sync on the passive BMC is in progress.
 1. The active BMC has no heartbeat and redundancy wasn't last known to be
    enabled. If it was last known to be enabled, a failover is allowed so that
    the remaining BMC can become active.

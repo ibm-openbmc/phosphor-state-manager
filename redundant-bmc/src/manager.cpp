@@ -426,9 +426,29 @@ sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
     }
     else
     {
-        // Shouldn't get here, would have failed in validateFailoverRequest
-        lg2::error("StartFailover on active BMC not supported yet");
-        throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+        try
+        {
+            co_await doFailoverFromActive(requester, options);
+
+            // This BMC should be reset as part of the failover.  If that
+            // doesn't happen something went very wrong so give it 30 seconds
+            // and log an error.
+            using namespace std::chrono_literals;
+            resetTimer = std::make_unique<Timer>(ctx, [this, data]() {
+                lg2::error(
+                    "Timed out waiting for passive BMC to reset this BMC after failover request");
+
+                ctx.spawn(providers->getServices().logError(
+                    errors::error_msg::failoverFailed, errors::Level::Error,
+                    data));
+            });
+            resetTimer->start(30s);
+        }
+        catch (const std::exception& e)
+        {
+            lg2::error("Could not start failover: {ERROR}", "ERROR", e);
+            throw sdbusplus::xyz::openbmc_project::Common::Error::Unavailable();
+        }
     }
 }
 
@@ -538,6 +558,16 @@ sdbusplus::async::task<> Manager::handlePairedChange(bool paired)
             role_determination::getRoleReasonDescription(
                 passiveRoleInfo->reason));
     }
+}
+
+sdbusplus::async::task<> Manager::doFailoverFromActive(
+    Requester requester, const FailoverOptions& options)
+{
+    lg2::info("Failover being started from the active BMC");
+
+    // Forward the failover request to the sibling BMC
+    // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+    co_await providers->getSibling().startFailover(requester, options);
 }
 
 } // namespace rbmc

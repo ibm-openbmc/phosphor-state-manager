@@ -5,6 +5,7 @@
 #include "redundancy_interface.hpp"
 #include "role_determination.hpp"
 #include "role_handler.hpp"
+#include "timer.hpp"
 #include "types.hpp"
 
 #include <sdbusplus/async.hpp>
@@ -137,6 +138,18 @@ class Manager :
     sdbusplus::async::task<> doFailoverFromPassive(Requester requester);
 
     /**
+     * @brief When the BMC is active, forwards a failover request
+     *        to the passive BMC so it can drive the failover.
+     *
+     * @param[in] requester - The failover requester passed into the
+     *                        StartFailover D-Bus method.
+     * @param[in] options - The failover options passed into the
+     *                      StartFailover D-Bus method.
+     */
+    sdbusplus::async::task<> doFailoverFromActive(
+        Requester requester, const FailoverOptions& options);
+
+    /**
      * @brief Clears 'failover in progress' if it is on and
      *        removes the persisted value.
      */
@@ -209,6 +222,14 @@ class Manager :
      * Read from the filesystem in the constructor.
      */
     bool chosePassiveDueToError{false};
+
+    /**
+     * @brief Timer started by the active BMC after requesting a failover.
+     *
+     * If the passive BMC does not reset this BMC within the expected time,
+     * the timer callback logs an error.
+     */
+    std::unique_ptr<Timer> resetTimer;
 
     /**
      * @brief The reason the active/passive role was chosen.
