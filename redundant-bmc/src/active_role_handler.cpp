@@ -351,7 +351,6 @@ void ActiveRoleHandler::siblingFailoverImminent(bool imminent)
     {
         lg2::warning("A failover is imminent");
 
-        ctx.spawn(providers.getSyncInterface().disableBackgroundSync());
         ctx.spawn(providers.getServices().flushJournal());
     }
 }
