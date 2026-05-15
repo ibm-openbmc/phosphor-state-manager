@@ -102,4 +102,14 @@ std::optional<T> getFailoverOption(
  */
 bool validateFailoverRedundancyInput(const FailoverOptions& options);
 
+/**
+ * @brief Get a value from an os-release file
+ *
+ * @param[in] filePath - The path to the os-release file
+ * @param[in] key - The key to look for
+ *
+ * @return std::optional<std::string> - The value, or nullopt if not found
+ */
+std::optional<std::string> getOSReleaseValue(const std::string& filePath,
+                                             const std::string& key);
 } // namespace rbmc::util

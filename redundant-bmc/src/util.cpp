@@ -5,6 +5,8 @@
 #include "persistent_data.hpp"
 #include "phosphor-logging/lg2.hpp"
 
+#include <fstream>
+
 namespace rbmc::util
 {
 
@@ -138,6 +140,41 @@ bool validateFailoverRedundancyInput(const FailoverOptions& options)
     }
 
     return true;
+}
+
+std::optional<std::string> getOSReleaseValue(const std::string& filePath,
+                                             const std::string& key)
+{
+    std::ifstream file{filePath};
+    if (!file.is_open())
+    {
+        lg2::error("Failed to open file: {FILE}", "FILE", filePath);
+        return std::nullopt;
+    }
+
+    // Append '=' to the key for matching
+    std::string keyPattern = key + "=";
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+        // Check if line starts with the key pattern
+        if (line.substr(0, keyPattern.size()).find(keyPattern) !=
+            std::string::npos)
+        {
+            // Extract the value after the key pattern
+            auto value = line.substr(keyPattern.size());
+
+            // Handle quotes around the value
+            // If the value isn't surrounded by quotes, then pos will be
+            // npos + 1 = 0, and the 2nd arg to substr() will be npos
+            // which means get the rest of the string.
+            std::size_t pos = value.find_first_of('"') + 1;
+            return value.substr(pos, value.find_last_of('"') - pos);
+        }
+    }
+
+    return std::nullopt;
 }
 
 } // namespace rbmc::util
