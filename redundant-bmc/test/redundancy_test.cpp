@@ -14,7 +14,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         .role = rbmc::Role::Active,
         .siblingPresent = true,
         .siblingAlive = true,
-        .siblingProvisioned = true,
+        .siblingPaired = true,
         .siblingRole = rbmc::Role::Passive,
         .siblingCannotBeActive = false,
         .siblingState = rbmc::BMCState::Ready,
@@ -60,10 +60,10 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         EXPECT_EQ(*reasons.begin(), SiblingNotAlive);
     }
 
-    // Sibling isn't provisioned
+    // Sibling isn't paired
     {
         auto input = golden;
-        input.siblingProvisioned = false;
+        input.siblingPaired = false;
 
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
