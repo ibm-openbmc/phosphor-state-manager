@@ -3,6 +3,8 @@
 #include "types.hpp"
 #include "util.hpp"
 
+#include <fstream>
+
 #include <gtest/gtest.h>
 
 using namespace rbmc::util;
@@ -10,7 +12,33 @@ using namespace rbmc::test;
 using Failover = sdbusplus::common::xyz::openbmc_project::control::Failover;
 
 class UtilTest : public PersistentDataTestFixture
-{};
+{
+  protected:
+    void SetUp() override
+    {
+        char dirTemplate[] = "/tmp/utils_testXXXXXX";
+        char* dir = mkdtemp(dirTemplate);
+        if (dir == nullptr)
+        {
+            throw std::runtime_error("Failed to create temp directory");
+        }
+        testDir = dir;
+    }
+
+    void TearDown() override
+    {
+        std::filesystem::remove_all(testDir);
+    }
+
+    void createOSReleaseFile(const std::string& content)
+    {
+        std::ofstream file(testDir / "os-release");
+        file << content;
+        file.close();
+    }
+
+    std::filesystem::path testDir;
+};
 
 TEST_F(UtilTest, ExternalRedundancyInputTest)
 {
@@ -174,4 +202,73 @@ TEST_F(UtilTest, ValidateFailoverRedundancyInput_InvalidValue)
     bool result = validateFailoverRedundancyInput(options);
 
     EXPECT_FALSE(result);
+}
+
+TEST_F(UtilTest, GetOSReleaseValueWithQuotes)
+{
+    constexpr auto content = R"(NAME="Test OS"
+VERSION_ID="1.2.3"
+ID=test
+)";
+    createOSReleaseFile(content);
+
+    auto result = getOSReleaseValue(testDir / "os-release", "VERSION_ID");
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result.value(), "1.2.3");
+}
+
+TEST_F(UtilTest, GetOSReleaseValueWithoutQuotes)
+{
+    constexpr auto content = R"(VERSION_ID=1.2.3
+)";
+    createOSReleaseFile(content);
+
+    auto result = getOSReleaseValue(testDir / "os-release", "VERSION_ID");
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result.value(), "1.2.3");
+}
+
+TEST_F(UtilTest, GetOSReleaseValueNotFound)
+{
+    constexpr auto content = R"(NAME="Test OS"
+ID=test
+)";
+    createOSReleaseFile(content);
+
+    auto result = getOSReleaseValue(testDir / "os-release", "VERSION_ID");
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(UtilTest, GetOSReleaseValueFileNotFound)
+{
+    auto result = getOSReleaseValue(testDir / "nonexistent.txt", "VERSION_ID");
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(UtilTest, GetOSReleaseValueEmptyValue)
+{
+    constexpr auto content = R"(VERSION_ID=""
+)";
+    createOSReleaseFile(content);
+
+    auto result = getOSReleaseValue(testDir / "os-release", "VERSION_ID");
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result.value(), "");
+}
+
+TEST_F(UtilTest, GetOSReleaseValueEmptyValueNoQuotes)
+{
+    constexpr auto content = R"(VERSION_ID=
+)";
+    createOSReleaseFile(content);
+
+    auto result = getOSReleaseValue(testDir / "os-release", "VERSION_ID");
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result.value(), "");
 }

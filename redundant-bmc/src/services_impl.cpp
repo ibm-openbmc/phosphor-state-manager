@@ -2,6 +2,7 @@
 #include "services_impl.hpp"
 
 #include "system_state.hpp"
+#include "util.hpp"
 
 #include <openssl/evp.h>
 
@@ -786,31 +787,17 @@ std::string ServicesImpl::getFWVersion() const
         return hexVersionString;
     }
 
-    std::ifstream versionFile{"/etc/os-release"};
-    std::string line;
-    std::string keyPattern{"VERSION_ID="};
+    auto versionOpt = util::getOSReleaseValue("/etc/os-release", "VERSION_ID");
     std::string version;
 
-    while (std::getline(versionFile, line))
-    {
-        // Handle either quotes or no quotes around the value
-        if (line.substr(0, keyPattern.size()).find(keyPattern) !=
-            std::string::npos)
-        {
-            // If the value isn't surrounded by quotes, then pos will be
-            // npos + 1 = 0, and the 2nd arg to substr() will be npos
-            // which means get the rest of the string.
-            auto value = line.substr(keyPattern.size());
-            std::size_t pos = value.find_first_of('"') + 1;
-            version = value.substr(pos, value.find_last_of('"') - pos);
-            break;
-        }
-    }
-
-    if (version.empty())
+    if (!versionOpt.has_value())
     {
         lg2::error("Unable to parse VERSION_ID out of /etc/os-release");
         // let it hash the empty string
+    }
+    else
+    {
+        version = versionOpt.value();
     }
 
     using EVP_MD_CTX_Ptr =
