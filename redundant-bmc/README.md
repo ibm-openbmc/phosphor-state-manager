@@ -58,7 +58,7 @@ The actual reason the code used to determine the role is saved in the
 There are some error cases that require that the BMC is passive regardless of
 what the sibling is doing. These are:
 
-1. The BMC is not provisioned.
+1. The BMC is not paired.
 1. The BMC position cannot be determined.
 1. System inventory processing failed.
 1. The systemd service that maintains the sibling API isn't running. Without
@@ -102,7 +102,7 @@ items to see if redundancy can be enabled:
 1. If the sibling BMC indicates that it can never be active.
 1. Redundancy hasn't been manually disabled with the D-bus property that does
    so.
-1. The sibling BMC has been provisioned.
+1. The sibling BMC has been paired.
 1. The firmware versions are the same on the BMCs.
 1. The network between the BMCs is connected.
 1. If attempting to enable any time at runtime, redundancy must have been
