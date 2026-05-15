@@ -24,14 +24,14 @@ using BMCState = sdbusplus::client::xyz::openbmc_project::state::BMC<>;
 using Role = Redundancy::Role;
 using Failover = sdbusplus::client::xyz::openbmc_project::control::Failover<>;
 using Version = sdbusplus::client::xyz::openbmc_project::software::Version<>;
-using Provisioning =
+using Pairing =
     sdbusplus::client::xyz::openbmc_project::provisioning::Provisioning<>;
 using PeerConnectionStatus = sdbusplus::common::xyz::openbmc_project::
     provisioning::Provisioning::PeerConnectionStatus;
 
 constexpr auto siblingService =
     "xyz.openbmc_project.State.BMC.Redundancy.Sibling";
-constexpr auto provService = "xyz.openbmc_project.Provisioning";
+constexpr auto pairingService = "xyz.openbmc_project.Provisioning";
 
 template <typename T>
 void printParam(std::string key, const T& value)
@@ -205,19 +205,19 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
 
         try
         {
-            auto provProps = co_await Provisioning(ctx)
-                                 .service(provService)
-                                 .path(Provisioning::instance_path)
-                                 .properties();
-            if (!provProps.provisioned)
+            auto pairingProps = co_await Pairing(ctx)
+                                    .service(pairingService)
+                                    .path(Pairing::instance_path)
+                                    .properties();
+            if (!pairingProps.provisioned)
             {
-                output["Paired"] = provProps.provisioned;
+                output["Paired"] = pairingProps.provisioned;
             }
 
-            if (provProps.peer_connected != PeerConnectionStatus::Connected)
+            if (pairingProps.peer_connected != PeerConnectionStatus::Connected)
             {
                 output["Peer Connected"] =
-                    getPDIEnumString(provProps.peer_connected);
+                    getPDIEnumString(pairingProps.peer_connected);
             }
         }
         catch (const std::exception& e)
@@ -294,18 +294,18 @@ sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
                          .path(path.str)
                          .current_bmc_state();
 
-        auto provProps = co_await Provisioning(ctx)
-                             .service(siblingService)
-                             .path(path.str)
-                             .properties();
+        auto pairingProps = co_await Pairing(ctx)
+                                .service(siblingService)
+                                .path(path.str)
+                                .properties();
 
         output["Redundancy Enabled"] = rProps.redundancy_enabled;
         output["Failovers Allowed"] = rProps.failovers_allowed;
         output["BMC State"] = getPDIEnumString(state);
         output["FW Version Hash"] = fwVersion;
-        if (!provProps.provisioned)
+        if (!pairingProps.provisioned)
         {
-            output["Paired"] = provProps.provisioned;
+            output["Paired"] = pairingProps.provisioned;
         }
     }
     catch (const std::exception& e)
