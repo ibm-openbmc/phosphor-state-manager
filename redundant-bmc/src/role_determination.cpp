@@ -7,7 +7,7 @@ namespace rbmc::role_determination
 
 // Reasons for being passive that are errors.
 constexpr auto errorRoleReasons = std::to_array(
-    {RoleReason::notProvisioned, RoleReason::siblingServiceNotRunning,
+    {RoleReason::notPaired, RoleReason::siblingServiceNotRunning,
      RoleReason::exception, RoleReason::unknownBMCPosition,
      RoleReason::systemInventoryNotAvailable});
 
@@ -92,8 +92,8 @@ std::string getRoleReasonDescription(RoleReason reason)
         case RoleReason::positionNonzero:
             desc = "BMC is not position 0"s;
             break;
-        case RoleReason::notProvisioned:
-            desc = "BMC is not provisioned"s;
+        case RoleReason::notPaired:
+            desc = "BMC is not paired"s;
             break;
         case RoleReason::siblingServiceNotRunning:
             desc = "Sibling BMC service is not running"s;

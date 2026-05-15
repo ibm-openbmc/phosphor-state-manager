@@ -37,7 +37,7 @@ enum class RoleReason
     resumePrevious,
     positionZero,
     positionNonzero,
-    notProvisioned,
+    notPaired,
     siblingServiceNotRunning,
     exception,
     failover,

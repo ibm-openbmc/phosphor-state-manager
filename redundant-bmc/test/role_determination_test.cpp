@@ -152,6 +152,6 @@ TEST(RoleDeterminationTest, RoleDeterminationTest)
 
 TEST(RoleDeterminationTest, ErrorReasonTest)
 {
-    EXPECT_TRUE(isErrorReason(RoleReason::notProvisioned));
+    EXPECT_TRUE(isErrorReason(RoleReason::notPaired));
     EXPECT_FALSE(isErrorReason(RoleReason::resumePrevious));
 }
