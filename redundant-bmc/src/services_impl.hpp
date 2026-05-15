@@ -33,11 +33,11 @@ class ServicesImpl : public Services
     ServicesImpl(ServicesImpl&&) = delete;
     ServicesImpl& operator=(ServicesImpl&&) = delete;
 
-    using ProvisioningCommon =
+    using PairingCommon =
         sdbusplus::common::xyz::openbmc_project::provisioning::Provisioning;
-    using ProvisioningPropMap =
-        std::unordered_map<std::string, ProvisioningCommon::PropertiesVariant>;
-    using ProvisioningInterfaceMap = std::map<std::string, ProvisioningPropMap>;
+    using PairingPropMap =
+        std::unordered_map<std::string, PairingCommon::PropertiesVariant>;
+    using PairingInterfaceMap = std::map<std::string, PairingPropMap>;
 
     /**
      * @brief Constructor
@@ -84,11 +84,11 @@ class ServicesImpl : public Services
         const std::string& name) const override;
 
     /**
-     * @brief If this BMC has been provisioned
+     * @brief If this BMC has been paired
      *
-     * @return bool - If provisioned or not.
+     * @return bool - If paired or not.
      */
-    bool getProvisioned() const override;
+    bool getPaired() const override;
 
     /**
      * @brief Returns an 8 character hash of the FW version
@@ -244,27 +244,27 @@ class ServicesImpl : public Services
         std::shared_ptr<sdbusplus::async::barrier> barrier);
 
     /**
-     * @brief Starts the InterfacesAdded watch for the Provisioning interface
+     * @brief Starts the InterfacesAdded watch for the Pairing interface
      *
      * @param[in] barrier - Initialization barrier
      */
-    sdbusplus::async::task<> watchProvisioningInterfacesAdded(
+    sdbusplus::async::task<> watchPairingInterfacesAdded(
         std::shared_ptr<sdbusplus::async::barrier> barrier);
 
     /**
-     * @brief Starts the PropertiesChanged watch for the Provisioning interface
+     * @brief Starts the PropertiesChanged watch for the Pairing interface
      *
      * @param[in] barrier - Initialization barrier
      */
-    sdbusplus::async::task<> watchProvisioningPropertiesChanged(
+    sdbusplus::async::task<> watchPairingPropertiesChanged(
         std::shared_ptr<sdbusplus::async::barrier> barrier);
 
     /**
-     * @brief Reads the Provisioning interface properties
+     * @brief Reads the Pairing interface properties
      */
-    sdbusplus::async::task<> readProvisioningProperties();
+    sdbusplus::async::task<> readPairingProperties();
 
-    void loadProvisioningProps(const ProvisioningPropMap& propertyMap);
+    void loadPairingProps(const PairingPropMap& propertyMap);
 
     /**
      * @brief Called when either the host state or boot progress property
@@ -308,9 +308,9 @@ class ServicesImpl : public Services
     bool peerConnected{false};
 
     /**
-     * @brief The provisioned status value
+     * @brief The paired status value
      */
-    bool provisioned;
+    bool paired;
 
     /**
      * @brief D-Bus path for the Item.System object
