@@ -130,15 +130,15 @@ class SiblingImpl : public Sibling
     }
 
     /**
-     * @brief Returns the sibling BMC's provisioning status
+     * @brief Returns the sibling BMC's pairing status
      *
      * @return - The status, or nullopt if not available
      */
-    std::optional<bool> getProvisioned() const override
+    std::optional<bool> getPaired() const override
     {
         if (alive())
         {
-            return provisioning.provisioned;
+            return pairing.paired;
         }
 
         return std::nullopt;
@@ -318,12 +318,12 @@ class SiblingImpl : public Sibling
     void loadAvailabilityProps(const PropertyMap& propertyMap);
 
     /**
-     * @brief Sets Provisioning data members with whatever is in the property
+     * @brief Sets Pairing data members with whatever is in the property
      * map
      *
      * @param[in] propertyMap - The property name -> value map
      */
-    void loadProvisioningProps(const PropertyMap& propertyMap);
+    void loadPairingProps(const PropertyMap& propertyMap);
 
     /**
      * @brief Sets data members with whatever is in the property map
@@ -343,7 +343,7 @@ class SiblingImpl : public Sibling
         bmcState.present = false;
         version.present = false;
         availability.present = false;
-        provisioning.present = false;
+        pairing.present = false;
     }
 
     /**
@@ -436,16 +436,16 @@ class SiblingImpl : public Sibling
      */
     Availability availability;
 
-    struct Provisioning
+    struct Pairing
     {
         bool present = false;
-        bool provisioned = false;
+        bool paired = false;
     };
 
     /**
-     * @brief Provisioning presence and value
+     * @brief Pairing presence and value
      */
-    Provisioning provisioning;
+    Pairing pairing;
 
     /**
      * @brief The D-Bus object path for the sibling.

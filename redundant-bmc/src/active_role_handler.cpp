@@ -58,11 +58,10 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
             sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState(),
             services.waitForPeerConnection());
 
-        // If PeerConnected == true and sibling provisioned == false
-        // a small delay will be needed to let the new provisioned
+        // If PeerConnected == true and sibling paired == false
+        // a small delay will be needed to let the new paired
         // value propagate to this BMC.
-        if (services.getPeerConnected() &&
-            !sibling.getProvisioned().value_or(true))
+        if (services.getPeerConnected() && !sibling.getPaired().value_or(true))
         {
             co_await sibling.pauseForDataPropagation();
         }
@@ -142,8 +141,8 @@ sdbusplus::async::task<> ActiveRoleHandler::siblingHealthy()
         services.waitForPeerConnection());
 
     // Just like in start(), a delay may be needed to let
-    // the sibling provisioned value propagate.
-    if (services.getPeerConnected() && !sibling.getProvisioned().value_or(true))
+    // the sibling paired value propagate.
+    if (services.getPeerConnected() && !sibling.getPaired().value_or(true))
     {
         co_await sibling.pauseForDataPropagation();
     }

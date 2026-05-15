@@ -102,11 +102,11 @@ class Sibling
     virtual std::optional<bool> getRedundancyEnabled() const = 0;
 
     /**
-     * @brief Returns the sibling BMC's provisioning status
+     * @brief Returns the sibling BMC's pairing status
      *
      * @return - The status, or nullopt if not available
      */
-    virtual std::optional<bool> getProvisioned() const = 0;
+    virtual std::optional<bool> getPaired() const = 0;
 
     /**
      * @brief Returns the sibling BMC's FW version representation

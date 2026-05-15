@@ -130,7 +130,7 @@ redundancy::ReasonsForNoRedundancy RedundancyMgr::getNoRedundancyReasons()
         .role = redundancyInterface.role(),
         .siblingPresent = sibling.isBMCPresent(),
         .siblingAlive = sibling.alive(),
-        .siblingPaired = sibling.getProvisioned().value_or(false),
+        .siblingPaired = sibling.getPaired().value_or(false),
         .siblingRole = sibling.getRole().value_or(Role::Unknown),
         .siblingCannotBeActive =
             sibling.getHasReasonForNoRedundancy().value_or(false),

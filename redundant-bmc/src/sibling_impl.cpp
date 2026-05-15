@@ -22,7 +22,7 @@ using VersionIntf = sdbusplus::common::xyz::openbmc_project::software::Version;
 using BMCStateIntf = sdbusplus::common::xyz::openbmc_project::state::BMC;
 using AvailIntf =
     sdbusplus::common::xyz::openbmc_project::state::decorator::Availability;
-using ProvisioningIntf =
+using PairingIntf =
     sdbusplus::common::xyz::openbmc_project::provisioning::Provisioning;
 
 SiblingImpl::SiblingImpl(sdbusplus::async::context& ctx,
@@ -225,15 +225,14 @@ void SiblingImpl::loadAvailabilityProps(
     }
 }
 
-void SiblingImpl::loadProvisioningProps(
-    const SiblingImpl::PropertyMap& propertyMap)
+void SiblingImpl::loadPairingProps(const SiblingImpl::PropertyMap& propertyMap)
 {
-    provisioning.present = true;
+    pairing.present = true;
 
     auto it = propertyMap.find("Provisioned");
     if (it != propertyMap.end())
     {
-        provisioning.provisioned = std::get<bool>(it->second);
+        pairing.paired = std::get<bool>(it->second);
     }
 }
 
@@ -318,9 +317,9 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved(
         {
             availability.present = false;
         }
-        if (std::ranges::contains(interfaces, ProvisioningIntf::interface))
+        if (std::ranges::contains(interfaces, PairingIntf::interface))
         {
-            provisioning.present = false;
+            pairing.present = false;
         }
 
         // If alive before and all interfaces are now gone invoke the callbacks
@@ -429,9 +428,9 @@ void SiblingImpl::loadFromPropertyMap(const std::string& interface,
     {
         loadAvailabilityProps(propertyMap);
     }
-    else if (interface == ProvisioningIntf::interface)
+    else if (interface == PairingIntf::interface)
     {
-        loadProvisioningProps(propertyMap);
+        loadPairingProps(propertyMap);
     }
 }
 
