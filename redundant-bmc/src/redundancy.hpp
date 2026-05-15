@@ -30,7 +30,7 @@ struct Input
     Role role;
     bool siblingPresent;
     bool siblingAlive;
-    bool siblingProvisioned;
+    bool siblingPaired;
     Role siblingRole;
     bool siblingCannotBeActive;
     BMCState siblingState;

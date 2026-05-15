@@ -35,7 +35,7 @@ ReasonsForNoRedundancy getNoRedundancyReasons(const Input& input)
         }
         else
         {
-            if (!input.siblingProvisioned)
+            if (!input.siblingPaired)
             {
                 reasons.push_back(SiblingNotProvisioned);
             }
