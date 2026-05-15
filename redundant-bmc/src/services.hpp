@@ -46,7 +46,7 @@ class Services
 
     using SystemStateCallback = std::function<void(SystemState)>;
     using PeerConnectedCallback = std::function<void(bool)>;
-    using ProvisionedCallback = std::function<void(bool)>;
+    using PairedCallback = std::function<void(bool)>;
 
     /**
      * @brief Sets up the D-Bus matches
@@ -87,11 +87,11 @@ class Services
         const std::string& unitName) const = 0;
 
     /**
-     * @brief If this BMC has been provisioned
+     * @brief If this BMC has been paired
      *
-     * @return bool - If provisioned or not.
+     * @return bool - If paired or not.
      */
-    virtual bool getProvisioned() const = 0;
+    virtual bool getPaired() const = 0;
 
     /**
      * @brief Returns an 8 character hash of the FW version
@@ -225,25 +225,25 @@ class Services
     }
 
     /**
-     * @brief Add a function that gets called when the provisioned status
+     * @brief Add a function that gets called when the paired status
      *        changes.
      *
      * @param[in] role - The role to register with
      * @param[in] callback - The function to call
      */
-    void addProvisionedCallback(Role role, ProvisionedCallback&& callback)
+    void addPairedCallback(Role role, PairedCallback&& callback)
     {
-        provisionedCBs.emplace(role, std::move(callback));
+        pairedCBs.emplace(role, std::move(callback));
     }
 
     /**
-     * @brief Remove a specific provisioned change callback by role.
+     * @brief Remove a specific paired change callback by role.
      *
      * @param[in] role - The role of the callback to remove
      */
-    void removeProvisionedCallback(Role role)
+    void removePairedCallback(Role role)
     {
-        provisionedCBs.erase(role);
+        pairedCBs.erase(role);
     }
 
     /**
@@ -285,9 +285,9 @@ class Services
     std::map<Role, PeerConnectedCallback> peerConnectedCBs;
 
     /**
-     * @brief The functions to call when the provisioned status changes
+     * @brief The functions to call when the paired status changes
      */
-    std::map<Role, ProvisionedCallback> provisionedCBs;
+    std::map<Role, PairedCallback> pairedCBs;
 };
 
 } // namespace rbmc

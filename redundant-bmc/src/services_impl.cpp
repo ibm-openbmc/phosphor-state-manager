@@ -30,7 +30,7 @@ using SystemInv =
 using InvProgress = sdbusplus::client::xyz::openbmc_project::common::Progress<>;
 using SidebandBus =
     sdbusplus::client::xyz::openbmc_project::control::SideBandBus<>;
-using Provisioning =
+using Pairing =
     sdbusplus::client::xyz::openbmc_project::provisioning::Provisioning<>;
 using PeerConnectionStatus = sdbusplus::common::xyz::openbmc_project::
     provisioning::Provisioning::PeerConnectionStatus;
@@ -200,14 +200,14 @@ sdbusplus::async::task<> ServicesImpl::init()
     ctx.spawn(watchHostInterfacesAdded(barrier));
     ctx.spawn(watchHostStatePropertiesChanged(barrier));
     ctx.spawn(watchBootProgressPropertiesChanged(barrier));
-    ctx.spawn(watchProvisioningInterfacesAdded(barrier));
-    ctx.spawn(watchProvisioningPropertiesChanged(barrier));
+    ctx.spawn(watchPairingInterfacesAdded(barrier));
+    ctx.spawn(watchPairingPropertiesChanged(barrier));
 
     co_await barrier->wait();
 
     co_await readHostState();
     co_await readBootProgress();
-    co_await readProvisioningProperties();
+    co_await readPairingProperties();
     updateSystemState();
 
     co_await waitForSystemInventoryPath();
@@ -333,22 +333,22 @@ sdbusplus::async::task<> ServicesImpl::readBootProgress()
     co_return;
 }
 
-sdbusplus::async::task<> ServicesImpl::readProvisioningProperties()
+sdbusplus::async::task<> ServicesImpl::readPairingProperties()
 {
     try
     {
-        auto service = co_await util::getService(
-            ctx, Provisioning::instance_path, Provisioning::interface);
-        auto props = co_await Provisioning(ctx)
+        auto service = co_await util::getService(ctx, Pairing::instance_path,
+                                                 Pairing::interface);
+        auto props = co_await Pairing(ctx)
                          .service(service)
-                         .path(Provisioning::instance_path)
+                         .path(Pairing::instance_path)
                          .properties();
 
-        provisioned = props.provisioned;
+        paired = props.provisioned;
         peerConnected = props.peer_connected == PeerConnectionStatus::Connected;
 
-        lg2::debug("Initial Provisioned = {PROV} and PeerConnected = {STATUS}",
-                   "PROV", props.provisioned, "STATUS", props.peer_connected);
+        lg2::debug("Initial Paired = {PAIR} and PeerConnected = {STATUS}",
+                   "PAIR", props.provisioned, "STATUS", props.peer_connected);
     }
     catch (const sdbusplus::exception_t& e)
     {
@@ -384,15 +384,14 @@ sdbusplus::async::task<> ServicesImpl::watchBootProgressPropertiesChanged(
     co_return;
 }
 
-void ServicesImpl::loadProvisioningProps(const ProvisioningPropMap& propertyMap)
+void ServicesImpl::loadPairingProps(const PairingPropMap& propertyMap)
 {
     auto it = propertyMap.find("PeerConnected");
     if (it != propertyMap.end())
     {
         auto prevConnected = peerConnected;
 
-        auto rawStatus =
-            std::get<Provisioning::PeerConnectionStatus>(it->second);
+        auto rawStatus = std::get<Pairing::PeerConnectionStatus>(it->second);
 
         lg2::info("The new PeerConnected value is {STATUS}", "STATUS",
                   rawStatus);
@@ -414,58 +413,58 @@ void ServicesImpl::loadProvisioningProps(const ProvisioningPropMap& propertyMap)
     it = propertyMap.find("Provisioned");
     if (it != propertyMap.end())
     {
-        auto prevProvisioned = provisioned;
-        provisioned = std::get<bool>(it->second);
+        auto prevPaired = paired;
+        paired = std::get<bool>(it->second);
 
-        lg2::info("The new Provisioned value is {PROV}", "PROV", provisioned);
+        lg2::info("The new Paired value is {PROV}", "PROV", paired);
 
         // Invoke callbacks if value changed
-        if (prevProvisioned != provisioned)
+        if (prevPaired != paired)
         {
-            std::ranges::for_each(provisionedCBs, [this](const auto& entry) {
-                entry.second(provisioned);
+            std::ranges::for_each(pairedCBs, [this](const auto& entry) {
+                entry.second(paired);
             });
         }
     }
 }
 
-sdbusplus::async::task<> ServicesImpl::watchProvisioningInterfacesAdded(
+sdbusplus::async::task<> ServicesImpl::watchPairingInterfacesAdded(
     std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
     sdbusplus::async::match match(
-        ctx, rules::interfacesAddedAtPath(Provisioning::instance_path));
+        ctx, rules::interfacesAddedAtPath(Pairing::instance_path));
 
     co_await barrier->wait();
 
     while (!ctx.stop_requested())
     {
         auto [_, interfaces] =
-            co_await match.next<sdbusplus::message::object_path,
-                                ProvisioningInterfaceMap>();
+            co_await match
+                .next<sdbusplus::message::object_path, PairingInterfaceMap>();
 
-        auto it = interfaces.find(Provisioning::interface);
+        auto it = interfaces.find(Pairing::interface);
         if (it != interfaces.end())
         {
-            lg2::info("Provisioning interface added");
-            loadProvisioningProps(it->second);
+            lg2::info("Pairing interface added");
+            loadPairingProps(it->second);
         }
     }
 }
 
-sdbusplus::async::task<> ServicesImpl::watchProvisioningPropertiesChanged(
+sdbusplus::async::task<> ServicesImpl::watchPairingPropertiesChanged(
     std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
     sdbusplus::async::match match(
-        ctx, rules::propertiesChanged(Provisioning::instance_path,
-                                      Provisioning::interface));
+        ctx,
+        rules::propertiesChanged(Pairing::instance_path, Pairing::interface));
 
     co_await barrier->wait();
 
     while (!ctx.stop_requested())
     {
-        auto [_, properties] =
-            co_await match.next<std::string, ProvisioningPropMap>();
-        loadProvisioningProps(properties);
+        auto [_,
+              properties] = co_await match.next<std::string, PairingPropMap>();
+        loadPairingProps(properties);
     }
 }
 
@@ -708,10 +707,10 @@ sdbusplus::async::task<> ServicesImpl::startUnit(
     }
 }
 
-bool ServicesImpl::getProvisioned() const
+bool ServicesImpl::getPaired() const
 {
     // TODO: Return the actual value.
-    // return provisioned;
+    // return paired;
     return true;
 }
 

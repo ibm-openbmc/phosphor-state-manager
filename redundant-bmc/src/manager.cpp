@@ -106,9 +106,9 @@ sdbusplus::async::task<> Manager::startup()
 
     spawnRoleHandler();
 
-    if (!services.getProvisioned())
+    if (!services.getPaired())
     {
-        setupProvisionedWatch();
+        setupPairedWatch();
     }
 }
 
@@ -245,10 +245,10 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
 {
     using namespace role_determination;
 
-    // An unprovisioned BMC cannot be active.
-    if (!providers->getServices().getProvisioned())
+    // An unpaired BMC cannot be active.
+    if (!providers->getServices().getPaired())
     {
-        co_return RoleInfo{Role::Passive, RoleReason::notProvisioned};
+        co_return RoleInfo{Role::Passive, RoleReason::notPaired};
     }
 
     // A BMC with no position cannot be active.
@@ -460,21 +460,20 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive(Requester requester)
     co_await active->failoverDetermineRedundancy();
 }
 
-void Manager::setupProvisionedWatch()
+void Manager::setupPairedWatch()
 {
-    providers->getServices().addProvisionedCallback(
-        Role::Passive,
-        std::bind_front(&Manager::provisionedChangeHandler, this));
+    providers->getServices().addPairedCallback(
+        Role::Passive, std::bind_front(&Manager::pairedChangeHandler, this));
 }
 
-void Manager::provisionedChangeHandler(bool provisioned)
+void Manager::pairedChangeHandler(bool paired)
 {
-    ctx.spawn(handleProvisionedChange(provisioned));
+    ctx.spawn(handlePairedChange(paired));
 }
 
-sdbusplus::async::task<> Manager::handleProvisionedChange(bool provisioned)
+sdbusplus::async::task<> Manager::handlePairedChange(bool paired)
 {
-    if (!provisioned)
+    if (!paired)
     {
         co_return;
     }
@@ -483,8 +482,8 @@ sdbusplus::async::task<> Manager::handleProvisionedChange(bool provisioned)
     if (redundancyInterface.role() != Role::Passive)
     {
         lg2::warning(
-            "Provisioned just changed to true but BMC not already passive?");
-        providers->getServices().removeProvisionedCallback(Role::Passive);
+            "Paired just changed to true but BMC not already passive?");
+        providers->getServices().removePairedCallback(Role::Passive);
         co_return;
     }
 
@@ -503,12 +502,12 @@ sdbusplus::async::task<> Manager::handleProvisionedChange(bool provisioned)
         redundancyInterface.reasons_for_no_redundancy({});
 
         // No need for future callbacks.
-        providers->getServices().removeProvisionedCallback(Role::Passive);
+        providers->getServices().removePairedCallback(Role::Passive);
     }
     else
     {
-        lg2::warning(
-            "After provisioned property change to true, BMC still required to be passive: {REASON}",
+        lg2::info(
+            "After paired property change to true, BMC still required to be passive: {REASON}",
             "REASON",
             role_determination::getRoleReasonDescription(
                 passiveRoleInfo->reason));
