@@ -71,14 +71,6 @@ class ProvidersImpl : public Providers
         return siblingReset;
     }
 
-    /**
-     * @brief Returns the config file data structures.
-     */
-    const RedundantBMCConfig& getConfig() const override
-    {
-        return config;
-    }
-
   private:
     /**
      * @brief The parsed configuration
