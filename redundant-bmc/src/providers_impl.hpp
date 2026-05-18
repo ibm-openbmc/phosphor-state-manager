@@ -35,7 +35,8 @@ class ProvidersImpl : public Providers
      */
     explicit ProvidersImpl(sdbusplus::async::context& ctx) :
         config(config_parser::readConfig()), services(ctx),
-        sibling(ctx, config, services), syncInterface(ctx), siblingReset(ctx)
+        sibling(ctx, config, services), syncInterface(ctx),
+        siblingReset(ctx, config)
     {}
 
     /**

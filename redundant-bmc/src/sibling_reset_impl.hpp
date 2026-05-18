@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include "config_data.hpp"
 #include "sibling_reset.hpp"
+#include "types.hpp"
 
 #include <gpiod.hpp>
 #include <phosphor-logging/lg2.hpp>
@@ -25,8 +27,12 @@ class SiblingResetImpl : public SiblingReset
 
     /**
      * @brief Constructor
+     *
+     * @param[in] ctx - The async context object
+     * @param[in] config - Optional redundant BMC configuration
      */
-    SiblingResetImpl(sdbusplus::async::context& ctx);
+    SiblingResetImpl(sdbusplus::async::context& ctx,
+                     const RedundantBMCConfig& config);
 
     /**
      * @brief Asserts the reset.
@@ -54,19 +60,14 @@ class SiblingResetImpl : public SiblingReset
     sdbusplus::async::context& ctx;
 
     /**
-     * @brief The GPIO config for requesting a line.
+     * @brief The GPIO polarity
      */
-    gpiod::line_request config;
+    GPIOPolarity polarity;
 
     /**
      * @brief The reset line
      */
     gpiod::line resetLine;
-
-    /**
-     * @brief If the GPIO is active low
-     */
-    bool activeLow{false};
 };
 
 } // namespace rbmc

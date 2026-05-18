@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+#include "config_parser.hpp"
 #include "persistent_data.hpp"
 #include "redundancy.hpp"
 #include "services_impl.hpp"
@@ -373,7 +374,8 @@ sdbusplus::async::task<> displayInfo(sdbusplus::async::context& ctx,
 // NOLINTNEXTLINE
 sdbusplus::async::task<> resetSiblingBMC(sdbusplus::async::context& ctx)
 {
-    rbmc::SiblingResetImpl reset{ctx};
+    auto config = rbmc::config_parser::readConfig();
+    rbmc::SiblingResetImpl reset{ctx, config};
 
     try
     {
