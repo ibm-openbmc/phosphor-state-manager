@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-#include "config_data.hpp"
 #include "services.hpp"
 #include "sibling.hpp"
 #include "sibling_reset.hpp"
@@ -45,13 +44,6 @@ class Providers
      * @brief Returns the SiblingReset provider
      */
     virtual SiblingReset& getSiblingReset() = 0;
-
-    /**
-     * @brief Returns the config file data structures.
-     *
-     * @return The configuration
-     */
-    virtual const RedundantBMCConfig& getConfig() const = 0;
 };
 
 }; // namespace rbmc
