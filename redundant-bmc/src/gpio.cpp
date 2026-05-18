@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "gpio.hpp"
 
-#include <gpiod.hpp>
 #include <phosphor-logging/lg2.hpp>
 
 #include <chrono>
 #include <thread>
 
-namespace rbmc
+namespace rbmc::gpio
 {
 
 namespace
@@ -91,4 +90,36 @@ std::optional<bool> readGPIO(const std::string& gpioName, GPIOPolarity polarity)
     return std::nullopt;
 }
 
-} // namespace rbmc
+sdbusplus::async::task<> toggleGPIO(gpiod::line& line, GPIOPolarity polarity,
+                                    sdbusplus::async::context& ctx,
+                                    std::chrono::milliseconds delay)
+{
+    const bool activeHigh = (polarity == GPIOPolarity::high);
+
+    line.request({"RBMC manager", gpiod::line_request::DIRECTION_OUTPUT,
+                  activeHigh ? 0 : gpiod::line_request::FLAG_ACTIVE_LOW},
+                 1);
+
+    GPIOLineGuard guard(line);
+
+    co_await sdbusplus::async::sleep_for(ctx, delay);
+
+    line.set_value(0);
+}
+
+// NOLINTBEGIN(clang-analyzer-core.uninitialized.Branch)
+sdbusplus::async::task<> toggleGPIO(
+    const std::string& gpioName, GPIOPolarity polarity,
+    sdbusplus::async::context& ctx, std::chrono::milliseconds delay)
+{
+    auto line = gpiod::find_line(gpioName);
+    if (!line)
+    {
+        throw std::runtime_error("GPIO line " + gpioName + " not found");
+    }
+
+    co_await toggleGPIO(line, polarity, ctx, delay);
+}
+// NOLINTEND(clang-analyzer-core.uninitialized.Branch)
+
+} // namespace rbmc::gpio

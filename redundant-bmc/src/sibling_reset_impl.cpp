@@ -2,70 +2,36 @@
 
 #include "sibling_reset_impl.hpp"
 
-#include <gpiod.hpp>
-#include <phosphor-logging/lg2.hpp>
-
-#include <cassert>
+#include "gpio.hpp"
 
 namespace rbmc
 {
 
-const std::string gpioName = "sibling-bmc-reset";
-
-SiblingResetImpl::SiblingResetImpl(sdbusplus::async::context& ctx) : ctx(ctx)
+SiblingResetImpl::SiblingResetImpl(sdbusplus::async::context& ctx,
+                                   const RedundantBMCConfig& config) :
+    ctx(ctx), polarity(config.siblingBMCResetGPIO.polarity)
 {
-    resetLine = gpiod::find_line(gpioName);
+    resetLine = gpiod::find_line(config.siblingBMCResetGPIO.name);
     if (!resetLine)
     {
-        // Attempt to find the active low version.
-        resetLine = gpiod::find_line(gpioName + "-n");
-        if (resetLine)
-        {
-            activeLow = true;
-        }
-    }
-
-    if (resetLine)
-    {
-        config.consumer = "Sibling BMC Reset";
-        config.request_type = gpiod::line_request::DIRECTION_OUTPUT;
-        config.flags = activeLow ? gpiod::line_request::FLAG_ACTIVE_LOW : 0;
-    }
-    else
-    {
-        // This will cause a fail during the assert/release
-        lg2::error("Could not find BMC reset GPIO {GPIO}", "GPIO", gpioName);
+        throw std::runtime_error(
+            "Could not find BMC reset GPIO " + config.siblingBMCResetGPIO.name);
     }
 }
 
 void SiblingResetImpl::assertReset()
 {
-    if (!resetLine)
-    {
-        throw std::runtime_error("Could not find sibling reset GPIO");
-    }
-
-    lg2::info("Asserting sibling BMC reset GPIO");
-
-    resetLine.request(config, 1);
-    resetLine.release();
+    // TODO - Concurrent Maintenance design pending
+    throw std::runtime_error{"assertReset not implemented yet"};
 }
 
 void SiblingResetImpl::releaseReset()
 {
-    if (!resetLine)
-    {
-        throw std::runtime_error("Could not find sibling reset GPIO");
-    }
-
-    lg2::info("Releasing sibling BMC reset GPIO");
-
-    resetLine.request(config, 0);
-    resetLine.release();
+    // TODO - Concurrent Maintenance design pending
+    throw std::runtime_error{"releaseReset not implemented yet"};
 }
 
 // NOLINTBEGIN(clang-analyzer-core.uninitialized.Branch)
-// NOLINTNEXTLINE(readability-static-accessed-through-instance)
 sdbusplus::async::task<> SiblingResetImpl::toggleReset()
 {
     if (!resetLine)
@@ -75,15 +41,8 @@ sdbusplus::async::task<> SiblingResetImpl::toggleReset()
 
     lg2::info("Toggling sibling reset GPIO");
 
-    resetLine.request(config, 1);
-
     using namespace std::chrono_literals;
-
-    co_await sdbusplus::async::sleep_for(ctx, 200ms);
-
-    resetLine.set_value(0);
-
-    resetLine.release();
+    co_await gpio::toggleGPIO(resetLine, polarity, ctx, 200ms);
 }
 // NOLINTEND(clang-analyzer-core.uninitialized.Branch)
 

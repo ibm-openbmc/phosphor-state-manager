@@ -544,8 +544,8 @@ bool SiblingImpl::isBMCPresent()
     auto gpioConfig = getSibPresentGPIOConfig();
     if (gpioConfig.has_value())
     {
-        gpioActive =
-            readGPIO(gpioConfig.value().name, gpioConfig.value().polarity);
+        gpioActive = gpio::readGPIO(gpioConfig.value().name,
+                                    gpioConfig.value().polarity);
     }
 
     if (gpioActive.value_or(false))
