@@ -5,6 +5,7 @@
 
 #include "persistent_data.hpp"
 #include "system_state.hpp"
+#include "util.hpp"
 
 namespace rbmc::errors
 {
@@ -167,6 +168,17 @@ void addFileData(AdditionalData& data)
             {
                 data["RedOffAtRuntime"] = boolToYesOrNo(true);
             }
+        }
+
+        auto inputs = util::readExternalRedundancyInputs();
+        if (!inputs.empty())
+        {
+            data["ExtRedInputs"] = std::ranges::fold_left(
+                inputs, std::string{}, [](const auto& front, auto input) {
+                    auto enumString = getPDIEnumString(input);
+                    return front.empty() ? enumString
+                                         : front + ' ' + enumString;
+                });
         }
     }
     catch (const std::exception& e)
