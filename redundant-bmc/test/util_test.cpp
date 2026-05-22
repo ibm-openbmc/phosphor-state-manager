@@ -272,3 +272,41 @@ TEST_F(UtilTest, GetOSReleaseValueEmptyValueNoQuotes)
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result.value(), "");
 }
+
+template <typename F>
+void runAsync(F func)
+{
+    sdbusplus::async::context ctx;
+    ctx.spawn(func(ctx) | sdbusplus::async::execution::then([&ctx]() {
+                  ctx.request_stop();
+              }));
+    ctx.run();
+}
+
+TEST(RunAsyncCmdTest, SuccessfulCommandExecution)
+{
+    // Test that a simple successful command returns a 0
+    int result = -1;
+
+    // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+    runAsync(
+        [&result](sdbusplus::async::context& ctx) -> sdbusplus::async::task<> {
+            result = co_await rbmc::util::runAsyncCmd(ctx, "echo 'test'");
+        });
+
+    EXPECT_EQ(result, 0);
+}
+
+TEST(RunAsyncCmdTest, CommandWithNonZeroExitCode)
+{
+    // Test that a command with non-zero exit code returns it
+    int result = -1;
+
+    // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+    runAsync(
+        [&result](sdbusplus::async::context& ctx) -> sdbusplus::async::task<> {
+            result = co_await rbmc::util::runAsyncCmd(ctx, "exit 1");
+        });
+
+    EXPECT_EQ(result, 1);
+}

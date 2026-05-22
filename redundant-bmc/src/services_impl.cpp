@@ -120,88 +120,6 @@ sdbusplus::async::task<std::string> findSystemInventoryPath(
     co_return objects.begin()->first;
 }
 
-/**
- * @brief Run a shell command asynchronously
- *
- * Use the pipe()/fork() paradigm to fork off a child process to run
- * the command. The child will write the command RC to its FD obtained
- * from pipe() and exit. Meanwhile the parent will use async::fdio to
- * asynchronously wait for that rc to show up in its read FD it had
- * obtained from pipe().
- */
-// NOLINTNEXTLINE
-sdbusplus::async::task<int> runAsyncCmd(sdbusplus::async::context& ctx,
-                                        const std::string& cmd)
-{
-    int pipeFDs[2];
-
-    // Open the read and write pipes
-    if (pipe(pipeFDs) == -1)
-    {
-        auto e = errno;
-        lg2::error("runAsyncCmd: pipe() failed with errno: {ERRNO}", "ERRNO",
-                   e);
-        co_return -1;
-    }
-
-    pid_t pid = fork();
-    if (pid == -1)
-    {
-        auto e = errno;
-        close(pipeFDs[0]);
-        close(pipeFDs[1]);
-        lg2::error("runAsyncCmd: fork failed with errno {ERRNO}", "ERRNO", e);
-        co_return -1;
-    }
-    else if (pid == 0)
-    {
-        // Child
-
-        // Close the read pipe
-        close(pipeFDs[0]);
-
-        // NOLINTNEXTLINE(cert-env33-c)
-        int rc = std::system(cmd.c_str());
-
-        int exitCode = (rc == -1) ? -1 : (WIFEXITED(rc) ? WEXITSTATUS(rc) : -1);
-
-        // Write the exit code to the write pipe
-        ssize_t s = write(pipeFDs[1], &exitCode, sizeof(exitCode));
-
-        _exit((s == sizeof(rc)) ? 0 : 1);
-    }
-
-    // In the parent here.
-
-    // close the write pipe
-    close(pipeFDs[1]);
-
-    // Async wait for the child to write the command's rc to the read pipe
-    sdbusplus::async::fdio fdio(ctx, pipeFDs[0]);
-    co_await fdio.next();
-
-    int cmdRC = -1;
-    ssize_t bytesRead = read(pipeFDs[0], &cmdRC, sizeof(cmdRC));
-    close(pipeFDs[0]);
-
-    if (bytesRead != sizeof(cmdRC))
-    {
-        lg2::error("runAsyncCmd: Failed to read return code from command {CMD}",
-                   "CMD", cmd);
-        co_return -1;
-    }
-
-    // Wait for child to exit
-    int status;
-    if (waitpid(pid, &status, 0) == -1)
-    {
-        lg2::error("runAsyncCmd: waitpid failed for command {CMD}", "CMD", cmd);
-        co_return -1;
-    }
-
-    co_return cmdRC;
-}
-
 } // namespace util
 
 sdbusplus::async::task<> ServicesImpl::init()
@@ -854,6 +772,7 @@ sdbusplus::async::task<> ServicesImpl::flushJournal() const
     try
     {
         lg2::info("Starting journal flush");
+        // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
         auto rc = co_await util::runAsyncCmd(ctx, "/usr/bin/journalctl --sync");
         lg2::info("Completed journal flush with rc {RC}", "RC", rc);
     }
