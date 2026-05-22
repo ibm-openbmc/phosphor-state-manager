@@ -3,6 +3,7 @@
 
 #include "types.hpp"
 
+#include <sdbusplus/async.hpp>
 #include <xyz/openbmc_project/Control/Failover/common.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 
@@ -112,4 +113,15 @@ bool validateFailoverRedundancyInput(const FailoverOptions& options);
  */
 std::optional<std::string> getOSReleaseValue(const std::string& filePath,
                                              const std::string& key);
+/**
+ * @brief Run a command asynchronously
+ *
+ * @param[in] ctx - The async context
+ * @param[in] cmd - The command to run
+ *
+ * @return sdbusplus::async::task<int> - The exit code of the command
+ */
+sdbusplus::async::task<int> runAsyncCmd(sdbusplus::async::context& ctx,
+                                        const std::string& cmd);
+
 } // namespace rbmc::util
