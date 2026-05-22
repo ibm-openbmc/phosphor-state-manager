@@ -6,6 +6,7 @@
 #include "services_impl.hpp"
 #include "sibling_reset_impl.hpp"
 #include "types.hpp"
+#include "util.hpp"
 
 #include <CLI/CLI.hpp>
 #include <nlohmann/json.hpp>
@@ -153,6 +154,21 @@ void addFONotAllowedReason(rbmc::FailoversNotAllowedReason reason,
     output["Reason failovers are not allowed"] = std::move(reasonList);
 }
 
+void addExternalRedundancyInputs(nlohmann::ordered_json& output)
+{
+    auto inputs = rbmc::util::readExternalRedundancyInputs();
+
+    if (!inputs.empty())
+    {
+        nlohmann::json::array_t inputList;
+        for (const auto& input : inputs)
+        {
+            inputList.emplace_back(getPDIEnumString(input));
+        }
+        output["External Redundancy Inputs"] = std::move(inputList);
+    }
+}
+
 void addLastFailoverDetails(const std::filesystem::path& dataPath,
                             size_t bmcPos, nlohmann::ordered_json& output)
 {
@@ -248,6 +264,11 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
             !props.failovers_allowed)
         {
             addFONotAllowedReason(props.failovers_not_allowed_reason, output);
+        }
+
+        if (role == "Active")
+        {
+            addExternalRedundancyInputs(output);
         }
 
         if ((role == "Active") && pos.has_value())
