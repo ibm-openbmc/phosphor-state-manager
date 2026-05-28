@@ -54,8 +54,8 @@ class MockServices : public testing::NiceMock<Services>
 
     MOCK_METHOD(bool, getPeerConnected, (), (const, override));
 
-    MOCK_METHOD(sdbusplus::async::task<>, waitForPeerConnection, (),
-                (override));
+    MOCK_METHOD(sdbusplus::async::task<>, waitForPeerConnection,
+                (AbortPredicate), (override));
 
     MOCK_METHOD(sdbusplus::async::task<>, doFailoverImminentDelay, (),
                 (const, override));

@@ -8,6 +8,7 @@
 #include <xyz/openbmc_project/State/BMC/common.hpp>
 
 #include <filesystem>
+#include <functional>
 #include <map>
 
 namespace rbmc
@@ -15,6 +16,13 @@ namespace rbmc
 
 using Role =
     sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy::Role;
+
+/**
+ * @brief Predicate function type for aborting wait operations
+ *
+ * Returns true if the wait should be aborted, false otherwise.
+ */
+using AbortPredicate = std::function<bool()>;
 
 /**
  * @class Services
@@ -120,8 +128,12 @@ class Services
 
     /**
      * @brief Waits for the PeerConnected property to reach Connected
+     *
+     * @param[in] shouldAbort - Optional predicate to check if wait should abort
+     *                          early. If it returns true, the wait will stop.
      */
-    virtual sdbusplus::async::task<> waitForPeerConnection() = 0;
+    virtual sdbusplus::async::task<> waitForPeerConnection(
+        AbortPredicate shouldAbort = nullptr) = 0;
 
     /**
      * @brief Execute the 'failover imminent' delay to the other BMC
