@@ -66,6 +66,8 @@ class MockServices : public testing::NiceMock<Services>
                 (override));
 
     MOCK_METHOD(void, setRedundancyDetermined, (), (override));
+
+    MOCK_METHOD(sdbusplus::async::task<>, waitForSelfPairing, (), (override));
 };
 
 } // namespace rbmc
