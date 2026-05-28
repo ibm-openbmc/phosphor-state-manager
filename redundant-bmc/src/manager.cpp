@@ -69,6 +69,8 @@ sdbusplus::async::task<> Manager::startup()
     co_await sdbusplus::async::execution::when_all(services.init(),
                                                    sibling.init());
 
+    co_await services.waitForSelfPairing();
+
     // If we know the role must be passive, set that now,
     // before starting the heartbeat or waiting for the sibling.
     auto passiveRoleInfo = co_await determinePassiveRoleIfRequired();

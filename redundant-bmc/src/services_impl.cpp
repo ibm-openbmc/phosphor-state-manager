@@ -688,9 +688,7 @@ sdbusplus::async::task<> ServicesImpl::startUnit(
 
 bool ServicesImpl::getPaired() const
 {
-    // TODO: Return the actual value.
-    // return paired;
-    return true;
+    return paired;
 }
 
 std::string ServicesImpl::getFWVersion() const
@@ -971,6 +969,31 @@ sdbusplus::async::task<> ServicesImpl::waitForPeerConnection()
 
     lg2::error("Timed out waiting for peer connection after {MIN} minutes",
                "MIN", timeout.count());
+}
+
+sdbusplus::async::task<> ServicesImpl::waitForSelfPairing()
+{
+    using namespace std::chrono_literals;
+    auto end = std::chrono::steady_clock::now() + 30s;
+    bool traced = false;
+
+    while (std::chrono::steady_clock::now() < end)
+    {
+        if (paired)
+        {
+            co_return;
+        }
+
+        if (!traced)
+        {
+            traced = true;
+            lg2::info("Waiting up to 30s for self pairing");
+        }
+
+        co_await sdbusplus::async::sleep_for(ctx, 1s);
+    }
+
+    lg2::warning("Timed out waiting for self pairing");
 }
 
 void ServicesImpl::setRedundancyDetermined()

@@ -243,6 +243,13 @@ class Services
      */
     virtual void setRedundancyDetermined() = 0;
 
+    /**
+     * @brief Waits for the Paired property to become true
+     *
+     * Waits up to 30 seconds.
+     */
+    virtual sdbusplus::async::task<> waitForSelfPairing() = 0;
+
   protected:
     /**
      * @brief The functions to call when the system state changes

@@ -189,6 +189,13 @@ class ServicesImpl : public Services
      */
     void setRedundancyDetermined() override;
 
+    /**
+     * @brief Waits for the Paired property to become true
+     *
+     * Waits up to 30 seconds.
+     */
+    sdbusplus::async::task<> waitForSelfPairing() override;
+
   private:
     /**
      * @brief Returns the D-Bus object path for the unit in the
@@ -310,7 +317,7 @@ class ServicesImpl : public Services
     /**
      * @brief The paired status value
      */
-    bool paired;
+    bool paired{false};
 
     /**
      * @brief D-Bus path for the Item.System object

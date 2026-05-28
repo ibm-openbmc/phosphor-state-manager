@@ -9,9 +9,10 @@ redundancy related properties.
 
 ## Startup
 
-On startup, the code will wait for up to six minutes for the sibling BMC's
-heartbeat to start, assuming the BMC is present. After that it will determine
-its role.
+On startup, the code will first wait up to 30 seconds for the BMC to become
+self-paired if it isn't already. Then, it will wait for up to six minutes for
+the sibling BMC's heartbeat to start, assuming the BMC is present. After that it
+will determine its role.
 
 If the BMCs happen to get to determining the role at the same time, the BMC that
 was previously passive will wait for the other BMC to determine its role first
