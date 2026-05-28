@@ -511,6 +511,14 @@ sdbusplus::async::task<> SiblingImpl::waitForBMCSteadyState() const
     while (!steadyState(bmcState.state) &&
            ((std::chrono::steady_clock::now() - start) < timeout))
     {
+        // If sibling dies while waiting, stop.
+        if (!alive())
+        {
+            lg2::warning(
+                "Sibling no longer alive inside waitForBMCSteadyState, stopping wait");
+            co_return;
+        }
+
         if (!waiting)
         {
             lg2::info(
