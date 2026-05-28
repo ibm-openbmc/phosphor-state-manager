@@ -933,7 +933,8 @@ sdbusplus::async::task<> ServicesImpl::logError(
     }
 }
 
-sdbusplus::async::task<> ServicesImpl::waitForPeerConnection()
+sdbusplus::async::task<> ServicesImpl::waitForPeerConnection(
+    AbortPredicate shouldAbort)
 {
     using namespace std::chrono_literals;
     std::chrono::minutes timeout{10};
@@ -954,6 +955,12 @@ sdbusplus::async::task<> ServicesImpl::waitForPeerConnection()
         if (peerConnected)
         {
             lg2::info("Peer now connected");
+            co_return;
+        }
+
+        if (shouldAbort && shouldAbort())
+        {
+            lg2::info("Peer connection wait no longer necessary");
             co_return;
         }
 

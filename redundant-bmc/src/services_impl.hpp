@@ -118,8 +118,12 @@ class ServicesImpl : public Services
 
     /**
      * @brief Waits for the PeerConnected property to reach Connected
+     *
+     * @param[in] shouldAbort - Optional predicate to check if wait should abort
+     *                          early. If it returns true, the wait will stop.
      */
-    sdbusplus::async::task<> waitForPeerConnection() override;
+    sdbusplus::async::task<> waitForPeerConnection(
+        AbortPredicate shouldAbort = nullptr) override;
 
     /**
      * @brief Reads the BMC state

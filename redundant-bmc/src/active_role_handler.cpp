@@ -56,7 +56,8 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
         // 3. The network to connect to the sibling BMC.
         co_await sdbusplus::async::execution::when_all(
             sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState(),
-            services.waitForPeerConnection());
+            services.waitForPeerConnection(std::bind_front(
+                &ActiveRoleHandler::canStopPeerConnectionWait, this)));
 
         // If PeerConnected == true and sibling paired == false
         // a small delay will be needed to let the new paired
@@ -138,7 +139,8 @@ sdbusplus::async::task<> ActiveRoleHandler::siblingHealthy()
     // 3. Peer connection to be established.
     co_await sdbusplus::async::execution::when_all(
         sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState(),
-        services.waitForPeerConnection());
+        services.waitForPeerConnection(std::bind_front(
+            &ActiveRoleHandler::canStopPeerConnectionWait, this)));
 
     // Just like in start(), a delay may be needed to let
     // the sibling paired value propagate.
@@ -311,7 +313,9 @@ sdbusplus::async::task<> ActiveRoleHandler::failoverWaitForSibling()
     if (sibling.alive())
     {
         co_await sdbusplus::async::execution::when_all(
-            sibling.waitForBMCSteadyState(), services.waitForPeerConnection());
+            sibling.waitForBMCSteadyState(),
+            services.waitForPeerConnection(std::bind_front(
+                &ActiveRoleHandler::canStopPeerConnectionWait, this)));
     }
 }
 

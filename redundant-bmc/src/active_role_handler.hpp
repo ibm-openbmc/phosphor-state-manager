@@ -238,6 +238,18 @@ class ActiveRoleHandler : public RoleHandler
     sdbusplus::async::task<> syncHealthCritical();
 
     /**
+     * @brief Predicate passed into waitForPeerConnection to stop
+     *        the wait if the sibling dies or isn't paired
+     *
+     * @return true if the wait can be stopped, false else.
+     */
+    inline bool canStopPeerConnectionWait() const
+    {
+        const auto& sibling = providers.getSibling();
+        return !sibling.alive() || !sibling.getPaired().value_or(true);
+    }
+
+    /**
      * @brief Called when the passive BMC is about to start a failover
      *        so that any preparation can be done.
      *
