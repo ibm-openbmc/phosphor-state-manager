@@ -140,4 +140,12 @@ bool RedundancyInterface::set_property(
     return true;
 }
 
+sdbusplus::async::task<> RedundancyInterface::method_call(
+    RedundancyInterface::set_redundancy_input_t /* unused */,
+    RedundancyInterface::RedundancyInput /* input */, bool /* unused */)
+{
+    // TODO
+    co_return;
+}
+
 } // namespace rbmc
