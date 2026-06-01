@@ -9,7 +9,7 @@
 namespace rbmc
 {
 
-using FailoverOptions = std::map<std::string, std::variant<bool>>;
+using FailoverOptions = std::map<std::string, std::variant<bool, std::string>>;
 
 enum class GPIOPolarity
 {

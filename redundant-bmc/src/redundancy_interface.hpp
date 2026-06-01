@@ -75,8 +75,8 @@ class RedundancyInterface :
      * @param[in] input - The RedundancyInput to set
      * @param[in] value - The value to set it to
      */
-    sdbusplus::async::task<> method_call(set_redundancy_input_t /* unused */,
-                                         RedundancyInput input, bool value);
+    static sdbusplus::async::task<> method_call(
+        set_redundancy_input_t /* unused */, RedundancyInput input, bool value);
 
   private:
     /**
