@@ -377,6 +377,7 @@ if get_option('multi-chassis-smp').allowed()
         ],
         implicit_include_directories: true,
         install: true,
+        install_dir: get_option('libexecdir') / 'phosphor-state-manager',
     )
 endif
 
