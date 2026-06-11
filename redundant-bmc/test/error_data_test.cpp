@@ -61,3 +61,40 @@ TEST(ErrorDataTest, AddFailoverOptsToData_EmptyKeyString)
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(data["FOOpt:"], "true");
 }
+
+TEST(ErrorDataTest, AddFailoverOptsToData_String)
+{
+    FailoverOptions options{{"stringOption", std::string("test_value")}};
+    AdditionalData data;
+
+    addFailoverOptsToData(options, data);
+
+    ASSERT_EQ(data.size(), 1);
+    EXPECT_EQ(data["FOOpt:stringOption"], "test_value");
+}
+
+TEST(ErrorDataTest, AddFailoverOptsToData_MixedBoolAndString)
+{
+    FailoverOptions options{{"boolOption", true},
+                            {"stringOption", std::string("test_string")},
+                            {"anotherBool", false}};
+    AdditionalData data;
+
+    addFailoverOptsToData(options, data);
+
+    ASSERT_EQ(data.size(), 3);
+    EXPECT_EQ(data["FOOpt:boolOption"], "true");
+    EXPECT_EQ(data["FOOpt:stringOption"], "test_string");
+    EXPECT_EQ(data["FOOpt:anotherBool"], "false");
+}
+
+TEST(ErrorDataTest, AddFailoverOptsToData_EmptyString)
+{
+    FailoverOptions options{{"emptyString", std::string("")}};
+    AdditionalData data;
+
+    addFailoverOptsToData(options, data);
+
+    ASSERT_EQ(data.size(), 1);
+    EXPECT_EQ(data["FOOpt:emptyString"], "");
+}
