@@ -12,6 +12,7 @@ test(
         'role_determination_test.cpp',
         'system_state_test.cpp',
         'util_test.cpp',
+        'wait_tracker_test.cpp',
         dependencies: [
             gtest,
             gmock,
