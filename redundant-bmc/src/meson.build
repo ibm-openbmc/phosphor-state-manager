@@ -34,6 +34,7 @@ rbmc_lib = static_library(
     'sync_interface_impl.cpp',
     'system_state.cpp',
     'util.cpp',
+    'wait_tracker.cpp',
     dependencies: rbmc_deps,
 )
 
