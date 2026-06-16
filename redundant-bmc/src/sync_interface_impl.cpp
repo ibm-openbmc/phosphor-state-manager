@@ -14,8 +14,11 @@ using Mapper = sdbusplus::client::xyz::openbmc_project::ObjectMapper<>;
 // NOLINTNEXTLINE
 sdbusplus::async::task<bool> SyncInterfaceImpl::doFullSync()
 {
+    using namespace std::chrono_literals;
     using SyncStatus = SyncBMCData::FullSyncStatus;
     SyncStatus status = SyncStatus::Unknown;
+
+    constexpr auto timeout = 60min;
 
     try
     {
@@ -52,8 +55,11 @@ sdbusplus::async::task<bool> SyncInterfaceImpl::doFullSync()
 
         status = co_await sync.full_sync_status();
 
+        auto end = std::chrono::steady_clock::now() + timeout;
+
         while ((status == SyncStatus::FullSyncInProgress) &&
-               !ctx.stop_requested())
+               !ctx.stop_requested() &&
+               (std::chrono::steady_clock::now() < end))
         {
             using PropertyMap =
                 std::unordered_map<std::string, SyncBMCData::PropertiesVariant>;
@@ -65,6 +71,15 @@ sdbusplus::async::task<bool> SyncInterfaceImpl::doFullSync()
             {
                 status = std::get<SyncStatus>(it->second);
             }
+        }
+
+        if (status == SyncStatus::FullSyncInProgress &&
+            std::chrono::steady_clock::now() >= end)
+        {
+            lg2::error("Full sync timed out after {TIMEOUT} minutes", "TIMEOUT",
+                       timeout.count());
+            fullSyncInProgress = false;
+            co_return false;
         }
     }
     catch (const std::exception& e)
