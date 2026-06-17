@@ -2,6 +2,7 @@
 #pragma once
 
 #include "sync_interface.hpp"
+#include "wait_tracker.hpp"
 
 namespace rbmc
 {
@@ -24,8 +25,11 @@ class SyncInterfaceImpl : public SyncInterface
      * @brief Constructor
      *
      * @param[in] ctx - The async context object
+     * @param[in] waitTracker - The wait tracker
      */
-    explicit SyncInterfaceImpl(sdbusplus::async::context& ctx) : ctx(ctx)
+    explicit SyncInterfaceImpl(sdbusplus::async::context& ctx,
+                               WaitTracker& waitTracker) :
+        ctx(ctx), waitTracker(waitTracker)
     {
         ctx.spawn(watchSyncEventsHealthPropertyChanged());
     }
@@ -63,6 +67,11 @@ class SyncInterfaceImpl : public SyncInterface
      * @brief The name of the sync daemon's D-Bus service.
      */
     std::string syncService;
+
+    /**
+     * @brief The wait tracker
+     */
+    WaitTracker& waitTracker;
 };
 
 }; // namespace rbmc
