@@ -6,6 +6,7 @@
 #include "sibling.hpp"
 #include "sibling_reset.hpp"
 #include "sync_interface.hpp"
+#include "wait_tracker.hpp"
 
 namespace rbmc
 {
@@ -50,6 +51,20 @@ class Providers
      * @brief Returns the PCIeStorage provider if configured
      */
     virtual pcie_data::PCIeStorage* getPCIeStorage() = 0;
+
+    /**
+     * @brief Returns the WaitTracker
+     */
+    WaitTracker& getWaitTracker()
+    {
+        return waitTracker;
+    }
+
+  protected:
+    /**
+     * @brief The wait tracker for monitoring wait operations
+     */
+    WaitTracker waitTracker;
 };
 
 }; // namespace rbmc

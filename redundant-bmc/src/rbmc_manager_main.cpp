@@ -16,6 +16,9 @@ int main()
     std::unique_ptr<rbmc::Providers> providers =
         std::make_unique<rbmc::ProvidersImpl>(ctx);
 
+    providers->getWaitTracker().enableTracking(
+        providers->getServices().getPersistentDataPath());
+
     data::setDataDirectory(providers->getServices().getPersistentDataPath());
 
     rbmc::Manager manager{ctx, std::move(providers)};
