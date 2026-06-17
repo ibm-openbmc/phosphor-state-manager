@@ -3,6 +3,7 @@
 #include "config_data.hpp"
 #include "services.hpp"
 #include "sibling.hpp"
+#include "wait_tracker.hpp"
 
 #include <sdbusplus/async/barrier.hpp>
 
@@ -42,9 +43,11 @@ class SiblingImpl : public Sibling
      * @param[in] ctx - The async context object
      * @param[in] config - The redundant BMC configuration
      * @param[in] services - The Services provider for BMC position lookup
+     * @param[in] waitTracker - The wait tracker
      */
-    explicit SiblingImpl(sdbusplus::async::context& ctx,
-                         const RedundantBMCConfig& config, Services& services);
+    SiblingImpl(sdbusplus::async::context& ctx,
+                const RedundantBMCConfig& config, Services& services,
+                WaitTracker& waitTracker);
 
     /**
      * @brief Returns if the sibling BMC has a good heartbeat
@@ -395,6 +398,11 @@ class SiblingImpl : public Sibling
      * @brief The Services provider for system information
      */
     Services& services;
+
+    /**
+     * @brief The wait tracker
+     */
+    WaitTracker& waitTracker;
 
     /**
      * @brief The sibling's D-Bus service name.
