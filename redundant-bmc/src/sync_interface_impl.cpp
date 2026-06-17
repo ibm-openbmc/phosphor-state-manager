@@ -57,6 +57,10 @@ sdbusplus::async::task<bool> SyncInterfaceImpl::doFullSync()
 
         auto end = std::chrono::steady_clock::now() + timeout;
 
+        WaitTracker::WaitGuard guard(
+            waitTracker, WaitOperation::fullSync,
+            std::chrono::duration_cast<std::chrono::seconds>(timeout));
+
         while ((status == SyncStatus::FullSyncInProgress) &&
                !ctx.stop_requested() &&
                (std::chrono::steady_clock::now() < end))
