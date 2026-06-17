@@ -481,7 +481,8 @@ sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
             // doesn't happen something went very wrong so give it 30 seconds
             // and log an error.
             using namespace std::chrono_literals;
-            resetTimer = std::make_unique<Timer>(ctx, [this, data]() {
+            resetTimer = std::make_unique<
+                Timer>(ctx, providers->getWaitTracker(), [this, data]() {
                 lg2::error(
                     "Timed out waiting for passive BMC to reset this BMC after failover request");
 
@@ -489,7 +490,7 @@ sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
                     errors::error_msg::failoverFailed, errors::Level::Error,
                     data));
             });
-            resetTimer->start(30s);
+            resetTimer->start(30s, WaitOperation::bmcResetTimer);
         }
         catch (const std::exception& e)
         {
