@@ -662,6 +662,9 @@ sdbusplus::async::task<> ServicesImpl::startUnit(
     std::string state;
     auto end = std::chrono::steady_clock::now() + timeout;
 
+    WaitTracker::WaitGuard guard(waitTracker, WaitOperation::startUnit,
+                                 timeout);
+
     while ((state != "active") && (state != "failed"))
     {
         if (std::chrono::steady_clock::now() > end)
@@ -793,7 +796,13 @@ sdbusplus::async::task<> ServicesImpl::flushJournal() const
 sdbusplus::async::task<> ServicesImpl::waitForSystemInventoryPath()
 {
     using namespace std::chrono_literals;
-    auto end = std::chrono::steady_clock::now() + 3min;
+    constexpr auto timeout = 3min;
+
+    WaitTracker::WaitGuard guard(
+        waitTracker, WaitOperation::systemInventoryPath,
+        std::chrono::duration_cast<std::chrono::seconds>(timeout));
+
+    auto end = std::chrono::steady_clock::now() + timeout;
     bool traced = false;
 
     while (std::chrono::steady_clock::now() < end)
@@ -834,11 +843,16 @@ sdbusplus::async::task<bool> ServicesImpl::checkSystemInventoryStatus()
         co_return false;
     }
 
+    using namespace std::chrono_literals;
+    constexpr auto timeout = 3min;
+
+    WaitTracker::WaitGuard guard(
+        waitTracker, WaitOperation::systemInventoryStatus,
+        std::chrono::duration_cast<std::chrono::seconds>(timeout));
+
     bool tracedWait = false;
     std::string service;
-
-    using namespace std::chrono_literals;
-    auto end = std::chrono::steady_clock::now() + 3min;
+    auto end = std::chrono::steady_clock::now() + timeout;
 
     while (std::chrono::steady_clock::now() < end)
     {
@@ -937,7 +951,7 @@ sdbusplus::async::task<> ServicesImpl::waitForPeerConnection(
     AbortPredicate shouldAbort)
 {
     using namespace std::chrono_literals;
-    std::chrono::minutes timeout{10};
+    constexpr auto timeout = 10min;
 
     lg2::info("waitForPeerConnection initial peerConnected value = {STATUS}",
               "STATUS", peerConnected);
@@ -946,6 +960,10 @@ sdbusplus::async::task<> ServicesImpl::waitForPeerConnection(
     {
         co_return;
     }
+
+    WaitTracker::WaitGuard guard(
+        waitTracker, WaitOperation::peerConnection,
+        std::chrono::duration_cast<std::chrono::seconds>(timeout));
 
     auto end = std::chrono::steady_clock::now() + timeout;
     bool tracedWait = false;
@@ -981,7 +999,13 @@ sdbusplus::async::task<> ServicesImpl::waitForPeerConnection(
 sdbusplus::async::task<> ServicesImpl::waitForSelfPairing()
 {
     using namespace std::chrono_literals;
-    auto end = std::chrono::steady_clock::now() + 30s;
+    constexpr auto timeout = 30s;
+
+    WaitTracker::WaitGuard guard(
+        waitTracker, WaitOperation::selfPairing,
+        std::chrono::duration_cast<std::chrono::seconds>(timeout));
+
+    auto end = std::chrono::steady_clock::now() + timeout;
     bool traced = false;
 
     while (std::chrono::steady_clock::now() < end)
