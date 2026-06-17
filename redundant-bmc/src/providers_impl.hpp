@@ -37,7 +37,7 @@ class ProvidersImpl : public Providers
      */
     explicit ProvidersImpl(sdbusplus::async::context& ctx) :
         config(config_parser::readConfig()), services(ctx, waitTracker),
-        sibling(ctx, config, services), syncInterface(ctx),
+        sibling(ctx, config, services, waitTracker), syncInterface(ctx),
         siblingReset(ctx, config), pcieStorage(createPCIeStorage())
     {}
 

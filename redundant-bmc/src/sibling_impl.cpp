@@ -27,8 +27,9 @@ using PairingIntf =
     sdbusplus::common::xyz::openbmc_project::provisioning::Provisioning;
 
 SiblingImpl::SiblingImpl(sdbusplus::async::context& ctx,
-                         const RedundantBMCConfig& config, Services& services) :
-    ctx(ctx), config(config), services(services),
+                         const RedundantBMCConfig& config, Services& services,
+                         WaitTracker& waitTracker) :
+    ctx(ctx), config(config), services(services), waitTracker(waitTracker),
     objectPath(std::string{RedIntf::namespace_path::value} + '/' +
                RedIntf::namespace_path::sibling_bmc)
 {}
@@ -439,8 +440,13 @@ void SiblingImpl::loadFromPropertyMap(const std::string& interface,
 sdbusplus::async::task<> SiblingImpl::waitForSiblingUp()
 {
     using namespace std::chrono_literals;
+    constexpr auto timeout = 6min;
+
+    WaitTracker::WaitGuard guard(
+        waitTracker, WaitOperation::siblingAlive,
+        std::chrono::duration_cast<std::chrono::seconds>(timeout));
+
     auto start = std::chrono::steady_clock::now();
-    std::chrono::minutes timeout{6};
     auto waiting = false;
 
     while (!alive() && ((std::chrono::steady_clock::now() - start) < timeout))
@@ -463,7 +469,7 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingUp()
 sdbusplus::async::task<> SiblingImpl::waitForSiblingRole()
 {
     using namespace std::chrono_literals;
-    std::chrono::seconds timeout{10};
+    constexpr auto timeout = 10s;
     bool waiting = false;
 
     auto noRole = [this]() {
@@ -495,8 +501,9 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingRole()
 sdbusplus::async::task<> SiblingImpl::waitForBMCSteadyState() const
 {
     using namespace std::chrono_literals;
+    constexpr auto timeout = 10min;
+
     auto start = std::chrono::steady_clock::now();
-    std::chrono::minutes timeout{10};
     bool waiting = false;
 
     // If sibling isn't alive don't bother waiting
@@ -508,6 +515,10 @@ sdbusplus::async::task<> SiblingImpl::waitForBMCSteadyState() const
     auto steadyState = [](BMCState state) {
         return (state == BMCState::Ready) || (state == BMCState::Quiesced);
     };
+
+    WaitTracker::WaitGuard guard(
+        waitTracker, WaitOperation::siblingBMCSteadyState,
+        std::chrono::duration_cast<std::chrono::seconds>(timeout));
 
     while (!steadyState(bmcState.state) &&
            ((std::chrono::steady_clock::now() - start) < timeout))
