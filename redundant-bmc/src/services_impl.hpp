@@ -2,6 +2,7 @@
 #pragma once
 
 #include "services.hpp"
+#include "wait_tracker.hpp"
 
 #include <sdbusplus/async/barrier.hpp>
 #include <xyz/openbmc_project/Provisioning/Provisioning/common.hpp>
@@ -43,8 +44,11 @@ class ServicesImpl : public Services
      * @brief Constructor
      *
      * @param[in] ctx - The async context object
+     * @param[in] waitTracker - The wait tracker
      */
-    explicit ServicesImpl(sdbusplus::async::context& ctx) : ctx(ctx) {}
+    ServicesImpl(sdbusplus::async::context& ctx, WaitTracker& waitTracker) :
+        ctx(ctx), waitTracker(waitTracker)
+    {}
 
     /**
      * @brief Sets up watches on the host state
@@ -293,6 +297,11 @@ class ServicesImpl : public Services
      * @brief The async context object
      */
     sdbusplus::async::context& ctx;
+
+    /**
+     * @brief The wait tracker
+     */
+    WaitTracker& waitTracker;
 
     /**
      * @brief The host state value
