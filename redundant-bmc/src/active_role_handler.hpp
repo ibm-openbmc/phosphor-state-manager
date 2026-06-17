@@ -32,10 +32,10 @@ class ActiveRoleHandler : public RoleHandler
                       RedundancyInterface& iface) :
         RoleHandler(ctx, providers, iface), redMgr(ctx, providers, iface),
         siblingHealthTimer(
-            ctx,
+            ctx, providers.getWaitTracker(),
             std::bind_front(&ActiveRoleHandler::siblingHealthCritical, this)),
         peerConnectionTimer(
-            ctx,
+            ctx, providers.getWaitTracker(),
             std::bind_front(&ActiveRoleHandler::peerConnectionCritical, this))
     {}
 

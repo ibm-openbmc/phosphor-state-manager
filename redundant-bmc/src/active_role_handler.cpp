@@ -110,7 +110,8 @@ void ActiveRoleHandler::siblingHealthChange(bool alive)
                 peerConnectionTimer.stop();
             }
 
-            siblingHealthTimer.start(siblingHealthTimeout);
+            siblingHealthTimer.start(siblingHealthTimeout,
+                                     WaitOperation::siblingHealthTimer);
 
             // Background sync won't work without a healthy sibling
             ctx.spawn(providers.getSyncInterface().disableBackgroundSync());
@@ -192,7 +193,8 @@ void ActiveRoleHandler::peerConnectionChange(bool connected)
             lg2::warning(
                 "Disabling redundancy in {TIME} minutes if peer connection doesn't come back",
                 "TIME", siblingHealthTimeout.count());
-            peerConnectionTimer.start(siblingHealthTimeout);
+            peerConnectionTimer.start(siblingHealthTimeout,
+                                      WaitOperation::peerConnectionTimer);
         }
     }
 }
