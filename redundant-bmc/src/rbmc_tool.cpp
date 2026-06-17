@@ -8,6 +8,7 @@
 #include "sibling_reset_impl.hpp"
 #include "types.hpp"
 #include "util.hpp"
+#include "wait_tracker.hpp"
 
 #include <CLI/CLI.hpp>
 #include <nlohmann/json.hpp>
@@ -18,6 +19,7 @@
 #include <xyz/openbmc_project/State/BMC/Redundancy/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
 
+#include <algorithm>
 #include <format>
 #include <print>
 
@@ -184,6 +186,21 @@ void addLastFailoverDetails(const std::filesystem::path& dataPath,
     }
 }
 
+void addActiveWaits(nlohmann::ordered_json& output)
+{
+    auto waits = rbmc::WaitTracker::readWaits(data::dataDirPath);
+
+    if (!waits.empty())
+    {
+        nlohmann::json::array_t waitList;
+        for (const auto& wait : waits)
+        {
+            waitList.emplace_back(rbmc::waitOperationToString(wait.operation));
+        }
+        output["Active Waits"] = std::move(waitList);
+    }
+}
+
 // NOLINTNEXTLINE
 sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
                                          bool extended,
@@ -273,6 +290,8 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
             addExternalRedundancyInputs(output);
         }
 
+        addActiveWaits(output);
+
         if ((role == "Active") && pos.has_value())
         {
             addLastFailoverDetails(services.getPersistentDataPath(),
@@ -344,6 +363,43 @@ void displayBMCInfo(const nlohmann::ordered_json& bmcInfo)
     {
         printJSONParam(name, value);
     }
+}
+
+void displayWaitStatusDetailed()
+{
+    auto waits = rbmc::WaitTracker::readWaits(data::dataDirPath);
+
+    std::println();
+
+    if (waits.empty())
+    {
+        std::println("No active wait operations");
+    }
+    else
+    {
+        std::println("Active Wait Operations");
+        std::println("-----------------------------");
+
+        for (const auto& wait : waits)
+        {
+            std::println();
+            printParam("Operation",
+                       rbmc::waitOperationToString(wait.operation));
+
+            // Calculate elapsed time
+            auto now = std::chrono::steady_clock::now();
+            auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             now.time_since_epoch())
+                             .count();
+            auto elapsedMs = nowMs - wait.startTimeMs;
+            auto elapsedSec = elapsedMs / 1000;
+
+            printParam("Elapsed (s)", elapsedSec);
+            printParam("Timeout (s)", wait.timeoutSeconds);
+        }
+    }
+
+    std::println();
 }
 
 // NOLINTNEXTLINE
@@ -546,6 +602,7 @@ int main(int argc, char** argv)
     CLI::App app{"RBMC Tool"};
     bool info{};
     bool extended{};
+    bool waitStatus{};
     bool resetSibling{};
     bool disableRedundancy{};
     bool enableRedundancy{};
@@ -590,6 +647,10 @@ int main(int argc, char** argv)
     pcieGroup->add_flag("-p, --read-pcie", readPCIe,
                         "Read redundancy state from PCIe MMIO");
 
+    auto* waitGroup = app.add_option_group("Display wait status");
+    waitGroup->add_flag("-w, --wait-status", waitStatus,
+                        "Display detailed active wait operations");
+
     app.require_option(1);
 
     CLI11_PARSE(app, argc, argv);
@@ -601,6 +662,11 @@ int main(int argc, char** argv)
     else if (readPCIe)
     {
         displayPCIeState();
+        return 0;
+    }
+    else if (waitStatus)
+    {
+        displayWaitStatusDetailed();
         return 0;
     }
     else if (resetSibling)
