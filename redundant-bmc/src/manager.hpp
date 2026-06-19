@@ -78,6 +78,26 @@ class Manager :
                                          Requester requester,
                                          const FailoverOptions& options);
 
+    /**
+     * @brief Returns the Redundancy D-Bus interface object
+     *
+     * @return Reference to the redundancy interface
+     */
+    const RedundancyInterface& getRedundancyInterface() const
+    {
+        return redundancyInterface;
+    }
+
+    /**
+     * @brief Returns the Providers instance used
+     *
+     * @return Reference to providers
+     */
+    Providers& getProviders()
+    {
+        return *providers;
+    }
+
   private:
     /**
      * @brief Kicks off the Manager startup

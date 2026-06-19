@@ -13,7 +13,7 @@ namespace rbmc
  *
  * Mock implementation of PCIeStorage for testing.
  */
-class MockPCIeStorage : public pcie_data::PCIeStorage
+class MockPCIeStorage : public testing::NiceMock<pcie_data::PCIeStorage>
 {
   public:
     MOCK_METHOD(pcie_data::RedundancyState, readState, (), (override));

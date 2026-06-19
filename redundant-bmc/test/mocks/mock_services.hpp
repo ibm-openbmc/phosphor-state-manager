@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include "async_helpers.hpp"
 #include "services.hpp"
 
 #include <gmock/gmock.h>
@@ -68,6 +69,61 @@ class MockServices : public testing::NiceMock<Services>
     MOCK_METHOD(void, setRedundancyDetermined, (), (override));
 
     MOCK_METHOD(sdbusplus::async::task<>, waitForSelfPairing, (), (override));
+
+    /**
+     * @brief Setup default behaviors for common test scenarios to save
+     *        setup in the testcases.
+     */
+    void setupDefaultBehavior()
+    {
+        using ::testing::_;
+        using ::testing::Return;
+
+        ON_CALL(*this, init()).WillByDefault([]() {
+            return test_helpers::makeCompletedTask();
+        });
+
+        ON_CALL(*this, logError(_, _, _)).WillByDefault([]() {
+            return test_helpers::makeCompletedTask();
+        });
+
+        ON_CALL(*this, getSystemState())
+            .WillByDefault(Return(SystemState::off));
+
+        ON_CALL(*this, getPeerConnected()).WillByDefault(Return(true));
+
+        ON_CALL(*this, waitForPeerConnection(_)).WillByDefault([]() {
+            return test_helpers::makeCompletedTask();
+        });
+
+        ON_CALL(*this, startUnit(_, _)).WillByDefault([]() {
+            return test_helpers::makeCompletedTask();
+        });
+
+        ON_CALL(*this, acquireFullHardwareAccess()).WillByDefault([]() {
+            return test_helpers::makeCompletedTask();
+        });
+
+        ON_CALL(*this, getBMCState()).WillByDefault([]() {
+            using BMCState =
+                sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState;
+            return test_helpers::makeCompletedTask(BMCState::Ready);
+        });
+
+        ON_CALL(*this, doFailoverImminentDelay()).WillByDefault([]() {
+            return test_helpers::makeCompletedTask();
+        });
+
+        ON_CALL(*this, flushJournal()).WillByDefault([]() {
+            return test_helpers::makeCompletedTask();
+        });
+
+        ON_CALL(*this, getFWVersion()).WillByDefault(Return("12345678"));
+
+        ON_CALL(*this, waitForSelfPairing()).WillByDefault([]() {
+            return test_helpers::makeCompletedTask();
+        });
+    }
 };
 
 } // namespace rbmc

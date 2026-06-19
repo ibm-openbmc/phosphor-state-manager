@@ -23,7 +23,14 @@ namespace rbmc
 class MockProviders : public Providers
 {
   public:
-    MockProviders() = default;
+    MockProviders()
+    {
+        mockServices.setupDefaultBehavior();
+        mockSibling.setupDefaultBehavior();
+        mockSyncInterface.setupDefaultBehavior();
+        mockSiblingReset.setupDefaultBehavior();
+    }
+
     ~MockProviders() override = default;
 
     Services& getServices() override
