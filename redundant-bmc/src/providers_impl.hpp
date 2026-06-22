@@ -86,6 +86,14 @@ class ProvidersImpl : public Providers
         return &*pcieStorage;
     }
 
+    /**
+     * @brief Returns the ProgressTracker provider
+     */
+    ProgressTracker& getTracker() override
+    {
+        return progTracker;
+    }
+
   private:
     /**
      * @brief Create PCIeStorage if config is present
@@ -136,6 +144,11 @@ class ProvidersImpl : public Providers
      * @brief The PCIeStorage implementation (optional)
      */
     std::optional<pcie_data::PCIeStorageImpl> pcieStorage;
+
+    /**
+     * @brief The ProgressTracker implementation
+     */
+    ProgressTracker progTracker;
 };
 
 }; // namespace rbmc

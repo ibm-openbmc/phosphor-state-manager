@@ -98,7 +98,7 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
             "ERROR", e);
     }
 
-    co_return;
+    providers.getTracker().track(ProgressPoint::passiveHandlerStartComplete);
 }
 
 void PassiveRoleHandler::setupSiblingRedEnabledWatch()
