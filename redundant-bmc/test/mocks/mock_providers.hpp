@@ -7,6 +7,7 @@
 #include "mock_sibling_reset.hpp"
 #include "mock_sync_interface.hpp"
 #include "providers.hpp"
+#include "test_progress_tracker.hpp"
 
 #include <gmock/gmock.h>
 
@@ -50,6 +51,11 @@ class MockProviders : public Providers
         return &mockPCIeStorage;
     }
 
+    ProgressTracker& getTracker() override
+    {
+        return testProgressTracker;
+    }
+
     // Helpers to get the Mock versions
     MockServices& getMockServices()
     {
@@ -76,12 +82,18 @@ class MockProviders : public Providers
         return mockPCIeStorage;
     }
 
+    TestProgressTracker& getTestTracker()
+    {
+        return testProgressTracker;
+    }
+
   private:
     MockServices mockServices;
     MockSibling mockSibling;
     MockSyncInterface mockSyncInterface;
     MockSiblingReset mockSiblingReset;
     MockPCIeStorage mockPCIeStorage;
+    TestProgressTracker testProgressTracker;
 };
 
 } // namespace rbmc
