@@ -23,7 +23,8 @@ Manager::Manager(sdbusplus::async::context& ctx,
                  std::chrono::milliseconds heartbeatInterval) :
     sdbusplus::aserver::xyz::openbmc_project::control::Failover<Manager>(
         ctx, failoverPath.c_str()),
-    ctx(ctx), redundancyInterface(ctx, *this), providers(std::move(providers)),
+    ctx(ctx), providers(std::move(providers)),
+    redundancyInterface(ctx, *this, this->providers->getPCIeStorage()),
     heartbeatInterval(heartbeatInterval)
 {
     try

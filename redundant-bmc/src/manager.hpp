@@ -179,17 +179,17 @@ class Manager :
     sdbusplus::async::context& ctx;
 
     /**
+     * @brief Contains the various provider helpers
+     *
+     * NOTE: Must be declared before redundancyInterface and handler so it's
+     * destroyed after them, since their destructors access providers.
+     */
+    std::unique_ptr<Providers> providers;
+
+    /**
      * @brief The Redundancy D-Bus interface
      */
     RedundancyInterface redundancyInterface;
-
-    /**
-     * @brief Contains the various provider helpers
-     *
-     * NOTE: Must be declared before handler so it's destroyed
-     * after handler, since handler's destructor accesses providers.
-     */
-    std::unique_ptr<Providers> providers;
 
     /**
      * @brief The role handler class

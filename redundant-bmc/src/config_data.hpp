@@ -50,6 +50,24 @@ struct BMCConfig
 };
 
 /**
+ * @struct PCIeConfig
+ *
+ * Configuration for PCIe storage
+ */
+struct PCIeConfig
+{
+    /**
+     * @brief The PCIe device path (e.g., "/dev/bmc-device0")
+     */
+    std::string devicePath;
+
+    /**
+     * @brief The offset in the PCIe device for redundancy data as a hex string
+     */
+    std::string redundancyOffset;
+};
+
+/**
  * @struct RedundantBMCConfig
  *
  * Top-level configuration for redundant BMC functionality
@@ -66,6 +84,13 @@ struct RedundantBMCConfig
      *        Map key is the BMC position (0-based)
      */
     std::map<size_t, BMCConfig> bmcConfigs;
+
+    /**
+     * @brief PCIe storage configuration (optional)
+     *
+     * If not present, PCIe storage functionality is disabled
+     */
+    std::optional<PCIeConfig> pcieConfig;
 };
 
 } // namespace rbmc

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include "pcie_storage.hpp"
+
 #include <sdbusplus/async.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/aserver.hpp>
 
@@ -30,8 +32,33 @@ class RedundancyInterface :
      * @param[in] ctx - The async context object
      *
      * @param[in] manager - Reference to the Manager class
+     *
+     * @param[in] pcieStorage - Pointer to the PCIeStorage class if configured
      */
-    RedundancyInterface(sdbusplus::async::context& ctx, Manager& manager);
+    RedundancyInterface(sdbusplus::async::context& ctx, Manager& manager,
+                        pcie_data::PCIeStorage* pcieStorage);
+
+    /**
+     * @brief Implements property set for the
+     *        Role property
+     *
+     * @param[in] role_t - The type
+     * @param[in] role - the value being set
+     *
+     * @return If the property value changed
+     */
+    bool set_property(role_t type, Role role);
+
+    /**
+     * @brief Implements property set for the
+     *        RedundancyEnabled property
+     *
+     * @param[in] redundancy_enabled_t - The type
+     * @param[in] enabled - the value being set
+     *
+     * @return If the property value changed
+     */
+    bool set_property(redundancy_enabled_t type, bool enabled);
 
     /**
      * @brief Implements property set for the
@@ -78,11 +105,27 @@ class RedundancyInterface :
     sdbusplus::async::task<> method_call(set_redundancy_input_t /* unused */,
                                          RedundancyInput input, bool value);
 
+    /**
+     * @brief Implements property set for the
+     *        FailoversAllowed property
+     *
+     * @param[in] failovers_allowed_t - The type
+     * @param[in] allowed - the value being set
+     *
+     * @return If the property value changed
+     */
+    bool set_property(failovers_allowed_t type, bool allowed);
+
   private:
     /**
      * @brief Reference to the Manager class
      */
     Manager& manager;
+
+    /**
+     * @brief Pointer to the PCIeStorage class if configured
+     */
+    pcie_data::PCIeStorage* pcieStorage;
 };
 
 } // namespace rbmc

@@ -22,6 +22,7 @@ rbmc_lib = static_library(
     'gpio.cpp',
     'manager.cpp',
     'passive_role_handler.cpp',
+    'pcie_storage.cpp',
     'persistent_data.cpp',
     'redundancy.cpp',
     'redundancy_interface.cpp',
