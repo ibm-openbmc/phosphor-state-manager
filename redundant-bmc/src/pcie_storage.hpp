@@ -71,13 +71,6 @@ class PCIeStorage
     PCIeStorage& operator=(PCIeStorage&&) = delete;
 
     /**
-     * @brief Write the complete redundancy state to PCIe storage
-     *
-     * @param[in] state - The redundancy state to write
-     */
-    virtual void writeState(const RedundancyState& state) = 0;
-
-    /**
      * @brief Read the complete redundancy state from PCIe storage
      *
      * @return The redundancy state
@@ -135,13 +128,15 @@ class PCIeStorageImpl : public PCIeStorage
     PCIeStorageImpl(const std::string& devPath, size_t offset);
     ~PCIeStorageImpl() override;
 
-    void writeState(const RedundancyState& state) override;
     RedundancyState readState() override;
 
     void updateRole(uint8_t role) override;
     void updateRedundancyEnabled(bool enabled) override;
     void updateFailoverInProgress(bool inProgress) override;
     void updateFailoversAllowed(bool allowed) override;
+
+  private:
+    void writeState(const RedundancyState& state);
 };
 
 } // namespace pcie_data
