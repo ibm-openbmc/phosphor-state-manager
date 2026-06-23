@@ -358,3 +358,46 @@ the following to prepare to be reset and come back as the passive BMC:
 
 1. Stop background syncing.
 2. Flush any unwritten journal messages to disk.
+
+## PCIe MMIO Redundancy State
+
+If enabled, redundancy state information is exposed to the host through PCIe
+MMIO. This allows the host to read the current redundancy state (BMC role,
+redundancy enabled status, failover status, etc.) directly from PCIe
+memory-mapped I/O space. This mechanism provides early access to redundancy
+information during host boot, before higher-level communication protocols are
+initialized, and works regardless of whether the BMC is active or passive. A
+dedicated PCIe MMIO offset is reserved for redundancy-related properties.
+
+### PCIe MMIO Layout
+
+```text
+ * @brief PCIe MMIO Redundancy State Layout
+ *
+ * Single-byte layout shared between BMC and host via PCIe MMIO.
+ *
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │ Bit 7   │ Bit 6      │ Bit 5    │ Bit 4-3 │ Bit 2-0 │
+ * │ allowed │ inProgress │ enabled  │ role    │ version │
+ * └─────────────────────────────────────────────────────────────┘
+ *
+ * Layout (LSB to MSB):
+ *   Bits 0-2: version (0-7, current=1)
+ *   Bits 3-4: role (Unknown=0, Active=1, Passive=2)
+ *   Bit 5:    redundancyEnabled
+ *   Bit 6:    failoverInProgress
+ *   Bit 7:    failoversAllowed
+```
+
+### Configuration
+
+The PCIe MMIO location is configurable through the JSON configuration file. See
+[`config_files/README.md`](config_files/README.md#pcie-config-object) for
+details on the `pcie_config` configuration options.
+
+### Notes
+
+- PCIe BAR/MMIO is a standard PCIe mechanism, but the redundancy state layout
+  and offset definitions are vendor-specific.
+- The configured offsets are reserved for redundancy state information and must
+  not overlap with other PCIe MMIO users.

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include "pcie_storage.hpp"
 #include "services.hpp"
 #include "sibling.hpp"
 #include "sibling_reset.hpp"
@@ -44,6 +45,11 @@ class Providers
      * @brief Returns the SiblingReset provider
      */
     virtual SiblingReset& getSiblingReset() = 0;
+
+    /**
+     * @brief Returns the PCIeStorage provider if configured
+     */
+    virtual pcie_data::PCIeStorage* getPCIeStorage() = 0;
 };
 
 }; // namespace rbmc

@@ -141,6 +141,45 @@ std::map<size_t, BMCConfig> parseBMCConfigs(const nlohmann::json& jsonData)
     return configs;
 }
 
+/**
+ * @brief Parse PCIe configuration from JSON
+ *
+ * @param[in] jsonData - The root JSON object
+ *
+ * @return Optional PCIeConfig object (empty if pcie_config not present)
+ * @throws std::runtime_error if required fields are missing or invalid
+ */
+std::optional<PCIeConfig> parsePCIeConfig(const nlohmann::json& jsonData)
+{
+    auto pcieConfigIt = jsonData.find("pcie_config");
+    if (pcieConfigIt == jsonData.end())
+    {
+        // pcie_config is optional
+        return std::nullopt;
+    }
+
+    const auto& pcieJSON = *pcieConfigIt;
+
+    auto devicePathIt = pcieJSON.find("device_path");
+    if (devicePathIt == pcieJSON.end())
+    {
+        throw std::runtime_error(
+            "pcie_config missing required 'device_path' field");
+    }
+
+    auto redundancyOffsetIt = pcieJSON.find("redundancy_offset");
+    if (redundancyOffsetIt == pcieJSON.end())
+    {
+        throw std::runtime_error(
+            "pcie_config missing required 'redundancy_offset' field");
+    }
+
+    PCIeConfig config;
+    config.devicePath = devicePathIt->get<std::string>();
+    config.redundancyOffset = redundancyOffsetIt->get<std::string>();
+    return config;
+}
+
 } // anonymous namespace
 
 RedundantBMCConfig parse(const std::filesystem::path& path)
@@ -175,6 +214,7 @@ RedundantBMCConfig parse(const std::filesystem::path& path)
             parseGPIOConfig(*resetGpioIt, "sibling_bmc_reset_gpio");
 
         config.bmcConfigs = parseBMCConfigs(jsonData);
+        config.pcieConfig = parsePCIeConfig(jsonData);
 
         return config;
     }

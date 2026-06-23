@@ -31,7 +31,11 @@ It is then installed into
         "polarity": "high"
       }
     }
-  ]
+  ],
+  "pcie_config": {
+    "device_path": "/dev/bmc-device0",
+    "redundancy_offset": "0x3F00000"
+  }
 }
 ```
 
@@ -44,6 +48,8 @@ It is then installed into
 - **bmc_configs** (array, conditionally required): Array of BMC configuration
   objects. Required when there is a `sibling_bmc_reset_gpio`, optional when
   false.
+- **pcie_config** (object, optional): PCIe storage configuration for redundancy
+  data. If not present, PCIe storage functionality is disabled.
 
 ### BMC Config Object
 
@@ -56,6 +62,13 @@ It is then installed into
 - **name** (string, required): Name of the GPIO line.
 - **polarity** (string, required): Either "low" or "high" - indicates the active
   state of the GPIO.
+
+### PCIe Config Object
+
+- **device_path** (string, required): Path to the PCIe device (e.g.,
+  '/dev/bmc-device0').
+- **redundancy_offset** (string, required): Offset in the PCIe device for
+  redundancy data as a hex string (e.g., '0x3F000000').
 
 ### Validating Config Files
 

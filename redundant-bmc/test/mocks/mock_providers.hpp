@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include "mock_pcie_storage.hpp"
 #include "mock_services.hpp"
 #include "mock_sibling.hpp"
 #include "mock_sibling_reset.hpp"
 #include "mock_sync_interface.hpp"
 #include "providers.hpp"
+
+#include <gmock/gmock.h>
 
 namespace rbmc
 {
@@ -20,7 +23,6 @@ class MockProviders : public Providers
 {
   public:
     MockProviders() = default;
-
     ~MockProviders() override = default;
 
     Services& getServices() override
@@ -41,6 +43,11 @@ class MockProviders : public Providers
     SiblingReset& getSiblingReset() override
     {
         return mockSiblingReset;
+    }
+
+    pcie_data::PCIeStorage* getPCIeStorage() override
+    {
+        return &mockPCIeStorage;
     }
 
     // Helpers to get the Mock versions
@@ -64,11 +71,17 @@ class MockProviders : public Providers
         return mockSiblingReset;
     }
 
+    MockPCIeStorage& getMockPCIeStorage()
+    {
+        return mockPCIeStorage;
+    }
+
   private:
     MockServices mockServices;
     MockSibling mockSibling;
     MockSyncInterface mockSyncInterface;
     MockSiblingReset mockSiblingReset;
+    MockPCIeStorage mockPCIeStorage;
 };
 
 } // namespace rbmc

@@ -57,7 +57,11 @@ TEST_F(ConfigParserTest, ParseValidConfig)
                     "polarity": "high"
                 }
             }
-        ]
+        ],
+        "pcie_config": {
+            "device_path": "/dev/bmc-device0",
+            "redundancy_offset": "66060288"
+        }
     })";
 
     writeConfigFile("valid_config.json", config);
@@ -91,6 +95,10 @@ TEST_F(ConfigParserTest, ParseOptionalBMCConfigs)
         "sibling_bmc_reset_gpio": {
             "name": "sibling-bmc-reset-n",
             "polarity": "low"
+        },
+        "pcie_config": {
+            "device_path": "/dev/bmc-device0",
+            "redundancy_offset": "66060288"
         }
     })";
 
@@ -108,7 +116,11 @@ TEST_F(ConfigParserTest, ParseEmptyBMCConfigsArray)
             "name": "sibling-bmc-reset-n",
             "polarity": "low"
         },
-        "bmc_configs": []
+        "bmc_configs": [],
+        "pcie_config": {
+            "device_path": "/dev/bmc-device0",
+            "redundancy_offset": "66060288"
+        }
     })";
 
     writeConfigFile("empty_bmc_configs.json", config);
@@ -358,4 +370,82 @@ TEST_F(ConfigParserTest, ParseDuplicateBMCPosition)
 
     // Duplicate bmc_pos should cause parsing to fail
     EXPECT_THROW(parse(testDir / "duplicate_bmc_pos.json"), std::runtime_error);
+}
+
+TEST_F(ConfigParserTest, ParsePCIeConfig)
+{
+    const std::string config = R"({
+        "sibling_bmc_reset_gpio": {
+            "name": "sibling-bmc-reset-n",
+            "polarity":  "low"
+        },
+        "bmc_configs": [],
+        "pcie_config": {
+            "device_path": "/dev/bmc-device0",
+            "redundancy_offset": "0x3F00000"
+        }
+    })";
+
+    writeConfigFile("pcie_config.json", config);
+
+    auto result = parse(testDir / "pcie_config.json");
+
+    ASSERT_TRUE(result.pcieConfig.has_value());
+    EXPECT_EQ(result.pcieConfig->devicePath, "/dev/bmc-device0");
+    EXPECT_EQ(result.pcieConfig->redundancyOffset, "0x3F00000");
+}
+
+TEST_F(ConfigParserTest, ParseOptionalPCIeConfig)
+{
+    const std::string config = R"({
+        "sibling_bmc_reset_gpio": {
+            "name": "sibling-bmc-reset-n",
+            "polarity": "low"
+        },
+        "bmc_configs": []
+    })";
+
+    writeConfigFile("no_pcie_config.json", config);
+
+    auto result = parse(testDir / "no_pcie_config.json");
+
+    EXPECT_FALSE(result.pcieConfig.has_value());
+}
+
+TEST_F(ConfigParserTest, ParsePCIeConfigMissingDevicePath)
+{
+    const std::string config = R"({
+        "sibling_bmc_reset_gpio": {
+            "name": "sibling-bmc-reset-n",
+            "polarity": "low"
+        },
+        "bmc_configs": [],
+        "pcie_config": {
+            "redundancy_offset": "0x3F00000"
+        }
+    })";
+
+    writeConfigFile("pcie_missing_device_path.json", config);
+
+    EXPECT_THROW(parse(testDir / "pcie_missing_device_path.json"),
+                 std::runtime_error);
+}
+
+TEST_F(ConfigParserTest, ParsePCIeConfigMissingOffset)
+{
+    const std::string config = R"({
+        "sibling_bmc_reset_gpio": {
+            "name": "sibling-bmc-reset-n",
+            "polarity": "low"
+        },
+        "bmc_configs": [],
+        "pcie_config": {
+            "device_path": "/dev/bmc-device0"
+        }
+    })";
+
+    writeConfigFile("pcie_missing_offset.json", config);
+
+    EXPECT_THROW(parse(testDir / "pcie_missing_offset.json"),
+                 std::runtime_error);
 }

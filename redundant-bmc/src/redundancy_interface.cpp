@@ -13,10 +13,11 @@ const std::string objectPath =
     RedundancyInterface::namespace_path::bmc;
 
 RedundancyInterface::RedundancyInterface(sdbusplus::async::context& ctx,
-                                         Manager& manager) :
+                                         Manager& manager,
+                                         pcie_data::PCIeStorage* pcieStorage) :
     sdbusplus::aserver::xyz::openbmc_project::state::bmc::Redundancy<
         RedundancyInterface>(ctx, objectPath.c_str()),
-    manager(manager)
+    manager(manager), pcieStorage(pcieStorage)
 {
     try
     {
@@ -54,7 +55,80 @@ RedundancyInterface::RedundancyInterface(sdbusplus::async::context& ctx,
         lg2::error("Failed removing NoRedundancyReasons: {ERROR}", "ERROR", e);
     }
 
+    // Sync initial D-Bus state to PCIe storage to ensure consistency
+    if (pcieStorage != nullptr)
+    {
+        try
+        {
+            pcieStorage->updateFailoverInProgress(failover_in_progress_);
+            pcieStorage->updateRedundancyEnabled(redundancy_enabled_);
+            pcieStorage->updateFailoversAllowed(failovers_allowed_);
+            pcieStorage->updateRole(static_cast<uint8_t>(role_));
+        }
+        catch (const std::exception& e)
+        {
+            lg2::warning("Failed to initialize PCIe storage state: {ERROR}",
+                         "ERROR", e);
+        }
+    }
+    else
+    {
+        lg2::debug(
+            "PCIe storage not configured; skipping initial PCIe state sync");
+    }
+
     emit_added();
+}
+
+bool RedundancyInterface::set_property([[maybe_unused]] role_t type, Role role)
+{
+    if (role == role_)
+    {
+        return false;
+    }
+
+    role_ = role;
+
+    if (pcieStorage != nullptr)
+    {
+        try
+        {
+            pcieStorage->updateRole(static_cast<uint8_t>(role_));
+        }
+        catch (const std::exception& e)
+        {
+            lg2::warning("Could not write Role to PCIe memory: {ERROR}",
+                         "ERROR", e);
+        }
+    }
+
+    return true;
+}
+
+bool RedundancyInterface::set_property(
+    [[maybe_unused]] redundancy_enabled_t type, bool enabled)
+{
+    if (enabled == redundancy_enabled())
+    {
+        return false;
+    }
+
+    if (pcieStorage != nullptr)
+    {
+        try
+        {
+            pcieStorage->updateRedundancyEnabled(enabled);
+        }
+        catch (const std::exception& e)
+        {
+            lg2::warning(
+                "Could not write RedundancyEnabled to PCIe memory: {ERROR}",
+                "ERROR", e);
+        }
+    }
+
+    redundancy_enabled_ = enabled;
+    return true;
 }
 
 bool RedundancyInterface::set_property(
@@ -104,6 +178,20 @@ bool RedundancyInterface::set_property(
             "INPROGRESS", inProgress, "ERROR", e);
     }
 
+    if (pcieStorage != nullptr)
+    {
+        try
+        {
+            pcieStorage->updateFailoverInProgress(inProgress);
+        }
+        catch (const std::exception& e)
+        {
+            lg2::warning(
+                "Could not write FailoverInProgress to PCIe memory: {ERROR}",
+                "ERROR", e);
+        }
+    }
+
     failover_in_progress_ = inProgress;
     return true;
 }
@@ -146,6 +234,32 @@ sdbusplus::async::task<> RedundancyInterface::method_call(
 {
     manager.setExternalRedundancyInput(input, value);
     co_return;
+}
+
+bool RedundancyInterface::set_property(
+    [[maybe_unused]] failovers_allowed_t type, bool allowed)
+{
+    if (allowed == failovers_allowed())
+    {
+        return false;
+    }
+
+    if (pcieStorage != nullptr)
+    {
+        try
+        {
+            pcieStorage->updateFailoversAllowed(allowed);
+        }
+        catch (const std::exception& e)
+        {
+            lg2::warning(
+                "Could not write FailoversAllowed to PCIe memory: {ERROR}",
+                "ERROR", e);
+        }
+    }
+
+    failovers_allowed_ = allowed;
+    return true;
 }
 
 } // namespace rbmc

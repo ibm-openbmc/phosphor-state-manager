@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "config_parser.hpp"
+#include "pcie_storage.hpp"
 #include "persistent_data.hpp"
 #include "redundancy.hpp"
 #include "services_impl.hpp"
@@ -491,6 +492,54 @@ sdbusplus::async::task<> startFailover(sdbusplus::async::context& ctx,
     }
 }
 
+void displayPCIeState()
+{
+    try
+    {
+        auto config = rbmc::config_parser::readConfig();
+
+        if (!config.pcieConfig.has_value())
+        {
+            std::println("Error: PCIe storage not configured in config file");
+            exit(EXIT_FAILURE);
+        }
+
+        const auto& pcieConf = config.pcieConfig.value();
+
+        // Parse offset string (supports decimal and hex with 0x prefix)
+        size_t offset = std::stoull(pcieConf.redundancyOffset, nullptr, 0);
+
+        pcie_data::PCIeStorageImpl pcieStorage(pcieConf.devicePath, offset);
+        auto state = pcieStorage.readState();
+
+        std::println();
+        std::println("PCIe MMIO Redundancy State");
+        std::println("-----------------------------");
+
+        printParam("Version", static_cast<int>(state.version));
+        printParam("Role", getPDIEnumString(static_cast<Role>(state.role)));
+        printParam("Redundancy Enabled",
+                   static_cast<bool>(state.redundancyEnabled));
+        printParam("Failover In Progress",
+                   static_cast<bool>(state.failoverInProgress));
+        printParam("Failovers Allowed",
+                   static_cast<bool>(state.failoversAllowed));
+
+        // Display raw byte value for debugging
+        uint8_t rawByte;
+        std::memcpy(&rawByte, &state, sizeof(state));
+        std::println("{:22}0b{:08b} (0x{:02X})", "Raw Byte Value:", rawByte,
+                     rawByte);
+
+        std::println();
+    }
+    catch (const std::exception& e)
+    {
+        std::println("Error reading PCIe storage: {}", e.what());
+        exit(EXIT_FAILURE);
+    }
+}
+
 int main(int argc, char** argv)
 {
     CLI::App app{"RBMC Tool"};
@@ -502,6 +551,7 @@ int main(int argc, char** argv)
     bool failover{};
     bool forceFailover{};
     bool jsonOutput{};
+    bool readPCIe{};
     sdbusplus::async::context ctx;
 
     auto* displayGroup = app.add_option_group("Display RBMC information");
@@ -535,6 +585,10 @@ int main(int argc, char** argv)
                    "Start a forced failover. Only for emergencies.")
         ->excludes(fo);
 
+    auto* pcieGroup = app.add_option_group("PCIe MMIO operations");
+    pcieGroup->add_flag("-p, --read-pcie", readPCIe,
+                        "Read redundancy state from PCIe MMIO");
+
     app.require_option(1);
 
     CLI11_PARSE(app, argc, argv);
@@ -542,6 +596,11 @@ int main(int argc, char** argv)
     if (info)
     {
         ctx.spawn(displayInfo(ctx, extended, jsonOutput));
+    }
+    else if (readPCIe)
+    {
+        displayPCIeState();
+        return 0;
     }
     else if (resetSibling)
     {

@@ -18,5 +18,9 @@
                 "polarity": "low"
             }
         }
-    ]
+    ],
+    "pcie_config": {
+        "device_path": "/dev/bmc-device0",
+        "redundancy_offset": "0x3F00000"
+    }
 }

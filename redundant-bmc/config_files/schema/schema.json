@@ -18,6 +18,10 @@
             },
             "minItems": 0,
             "uniqueItems": true
+        },
+        "pcie_config": {
+            "description": "PCIe storage configuration for redundancy data. Optional - if not present, PCIe storage functionality is disabled.",
+            "$ref": "#/$defs/pcie_config"
         }
     },
     "additionalProperties": false,
@@ -53,6 +57,24 @@
                 "sibling_bmc_present_gpio": {
                     "description": "GPIO configuration for detecting sibling BMC presence",
                     "$ref": "#/$defs/gpio_config"
+                }
+            },
+            "additionalProperties": false
+        },
+        "pcie_config": {
+            "type": "object",
+            "description": "PCIe storage configuration for redundancy data",
+            "required": ["device_path", "redundancy_offset"],
+            "properties": {
+                "device_path": {
+                    "type": "string",
+                    "description": "Path to the PCIe device (e.g., '/dev/bmc-device0')",
+                    "minLength": 1
+                },
+                "redundancy_offset": {
+                    "type": "string",
+                    "description": "Offset in the PCIe device for redundancy data as a hex string (e.g., '0x3F000000')",
+                    "minLength": 1
                 }
             },
             "additionalProperties": false
