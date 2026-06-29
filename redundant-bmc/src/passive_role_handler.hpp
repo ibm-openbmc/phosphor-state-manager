@@ -37,6 +37,14 @@ class PassiveRoleHandler : public RoleHandler
      */
     ~PassiveRoleHandler() override
     {
+        stopAllWatches();
+    }
+
+    /**
+     * @brief Stops all watches/callbacks registered by this handler.
+     */
+    void stopAllWatches() override
+    {
         providers.getSibling().clearCallbacks(Role::Passive);
         providers.getSyncInterface().stopSyncHealthWatch(Role::Passive);
         providers.getServices().removePeerConnectedCallback(Role::Passive);

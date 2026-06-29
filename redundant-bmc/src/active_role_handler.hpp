@@ -121,6 +121,23 @@ class ActiveRoleHandler : public RoleHandler
      */
     sdbusplus::async::task<> failoverDetermineRedundancy();
 
+    /**
+     * @brief Stops all property watches/callbacks
+     */
+    void stopAllWatches() override
+    {
+        // Stop sibling watches
+        siblingHealthTimer.stop();
+        providers.getSibling().clearCallbacks(Role::Active);
+
+        // Stop sync health watch
+        providers.getSyncInterface().stopSyncHealthWatch(Role::Active);
+
+        // Stop peer connected watch
+        peerConnectionTimer.stop();
+        providers.getServices().removePeerConnectedCallback(Role::Active);
+    }
+
   private:
     /**
      * @brief Starts all property watches/callbacks
@@ -149,23 +166,6 @@ class ActiveRoleHandler : public RoleHandler
         providers.getServices().addPeerConnectedCallback(
             Role::Active,
             std::bind_front(&ActiveRoleHandler::peerConnectionChange, this));
-    }
-
-    /**
-     * @brief Stops all property watches/callbacks
-     */
-    inline void stopAllWatches()
-    {
-        // Stop sibling watches
-        siblingHealthTimer.stop();
-        providers.getSibling().clearCallbacks(Role::Active);
-
-        // Stop sync health watch
-        providers.getSyncInterface().stopSyncHealthWatch(Role::Active);
-
-        // Stop peer connected watch
-        peerConnectionTimer.stop();
-        providers.getServices().removePeerConnectedCallback(Role::Active);
     }
 
     using BMCState =

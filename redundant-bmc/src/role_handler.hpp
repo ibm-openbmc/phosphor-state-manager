@@ -63,6 +63,11 @@ class RoleHandler
     virtual void externalRedundancyInputChanged() = 0;
 
     /**
+     * @brief Stops all watches/callbacks registered by this handler.
+     */
+    virtual void stopAllWatches() = 0;
+
+    /**
      * @brief Called when a failover is requested, this will return
      *        Reason::none if a failover is allowed right now, or the
      *        reason that it isn't.
