@@ -452,6 +452,25 @@ sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
     }
 }
 
+sdbusplus::async::task<> Manager::preFailoverFullSyncCheck()
+{
+    if (!providers->getSyncInterface().isFullSyncInProgress())
+    {
+        co_return;
+    }
+
+    lg2::info(
+        "Waiting for in progress full sync to complete before continuing failover");
+
+    using namespace std::chrono_literals;
+    while (providers->getSyncInterface().isFullSyncInProgress())
+    {
+        co_await sdbusplus::async::sleep_for(ctx, 500ms);
+    }
+
+    lg2::info("Full sync completed, proceeding with failover");
+}
+
 // NOLINTNEXTLINE
 sdbusplus::async::task<> Manager::doFailoverFromPassive(Requester requester)
 {
@@ -461,9 +480,8 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive(Requester requester)
     // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
     co_await providers->getSyncInterface().disableBackgroundSync();
 
-    // Stop handling as a passive BMC. This BMC no longer needs to
-    // watch for any changes from the one we're about to reset.
-    handler.reset();
+    // Tell PassiveRoleHandler to stop watching the active BMC
+    handler->stopAllWatches();
 
     redundancyInterface.failover_imminent(true);
 
@@ -471,7 +489,14 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive(Requester requester)
     // failover imminent before continuing.
     co_await providers->getServices().doFailoverImminentDelay();
 
+    // If somehow the full sync is still running now, let it complete.
+    // Cannot delete PassiveRoleHandler until it does, or it can crash us.
+    co_await preFailoverFullSyncCheck();
+
     redundancyInterface.failover_imminent(false);
+
+    // Stop handling as a passive BMC.
+    handler.reset();
 
     // Reset the active so it can come back as passive.
     // If this were to throw, let it restart the app.

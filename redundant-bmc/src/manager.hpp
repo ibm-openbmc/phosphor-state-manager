@@ -150,6 +150,12 @@ class Manager :
         Requester requester, const FailoverOptions& options);
 
     /**
+     * @brief Waits for an in-progress full sync to complete
+     *        before proceeding with a failover.
+     */
+    sdbusplus::async::task<> preFailoverFullSyncCheck();
+
+    /**
      * @brief Clears 'failover in progress' if it is on and
      *        removes the persisted value.
      */
