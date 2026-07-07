@@ -178,6 +178,34 @@ If redundancy was enabled when called, it will immediately be disabled, and
 remain so until the next time the host is powered off, at which point this input
 will be cleared and redundancy calculated again.
 
+## Code Updates
+
+### Preventing error logs due to code updates
+
+The standard sequence of doing a code update on a redundant BMC system is:
+
+1. Update flash of active BMC and reboot it. Wait for it to come back online
+   with the new code level.
+2. Update flash of passive BMC and reboot it.
+
+After the active BMC comes back, the code levels won't match anymore so
+redundancy will be disabled. Normally, that would generate an error log. To
+avoid creating an error log in this case, since it is an expected case, the code
+on the active BMC will:
+
+1. Watch for the code update to start and save that indication persistently.
+2. Any time that redundancy is attempted and it can't be enabled, the code will
+   skip creating an error log if the code update indication is saved and the
+   only reason it can't be enabled is due to a code update.
+
+The indication will be cleared if:
+
+1. Redundancy is successfully enabled, meaning the passive BMC must have been
+   updated and rebooted into the same level.
+2. A boot is started. In this case, the user must have deemed booting more
+   important than finishing the code update, so the code won't treat it
+   differently anymore.
+
 ## Interacting with Data Sync on the Active BMC
 
 ### When Enabling Redundancy

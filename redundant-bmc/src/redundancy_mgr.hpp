@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include "code_update_activation.hpp"
 #include "providers.hpp"
 #include "redundancy.hpp"
 #include "redundancy_interface.hpp"
@@ -28,9 +29,11 @@ class RedundancyMgr
      * @param[in] ctx - The async context object
      * @param[in] providers - The Providers access object
      * @param[in] iface - The redundancy D-Bus interface object
+     * @param[in] codeUpdateActivation - The CodeUpdateActivation object
      */
     RedundancyMgr(sdbusplus::async::context& ctx, Providers& providers,
-                  RedundancyInterface& iface);
+                  RedundancyInterface& iface,
+                  CodeUpdateActivation& codeUpdateActivation);
 
     /**
      * @brief Destructor
@@ -38,6 +41,7 @@ class RedundancyMgr
     ~RedundancyMgr()
     {
         providers.getServices().removeSystemStateCallback(Role::Active);
+        providers.getServices().removeCodeUpdateCallback(Role::Active);
     }
 
     /**
@@ -125,6 +129,13 @@ class RedundancyMgr
     void initSystemState();
 
     /**
+     * @brief Called when a BMC code update activation state changes
+     *
+     * @param[in] started - true if the update started, false if it failed
+     */
+    void codeUpdateActivationChanged(bool started);
+
+    /**
      * @brief Update the 'redundancy off at runtime' data.
      *
      * @param[in] valid - If the value is valid or not.
@@ -192,6 +203,12 @@ class RedundancyMgr
      * @brief The Redundancy D-Bus interface
      */
     RedundancyInterface& redundancyInterface;
+
+    /**
+     * @brief The code update Activation D-Bus interface
+     *        to track if code update is in progress.
+     */
+    CodeUpdateActivation& codeUpdateActivation;
 
     /**
      * @brief If determineAndSetRedundancy() has ran yet or not.

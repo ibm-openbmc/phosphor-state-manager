@@ -180,8 +180,8 @@ void Manager::spawnRoleHandler()
 {
     if (redundancyInterface.role() == Role::Active)
     {
-        handler = std::make_unique<ActiveRoleHandler>(ctx, *providers,
-                                                      redundancyInterface);
+        handler = std::make_unique<ActiveRoleHandler>(
+            ctx, *providers, redundancyInterface, codeUpdateActivation);
     }
     else if (redundancyInterface.role() == Role::Passive)
     {
@@ -564,7 +564,8 @@ sdbusplus::async::task<> Manager::doFailoverFromPassive(Requester requester)
     updateRole(role_determination::RoleInfo{
         Role::Active, role_determination::RoleReason::failover});
 
-    auto* active = new ActiveRoleHandler(ctx, *providers, redundancyInterface);
+    auto* active = new ActiveRoleHandler(ctx, *providers, redundancyInterface,
+                                         codeUpdateActivation);
     handler.reset(active);
 
     active->clearFailoversAllowedDuringFailover();
