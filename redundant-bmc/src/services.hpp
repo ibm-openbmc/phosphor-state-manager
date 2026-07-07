@@ -48,6 +48,7 @@ class Services
     using SystemStateCallback = std::function<void(SystemState)>;
     using PeerConnectedCallback = std::function<void(bool)>;
     using PairedCallback = std::function<void(bool)>;
+    using CodeUpdateCallback = std::move_only_function<void(bool)>;
 
     /**
      * @brief Sets up the D-Bus matches
@@ -229,6 +230,29 @@ class Services
     }
 
     /**
+     * @brief Add a function that gets called when a BMC code update
+     *        starts or fails.
+     *
+     *
+     * @param[in] role - The role to register with
+     * @param[in] callback - The function to call
+     */
+    void addCodeUpdateCallback(Role role, CodeUpdateCallback&& callback)
+    {
+        codeUpdateCBs.emplace(role, std::move(callback));
+    }
+
+    /**
+     * @brief Remove a specific code update callback by role.
+     *
+     * @param[in] role - The role of the callback to remove
+     */
+    void removeCodeUpdateCallback(Role role)
+    {
+        codeUpdateCBs.erase(role);
+    }
+
+    /**
      * @brief On the system inventory object, check that its Progress
      *        Status property is 'Completed'.
      *
@@ -277,6 +301,11 @@ class Services
      * @brief The functions to call when the paired status changes
      */
     std::map<Role, PairedCallback> pairedCBs;
+
+    /**
+     * @brief The functions to call when a code update starts or fails
+     */
+    std::map<Role, CodeUpdateCallback> codeUpdateCBs;
 };
 
 } // namespace rbmc
