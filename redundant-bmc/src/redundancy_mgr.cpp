@@ -17,10 +17,16 @@ using RedundancyInput = sdbusplus::common::xyz::openbmc_project::state::bmc::
     Redundancy::RedundancyInput;
 
 RedundancyMgr::RedundancyMgr(sdbusplus::async::context& ctx,
-                             Providers& providers, RedundancyInterface& iface) :
+                             Providers& providers, RedundancyInterface& iface,
+                             CodeUpdateActivation& codeUpdateActivation) :
     ctx(ctx), providers(providers), redundancyInterface(iface),
+    codeUpdateActivation(codeUpdateActivation),
     manualDisable(iface.disable_redundancy_override())
-{}
+{
+    providers.getServices().addCodeUpdateCallback(
+        Role::Active,
+        std::bind_front(&RedundancyMgr::codeUpdateActivationChanged, this));
+}
 
 void RedundancyMgr::determineAndSetRedundancy()
 {
@@ -39,17 +45,38 @@ void RedundancyMgr::determineAndSetRedundancy()
 
     determineAndSetFailoversAllowed();
 
+    auto codeUpdateInProgress = codeUpdateActivation.codeUpdateInProgress();
+    if (codeUpdateInProgress)
+    {
+        // If a code update was in progress, but both BMCs were updated so
+        // the versions are the same again, consider it complete.
+        if (redundancyInterface.redundancy_enabled() ||
+            !std::ranges::contains(reasons,
+                                   ReasonForNoRedundancy::CodeVersionMismatch))
+        {
+            lg2::info("Clearing code-update-in-progress indication");
+            codeUpdateActivation.clearCodeUpdateInProgress();
+        }
+    }
+
     if (!redundancyInterface.redundancy_enabled())
     {
         auto wasManuallyDisabled = std::ranges::contains(
             oldReasons, ReasonForNoRedundancy::ManuallyDisabled);
+
+        auto codeMismatchOnly =
+            reasons.size() == 1 &&
+            *reasons.begin() == ReasonForNoRedundancy::CodeVersionMismatch;
 
         // Log an error when redundancy isn't enabled if:
         // 1. Redundancy was previously enabled.
         // 2. This is the first time checking redundancy.
         // 3. The manual override to disable redundancy is now off but
         //    was previously on, meaning there is some other reason.
-        if (oldEnabled || firstTime || (!manualDisable && wasManuallyDisabled))
+        // 4. An in progress code update didn't cause it.
+        if ((oldEnabled || firstTime ||
+             (!manualDisable && wasManuallyDisabled)) &&
+            !(codeUpdateInProgress && codeMismatchOnly))
         {
             using namespace errors;
             std::string error{error_msg::noRedundancy};
@@ -265,6 +292,20 @@ void RedundancyMgr::initSystemState()
     }
 }
 
+void RedundancyMgr::codeUpdateActivationChanged(bool started)
+{
+    if (started)
+    {
+        lg2::info("Detected a code update starting");
+        codeUpdateActivation.setCodeUpdateInProgress();
+    }
+    else
+    {
+        lg2::warning("Code update failed, clearing code update indication");
+        codeUpdateActivation.clearCodeUpdateInProgress();
+    }
+}
+
 void RedundancyMgr::systemStateChange(SystemState newState)
 {
     lg2::info("System state change to {NEW}", "NEW",
@@ -299,6 +340,18 @@ void RedundancyMgr::systemStateChange(SystemState newState)
                 "ENABLED", redundancyInterface.redundancy_enabled());
             setRedundancyOffAtRuntimeValue(
                 !redundancyInterface.redundancy_enabled());
+        }
+    }
+    else if (newState == SystemState::booting)
+    {
+        // Consider a boot the end of allowing special treatment
+        // for code updates, as that must have been deemed more
+        // important than finishing the code update completely.
+        if (codeUpdateActivation.codeUpdateInProgress())
+        {
+            lg2::info(
+                "Clearing in-progress code update indication on boot start");
+            codeUpdateActivation.clearCodeUpdateInProgress();
         }
     }
 
