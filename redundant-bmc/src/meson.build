@@ -17,6 +17,7 @@ rbmc_deps = [
 rbmc_lib = static_library(
     'rbmc',
     'active_role_handler.cpp',
+    'code_update_activation.cpp',
     'config_parser.cpp',
     'error_data.cpp',
     'gpio.cpp',
