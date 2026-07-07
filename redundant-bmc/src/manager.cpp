@@ -63,7 +63,7 @@ Manager::Manager(sdbusplus::async::context& ctx,
         ctx, failoverPath.c_str()),
     ctx(ctx), providers(std::move(providers)),
     redundancyInterface(ctx, *this, this->providers->getPCIeStorage()),
-    heartbeatInterval(heartbeatInterval)
+    codeUpdateActivation(ctx), heartbeatInterval(heartbeatInterval)
 {
     try
     {

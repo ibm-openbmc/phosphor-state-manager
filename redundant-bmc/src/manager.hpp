@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #pragma once
 
+#include "code_update_activation.hpp"
 #include "providers.hpp"
 #include "redundancy_interface.hpp"
 #include "role_determination.hpp"
@@ -209,6 +210,13 @@ class Manager :
      * @brief The Redundancy D-Bus interface
      */
     RedundancyInterface redundancyInterface;
+
+    /**
+     * @brief The code update Activation D-Bus interface.
+     *
+     * Used for tracking in progress code updates.
+     */
+    CodeUpdateActivation codeUpdateActivation;
 
     /**
      * @brief The role handler class
