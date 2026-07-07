@@ -13,6 +13,8 @@
 #include <xyz/openbmc_project/Logging/Create/client.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
 #include <xyz/openbmc_project/Provisioning/Provisioning/client.hpp>
+#include <xyz/openbmc_project/Software/Activation/client.hpp>
+#include <xyz/openbmc_project/Software/Version/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
 #include <xyz/openbmc_project/State/Boot/Progress/client.hpp>
 #include <xyz/openbmc_project/State/Host/client.hpp>
@@ -34,6 +36,9 @@ using SidebandBus =
     sdbusplus::client::xyz::openbmc_project::control::SideBandBus<>;
 using Pairing =
     sdbusplus::client::xyz::openbmc_project::provisioning::Provisioning<>;
+using Activation =
+    sdbusplus::common::xyz::openbmc_project::software::Activation;
+using Version = sdbusplus::client::xyz::openbmc_project::software::Version<>;
 using PeerConnectionStatus = sdbusplus::common::xyz::openbmc_project::
     provisioning::Provisioning::PeerConnectionStatus;
 
@@ -43,6 +48,8 @@ using HostProperties =
                  BootProgress::ProgressStages>;
 using HostPropMap = std::unordered_map<std::string, HostProperties>;
 using HostInterfaceMap = std::map<std::string, HostPropMap>;
+using ActivationPropMap =
+    std::unordered_map<std::string, Activation::PropertiesVariant>;
 
 namespace rules = sdbusplus::bus::match::rules;
 
@@ -53,6 +60,7 @@ constexpr auto systemd = "/org/freedesktop/systemd1";
 // host0 represents the overall host state
 const std::string hostState = std::string{HostState::namespace_path::value} +
                               '/' + HostState::namespace_path::host + '0';
+constexpr auto software = "/xyz/openbmc_project/software";
 } // namespace object_path
 
 namespace interface
@@ -197,13 +205,14 @@ sdbusplus::async::task<int> runAsyncCmd(sdbusplus::async::context& ctx,
 
 sdbusplus::async::task<> ServicesImpl::init()
 {
-    auto barrier = std::make_shared<sdbusplus::async::barrier>(6);
+    auto barrier = std::make_shared<sdbusplus::async::barrier>(7);
 
     ctx.spawn(watchHostInterfacesAdded(barrier));
     ctx.spawn(watchHostStatePropertiesChanged(barrier));
     ctx.spawn(watchBootProgressPropertiesChanged(barrier));
     ctx.spawn(watchPairingInterfacesAdded(barrier));
     ctx.spawn(watchPairingPropertiesChanged(barrier));
+    ctx.spawn(watchCodeUpdatePropertiesChanged(barrier));
 
     co_await barrier->wait();
 
@@ -467,6 +476,83 @@ sdbusplus::async::task<> ServicesImpl::watchPairingPropertiesChanged(
         auto [_,
               properties] = co_await match.next<std::string, PairingPropMap>();
         loadPairingProps(properties);
+    }
+}
+
+sdbusplus::async::task<bool> ServicesImpl::isBMCCodeUpdate(
+    const std::string& path) const
+{
+    try
+    {
+        auto service = co_await util::getService(ctx, path, Version::interface);
+        auto purpose =
+            co_await Version(ctx).service(service).path(path).purpose();
+        co_return purpose == Version::VersionPurpose::BMC;
+    }
+    catch (const sdbusplus::exception_t& e)
+    {
+        lg2::error(
+            "Failed reading software version purpose for path {PATH}: {ERROR}",
+            "PATH", path, "ERROR", e);
+    }
+
+    co_return false;
+}
+
+sdbusplus::async::task<> ServicesImpl::watchCodeUpdatePropertiesChanged(
+    std::shared_ptr<sdbusplus::async::barrier> barrier)
+{
+    sdbusplus::async::match match(
+        ctx, rules::propertiesChangedNamespace(object_path::software,
+                                               Activation::interface));
+
+    co_await barrier->wait();
+
+    std::optional<std::string> activatingPath;
+
+    while (!ctx.stop_requested())
+    {
+        auto msg = co_await match.next();
+
+        std::string path{msg.get_path()};
+        auto [_, properties] = msg.unpack<std::string, ActivationPropMap>();
+
+        auto it = properties.find("Activation");
+        if (it == properties.end())
+        {
+            continue;
+        }
+
+        if (!co_await isBMCCodeUpdate(path))
+        {
+            continue;
+        }
+
+        auto activation = std::get<Activation::Activations>(it->second);
+
+        if (activation == Activation::Activations::Activating)
+        {
+            lg2::info("Detected BMC code update start on path {PATH}", "PATH",
+                      path);
+
+            activatingPath = path;
+            std::ranges::for_each(codeUpdateCBs, [](auto& entry) {
+                entry.second(true);
+            });
+        }
+        else if (activation == Activation::Activations::Failed &&
+                 activatingPath == path)
+        {
+            lg2::warning("BMC code update failed on path {PATH}", "PATH", path);
+            activatingPath.reset();
+            std::ranges::for_each(codeUpdateCBs, [](auto& entry) {
+                entry.second(false);
+            });
+        }
+        else if (activatingPath == path)
+        {
+            activatingPath.reset();
+        }
     }
 }
 
