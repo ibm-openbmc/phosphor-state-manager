@@ -170,6 +170,12 @@ void addFileData(AdditionalData& data)
             }
         }
 
+        auto codeUpdate = data::read<bool>(data::key::codeUpdateInProgress);
+        if (codeUpdate.value_or(false))
+        {
+            data["CodeUpdate"] = boolToYesOrNo(true);
+        }
+
         auto inputs = util::readExternalRedundancyInputs();
         if (!inputs.empty())
         {
