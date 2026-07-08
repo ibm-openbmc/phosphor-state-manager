@@ -259,7 +259,12 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
         catch (const std::exception& e)
         {
             output["Paired"] = e.what();
-            output["PeerConnected"] = e.what();
+            output["Peer Connected"] = e.what();
+        }
+
+        if (data::read<bool>(data::key::codeUpdateInProgress).value_or(false))
+        {
+            output["In Code Update"] = true;
         }
 
         if (role != "Unknown")
