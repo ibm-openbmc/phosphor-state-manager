@@ -262,11 +262,14 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
             << "Role should be saved to persistent data";
         EXPECT_EQ(savedRole.value(), expectedRole);
 
-        // Verify passiveError flag was saved
-        auto savedPassiveError = data::read<bool>(data::key::passiveError);
-        ASSERT_TRUE(savedPassiveError.has_value())
-            << "PassiveError flag should be saved to persistent data";
-        EXPECT_EQ(savedPassiveError.value(), expectPassiveError);
+        // PassiveError only exists on the passive BMC
+        if (expectedRole == Role::Passive)
+        {
+            auto savedPassiveError = data::read<bool>(data::key::passiveError);
+            ASSERT_TRUE(savedPassiveError.has_value())
+                << "PassiveError flag should be saved to persistent data";
+            EXPECT_EQ(savedPassiveError.value(), expectPassiveError);
+        }
 
         // Verify role reason description was saved
         auto savedRoleReason = data::read<std::string>(data::key::roleReason);

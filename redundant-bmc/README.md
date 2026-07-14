@@ -206,6 +206,57 @@ The indication will be cleared if:
    important than finishing the code update, so the code won't treat it
    differently anymore.
 
+### Recovering from bad code updates
+
+When the active BMC reboots into its new image, the following error paths can
+occur:
+
+1. It never comes back from the reboot.
+2. It hits one of the
+   [cases where it must be passive due to an error](#cases-that-require-a-bmc-must-be-passive)
+   and comes back as passive instead of active.
+3. Redundancy gets disabled for other reasons than just the mismatched code
+   levels.
+4. A critical service crashes and the BMC goes to the Quiesced state.
+5. Something outside of the redundant BMC realm is determined to not be working
+   correctly.
+
+In all of these cases, a failover to the passive BMC that is running the
+existing code may be desired.
+
+Assuming redundancy was enabled at the time the BMC was rebooted:
+
+In case 1, the passive BMC will remember redundancy was still enabled when it
+last heard from the active and still allow a failover.
+
+In the remaining cases, redundancy would be disabled at the very least because
+the code levels are no longer the same. To handle this case, the code will do
+the following:
+
+1. The 'code update in progress' indication mentioned above will be watched on
+   the passive BMC.
+2. If redundancy is enabled when it is asserted, the passive BMC will enter a
+   special code update failover mode.
+3. Now, regardless of the role or redundancy state of the active BMC, a forced
+   failover will still be allowed as long as the passive BMC is in this mode.
+   - The active BMC is not aware of this mode, so the forced failover has to be
+     issued on the passive BMC itself.
+
+This mode can be seen in the rbmctool output on the passive BMC to help service
+personnel identify it.
+
+```text
+Code Update FO Mode:  true
+```
+
+This mode is cleared:
+
+1. When the active BMC clears its code-update-in-progress indication.
+   - As mentioned above, this happens when the code levels match again, or a
+     boot is started.
+2. When the passive BMC is rebooted.
+3. When the passive BMC become active on a failover.
+
 ## Interacting with Data Sync on the Active BMC
 
 ### When Enabling Redundancy
@@ -320,6 +371,13 @@ the request if any of the following are true.
 1. The active BMC has no heartbeat and redundancy wasn't last known to be
    enabled. If it was last known to be enabled, a failover is allowed so that
    the remaining BMC can become active.
+   - Exception: if the passive BMC is in
+     [code update failover mode](#recovering-from-bad-code-updates) and `force`
+     was passed, this check is bypassed.
+1. Redundancy is not enabled and the sibling is alive.
+   - Exception: if the passive BMC is in
+     [code update failover mode](#recovering-from-bad-code-updates) and `force`
+     was passed, this check is bypassed.
 1. The passive BMC is not in the `Ready` state.
 
 ### Failover Sequence

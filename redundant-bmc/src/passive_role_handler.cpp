@@ -72,6 +72,8 @@ PassiveRoleHandler::PassiveRoleHandler(sdbusplus::async::context& ctx,
             "Failed while removing CodeUpdateInProgress saved value: {ERROR}",
             "ERROR", e);
     }
+
+    setCUFOMode(false);
 }
 
 sdbusplus::async::task<> PassiveRoleHandler::start()
@@ -93,6 +95,8 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
     setupSiblingFailoversAllowedWatch();
 
     setupSiblingHealthWatch();
+
+    setupSiblingInCodeUpdateWatch();
 
     setupPeerConnectedWatch();
 
@@ -153,6 +157,61 @@ void PassiveRoleHandler::siblingFailoversAllowedHandler(bool allowed)
     // Mirror the property.  If the other BMC was also passive,
     // the value would be false anyway.
     redundancyInterface.failovers_allowed(allowed);
+}
+
+void PassiveRoleHandler::setCUFOMode(bool value)
+{
+    codeUpdateFailoverMode = value;
+    try
+    {
+        data::write(data::key::codeUpdateFOMode, value);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed persisting CodeUpdateFOMode field: {ERROR}", "ERROR",
+                   e);
+    }
+}
+
+void PassiveRoleHandler::setupSiblingInCodeUpdateWatch()
+{
+    auto& sibling = providers.getSibling();
+
+    // Register for changes
+    sibling.addInCodeUpdateCallback(Role::Passive, [this](bool inCodeUpdate) {
+        siblingInCodeUpdateHandler(inCodeUpdate);
+    });
+
+    // Handle current value
+    auto sibInCodeUpdate = sibling.getInCodeUpdate();
+    if (sibInCodeUpdate.has_value())
+    {
+        siblingInCodeUpdateHandler(sibInCodeUpdate.value());
+    }
+}
+
+void PassiveRoleHandler::siblingInCodeUpdateHandler(bool inCodeUpdate)
+{
+    if (inCodeUpdate)
+    {
+        if (!redundancyInterface.redundancy_enabled())
+        {
+            lg2::warning(
+                "Sibling code update started but redundancy is disabled "
+                "so not entering code update failover mode");
+            return;
+        }
+
+        lg2::info("Sibling code update started so entering code update "
+                  "failover mode");
+        setCUFOMode(true);
+    }
+    else if (codeUpdateFailoverMode)
+    {
+        lg2::info(
+            "Sibling code update ended so clearing code update failover mode");
+        setCUFOMode(false);
+    }
 }
 
 void PassiveRoleHandler::disableRedPropChanged(bool /*disable*/)

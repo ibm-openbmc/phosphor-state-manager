@@ -16,21 +16,46 @@ constexpr auto bmcActiveTarget = "obmc-bmc-active.target";
 const std::chrono::minutes bmcActiveTargetTimeout{30};
 const std::chrono::minutes siblingHealthTimeout{5};
 
-// NOLINTNEXTLINE
-sdbusplus::async::task<> ActiveRoleHandler::start()
+ActiveRoleHandler::ActiveRoleHandler(
+    sdbusplus::async::context& ctx, Providers& providers,
+    RedundancyInterface& iface, CodeUpdateActivation& codeUpdateActivation) :
+    RoleHandler(ctx, providers, iface),
+    redMgr(ctx, providers, iface, codeUpdateActivation),
+    siblingHealthTimer(
+        ctx, providers.getWaitTracker(),
+        std::bind_front(&ActiveRoleHandler::siblingHealthCritical, this)),
+    peerConnectionTimer(
+        ctx, providers.getWaitTracker(),
+        std::bind_front(&ActiveRoleHandler::peerConnectionCritical, this))
 {
-    auto& services = providers.getServices();
-    auto& sibling = providers.getSibling();
-
+    // This is only valid on the passive BMC
     try
     {
-        data::write(data::key::passiveError, false);
+        data::remove(data::key::passiveError);
     }
     catch (const std::exception& e)
     {
         lg2::error("Failed clearing the PassiveDueToError field: {ERROR}",
                    "ERROR", e);
     }
+
+    // This is only valid on the passive BMC
+    try
+    {
+        data::remove(data::key::codeUpdateFOMode);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed clearing the CodeUpdateFOMode field: {ERROR}",
+                   "ERROR", e);
+    }
+}
+
+// NOLINTNEXTLINE
+sdbusplus::async::task<> ActiveRoleHandler::start()
+{
+    auto& services = providers.getServices();
+    auto& sibling = providers.getSibling();
 
     try
     {

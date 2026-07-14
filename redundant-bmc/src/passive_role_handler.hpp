@@ -90,6 +90,27 @@ class PassiveRoleHandler : public RoleHandler
     void setupSiblingFailoversAllowedWatch();
 
     /**
+     * @brief Setup watching the sibling BMC's code update state.
+     */
+    void setupSiblingInCodeUpdateWatch();
+
+    /**
+     * @brief Handler for the sibling's code update state changing.
+     *
+     * @param[in] inCodeUpdate - true if a code update started
+     */
+    void siblingInCodeUpdateHandler(bool inCodeUpdate);
+
+    /**
+     * @brief Sets or clears the code update failover mode.
+     *
+     * Persists the state as well.
+     *
+     * @param[in] value - true to enter the mode, false to leave it
+     */
+    void setCUFOMode(bool value);
+
+    /**
      * @brief Handler for the FailoversAllowed property
      *        on the sibling's D-Bus interface changing.
      *
@@ -194,6 +215,13 @@ class PassiveRoleHandler : public RoleHandler
      * then just try on each one.
      */
     bool fullSyncDone{false};
+
+    /**
+     * @brief Tracks if the sibling started a code update while
+     *        redundancy was enabled, allowing more lenient failover
+     *        checking when the force option is used.
+     */
+    bool codeUpdateFailoverMode{false};
 };
 
 } // namespace rbmc
