@@ -48,31 +48,6 @@ PassiveRoleHandler::PassiveRoleHandler(sdbusplus::async::context& ctx,
     }
 
     util::clearExternalRedundancyInputs();
-}
-
-// NOLINTNEXTLINE
-sdbusplus::async::task<> PassiveRoleHandler::start()
-{
-    try
-    {
-        // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
-        co_await providers.getServices().startUnit(bmcPassiveTarget,
-                                                   std::chrono::minutes{5});
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error("Failed while starting BMC passive target: {ERROR}", "ERROR",
-                   e);
-    }
-
-    // Setup the mirroring of the active BMC RedundancyEnabled
-    setupSiblingRedEnabledWatch();
-
-    setupSiblingFailoversAllowedWatch();
-
-    setupSiblingHealthWatch();
-
-    setupPeerConnectedWatch();
 
     try
     {
@@ -97,6 +72,29 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
             "Failed while removing CodeUpdateInProgress saved value: {ERROR}",
             "ERROR", e);
     }
+}
+
+sdbusplus::async::task<> PassiveRoleHandler::start()
+{
+    try
+    {
+        // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+        co_await providers.getServices().startUnit(bmcPassiveTarget,
+                                                   std::chrono::minutes{5});
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed while starting BMC passive target: {ERROR}", "ERROR",
+                   e);
+    }
+
+    setupSiblingRedEnabledWatch();
+
+    setupSiblingFailoversAllowedWatch();
+
+    setupSiblingHealthWatch();
+
+    setupPeerConnectedWatch();
 
     providers.getTracker().track(ProgressPoint::passiveHandlerStartComplete);
 }
