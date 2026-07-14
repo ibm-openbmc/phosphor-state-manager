@@ -32,16 +32,7 @@ class ActiveRoleHandler : public RoleHandler
      */
     ActiveRoleHandler(sdbusplus::async::context& ctx, Providers& providers,
                       RedundancyInterface& iface,
-                      CodeUpdateActivation& codeUpdateActivation) :
-        RoleHandler(ctx, providers, iface),
-        redMgr(ctx, providers, iface, codeUpdateActivation),
-        siblingHealthTimer(
-            ctx, providers.getWaitTracker(),
-            std::bind_front(&ActiveRoleHandler::siblingHealthCritical, this)),
-        peerConnectionTimer(
-            ctx, providers.getWaitTracker(),
-            std::bind_front(&ActiveRoleHandler::peerConnectionCritical, this))
-    {}
+                      CodeUpdateActivation& codeUpdateActivation);
 
     /**
      * @brief Destructor

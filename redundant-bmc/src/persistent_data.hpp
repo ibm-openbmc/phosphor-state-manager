@@ -58,6 +58,7 @@ constexpr auto failoverInProgress = "FailoverInProgress";
 constexpr auto externalRedundancyInputs = "ExternalRedundancyInputs";
 constexpr auto hostOff = "HostOff";
 constexpr auto codeUpdateInProgress = "CodeUpdateInProgress";
+constexpr auto codeUpdateFOMode = "CodeUpdateFOMode";
 } // namespace key
 
 namespace util
