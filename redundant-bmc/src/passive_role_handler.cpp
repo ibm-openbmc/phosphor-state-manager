@@ -399,7 +399,8 @@ auto PassiveRoleHandler::getFailoverBlockedReason(
         // RedundancyEnabled will still have been mirrored to the passive.
         // This will be used to know if a failover is still OK without live
         // data from the active BMC.
-        .lastKnownRedundancyEnabled = redundancyInterface.redundancy_enabled()};
+        .lastKnownRedundancyEnabled = redundancyInterface.redundancy_enabled(),
+        .codeUpdateFailoverMode = codeUpdateFailoverMode};
 
     co_return fo_blocked::getPassiveFailoverBlockedReason(input);
 }
