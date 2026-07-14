@@ -249,7 +249,8 @@ TEST(RedundancyTest, PassiveFailoverBlockedTest)
         .failoversNotAllowed = false,
         .forceOption = false,
         .failoverInProgress = false,
-        .lastKnownRedundancyEnabled = true};
+        .lastKnownRedundancyEnabled = true,
+        .codeUpdateFailoverMode = false};
 
     EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(golden),
               rbmc::fo_blocked::Reason::none);
@@ -329,6 +330,51 @@ TEST(RedundancyTest, PassiveFailoverBlockedTest)
         input.failoverInProgress = true;
         EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::failoverAlreadyInProgress);
+    }
+
+    // Code update failover mode: redundancy not enabled, force - allowed
+    {
+        auto input = golden;
+        input.redundancyEnabled = false;
+        input.forceOption = true;
+        input.codeUpdateFailoverMode = true;
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::none);
+    }
+
+    // Code update failover mode: redundancy not enabled, no force - still
+    // blocked
+    {
+        auto input = golden;
+        input.redundancyEnabled = false;
+        input.codeUpdateFailoverMode = true;
+        input.forceOption = false;
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::redundancyNotEnabled);
+    }
+
+    // Code update failover mode: sibling dead, last known red disabled, force -
+    // allowed
+    {
+        auto input = golden;
+        input.siblingAlive = false;
+        input.lastKnownRedundancyEnabled = false;
+        input.codeUpdateFailoverMode = true;
+        input.forceOption = true;
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::none);
+    }
+
+    // Code update failover mode: sibling dead, last known red disabled, no
+    // force - still blocked
+    {
+        auto input = golden;
+        input.siblingAlive = false;
+        input.lastKnownRedundancyEnabled = false;
+        input.codeUpdateFailoverMode = true;
+        input.forceOption = false;
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::siblingDeadButRedundancyNotEnabled);
     }
 }
 

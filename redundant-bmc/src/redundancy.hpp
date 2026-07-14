@@ -101,6 +101,7 @@ struct PassiveInput
     bool forceOption;
     bool failoverInProgress;
     bool lastKnownRedundancyEnabled;
+    bool codeUpdateFailoverMode;
 };
 
 /**

@@ -156,7 +156,16 @@ Reason getPassiveFailoverBlockedReason(const PassiveInput& input)
     {
         if (!input.redundancyEnabled)
         {
-            return Reason::redundancyNotEnabled;
+            if (input.codeUpdateFailoverMode && input.forceOption)
+            {
+                lg2::warning(
+                    "Redundancy not enabled but code update failover "
+                    "mode is active with the force option so allowing");
+            }
+            else
+            {
+                return Reason::redundancyNotEnabled;
+            }
         }
         else if (input.failoversNotAllowed)
         {
@@ -192,9 +201,21 @@ Reason getPassiveFailoverBlockedReason(const PassiveInput& input)
         // RedundancyEnabled to decide if a failover is OK.  Not perfect, but
         // otherwise we could be stuck with 1 dead BMC and 1 passive BMC with no
         // way to fail over.
+        // If codeUpdateFailoverMode is active, then redundancy was at one time
+        // enabled, so still allow the failover there too.
         if (!input.lastKnownRedundancyEnabled)
         {
-            return Reason::siblingDeadButRedundancyNotEnabled;
+            if (input.codeUpdateFailoverMode && input.forceOption)
+            {
+                lg2::warning(
+                    "Sibling dead and redundancy not enabled but code "
+                    "update failover mode is active with the force option "
+                    "so allowing");
+            }
+            else
+            {
+                return Reason::siblingDeadButRedundancyNotEnabled;
+            }
         }
 
         lg2::info(
