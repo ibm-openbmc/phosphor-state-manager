@@ -25,6 +25,8 @@ using AvailIntf =
     sdbusplus::common::xyz::openbmc_project::state::decorator::Availability;
 using PairingIntf =
     sdbusplus::common::xyz::openbmc_project::provisioning::Provisioning;
+using ActivationIntf =
+    sdbusplus::common::xyz::openbmc_project::software::Activation;
 
 SiblingImpl::SiblingImpl(sdbusplus::async::context& ctx,
                          const RedundantBMCConfig& config, Services& services,
@@ -238,6 +240,28 @@ void SiblingImpl::loadPairingProps(const SiblingImpl::PropertyMap& propertyMap)
     }
 }
 
+void SiblingImpl::loadActivationProps(
+    const SiblingImpl::PropertyMap& propertyMap)
+{
+    activation.present = true;
+
+    auto it = propertyMap.find("Activation");
+    if (it != propertyMap.end())
+    {
+        auto old = activation.activating;
+        activation.activating =
+            std::get<Activations>(it->second) == Activations::Activating;
+        if (activation.activating != old)
+        {
+            for (const auto& callback :
+                 std::ranges::views::values(inCodeUpdateCBs))
+            {
+                callback(activation.activating);
+            }
+        }
+    }
+}
+
 sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded(
     std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
@@ -322,6 +346,10 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved(
         if (std::ranges::contains(interfaces, PairingIntf::interface))
         {
             pairing.present = false;
+        }
+        if (std::ranges::contains(interfaces, ActivationIntf::interface))
+        {
+            activation.present = false;
         }
 
         // If alive before and all interfaces are now gone invoke the callbacks
@@ -433,6 +461,10 @@ void SiblingImpl::loadFromPropertyMap(const std::string& interface,
     else if (interface == PairingIntf::interface)
     {
         loadPairingProps(propertyMap);
+    }
+    else if (interface == ActivationIntf::interface)
+    {
+        loadActivationProps(propertyMap);
     }
 }
 

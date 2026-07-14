@@ -25,7 +25,7 @@ class SiblingImpl : public Sibling
   public:
     using PropertyVariant =
         std::variant<std::string, bool, Role, size_t, BMCState,
-                     std::vector<ReasonForNoRedundancy>>;
+                     std::vector<ReasonForNoRedundancy>, Activations>;
     using PropertyMap = std::unordered_map<std::string, PropertyVariant>;
     using InterfaceMap = std::map<std::string, PropertyMap>;
     using ManagedObjects =
@@ -59,7 +59,7 @@ class SiblingImpl : public Sibling
     bool alive() const override
     {
         return version.present && redundancy.present && bmcState.present &&
-               availability.present;
+               availability.present && activation.present;
     }
 
     /**
@@ -223,6 +223,21 @@ class SiblingImpl : public Sibling
     }
 
     /**
+     * @brief Returns if the sibling has a code update in progress
+     *
+     * @return - If in progress, or nullopt if not available
+     */
+    std::optional<bool> getInCodeUpdate() const override
+    {
+        if (alive())
+        {
+            return activation.activating;
+        }
+
+        return std::nullopt;
+    }
+
+    /**
      * @brief Returns if the sibling BMC is plugged in
      *
      * @return bool - if present
@@ -348,6 +363,13 @@ class SiblingImpl : public Sibling
     void loadPairingProps(const PropertyMap& propertyMap);
 
     /**
+     * @brief Sets Activation data members with whatever is in the property map
+     *
+     * @param[in] propertyMap - The property name -> value map
+     */
+    void loadActivationProps(const PropertyMap& propertyMap);
+
+    /**
      * @brief Sets data members with whatever is in the property map
      *
      * @param[in] interface - The interface name
@@ -366,6 +388,7 @@ class SiblingImpl : public Sibling
         version.present = false;
         availability.present = false;
         pairing.present = false;
+        activation.present = false;
     }
 
     /**
@@ -473,6 +496,17 @@ class SiblingImpl : public Sibling
      * @brief Pairing presence and value
      */
     Pairing pairing;
+
+    struct Activation
+    {
+        bool present = false;
+        bool activating = false;
+    };
+
+    /**
+     * @brief Activation presence and value
+     */
+    Activation activation;
 
     /**
      * @brief The D-Bus object path for the sibling.

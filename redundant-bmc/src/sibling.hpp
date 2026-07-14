@@ -4,6 +4,7 @@
 
 #include <sdbusplus/async.hpp>
 #include <xyz/openbmc_project/Control/Failover/common.hpp>
+#include <xyz/openbmc_project/Software/Activation/common.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
 
@@ -31,11 +32,14 @@ class Sibling
         sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState;
     using ReasonForNoRedundancy = sdbusplus::common::xyz::openbmc_project::
         state::bmc::Redundancy::ReasonForNoRedundancy;
+    using Activations = sdbusplus::common::xyz::openbmc_project::software::
+        Activation::Activations;
     using RedundancyEnabledCallback = std::function<void(bool)>;
     using BMCStateCallback = std::function<void(BMCState)>;
     using HealthCallback = std::function<void(bool)>;
     using FailoversAllowedCallback = std::function<void(bool)>;
     using FailoverImminentCallback = std::function<void(bool)>;
+    using InCodeUpdateCallback = std::function<void(bool)>;
 
     Sibling() = default;
     virtual ~Sibling() = default;
@@ -147,6 +151,13 @@ class Sibling
     virtual std::optional<bool> getHasReasonForNoRedundancy() const = 0;
 
     /**
+     * @brief Returns if the sibling has a code update in progress
+     *
+     * @return - If in progress, or nullopt if not available
+     */
+    virtual std::optional<bool> getInCodeUpdate() const = 0;
+
+    /**
      * @brief Returns if the sibling BMC is plugged in
      *
      * @return bool - if present
@@ -160,7 +171,8 @@ class Sibling
     virtual sdbusplus::async::task<> pauseForHeartbeatChange() const = 0;
 
     /**
-     * @brief Pause to allow time for data from the sibling BMC to propagate.
+     * @brief Pause to allow time for data from the sibling BMC to
+     * propagate.
      */
     virtual sdbusplus::async::task<> pauseForDataPropagation() const = 0;
 
@@ -202,6 +214,7 @@ class Sibling
         healthCBs.erase(role);
         foAllowedCBs.erase(role);
         foImminentCBs.erase(role);
+        inCodeUpdateCBs.erase(role);
     }
 
     /**
@@ -268,6 +281,18 @@ class Sibling
         foImminentCBs.emplace(role, std::move(callback));
     }
 
+    /**
+     * @brief Adds a callback function to invoke when the sibling's
+     *        code update state changes
+     *
+     * @param[in] role - The role to register with
+     * @param[in] callback - The callback function
+     */
+    void addInCodeUpdateCallback(Role role, InCodeUpdateCallback callback)
+    {
+        inCodeUpdateCBs.emplace(role, std::move(callback));
+    }
+
   protected:
     /**
      * @brief Callbacks for RedundancyEnabled
@@ -293,5 +318,10 @@ class Sibling
      * @brief Callbacks for FailoverImminent
      */
     std::map<Role, FailoverImminentCallback> foImminentCBs;
+
+    /**
+     * @brief Callbacks for InCodeUpdate
+     */
+    std::map<Role, InCodeUpdateCallback> inCodeUpdateCBs;
 };
 } // namespace rbmc
