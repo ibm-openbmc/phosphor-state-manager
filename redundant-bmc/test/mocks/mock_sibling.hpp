@@ -44,6 +44,7 @@ class MockSibling : public testing::NiceMock<Sibling>
                 (const, override));
     MOCK_METHOD(std::optional<bool>, getHasReasonForNoRedundancy, (),
                 (const, override));
+    MOCK_METHOD(std::optional<bool>, getInCodeUpdate, (), (const, override));
     MOCK_METHOD(std::optional<BMCState>, getBMCState, (), (const, override));
 
     MOCK_METHOD(const std::string&, getServiceName, (), (const, override));
