@@ -79,8 +79,7 @@ class PassiveRoleHandler : public RoleHandler
      * @brief Handler for the RedundancyEnabled property
      *        on the sibling's D-Bus interface changing.
      *
-     * Will mirror the value on this BMC's Redundancy
-     * interface if the other BMC is Active.
+     * Will mirror the value on this BMC's Redundancy interface
      */
     void siblingRedEnabledHandler(bool enable);
 
@@ -94,8 +93,7 @@ class PassiveRoleHandler : public RoleHandler
      * @brief Handler for the FailoversAllowed property
      *        on the sibling's D-Bus interface changing.
      *
-     * Will mirror the value on this BMC's Redundancy
-     * interface if the other BMC is Active.
+     * Will mirror the value on this BMC's Redundancy interface
      */
     void siblingFailoversAllowedHandler(bool allowed);
 

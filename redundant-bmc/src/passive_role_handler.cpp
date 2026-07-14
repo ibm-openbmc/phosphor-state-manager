@@ -142,12 +142,9 @@ void PassiveRoleHandler::setupSiblingFailoversAllowedWatch()
 
 void PassiveRoleHandler::siblingRedEnabledHandler(bool enable)
 {
-    // If the sibling is Active, mirror the property on this BMC.
-    if (providers.getSibling().getRole().value_or(Role::Unknown) ==
-        Role::Active)
-    {
-        redundancyInterface.redundancy_enabled(enable);
-    }
+    // Mirror the property.  If the other BMC was also passive,
+    // the value would be false anyway.
+    redundancyInterface.redundancy_enabled(enable);
 
     // Kick off a full sync if possible
     ctx.spawn(tryFullSync());
@@ -155,14 +152,9 @@ void PassiveRoleHandler::siblingRedEnabledHandler(bool enable)
 
 void PassiveRoleHandler::siblingFailoversAllowedHandler(bool allowed)
 {
-    // If the sibling is Active, mirror the property on this BMC.
-    // TODO: The passive BMC ill have its own reasons for not allowing
-    // failovers that also need to be considered.
-    if (providers.getSibling().getRole().value_or(Role::Unknown) ==
-        Role::Active)
-    {
-        redundancyInterface.failovers_allowed(allowed);
-    }
+    // Mirror the property.  If the other BMC was also passive,
+    // the value would be false anyway.
+    redundancyInterface.failovers_allowed(allowed);
 }
 
 void PassiveRoleHandler::disableRedPropChanged(bool /*disable*/)
@@ -291,9 +283,22 @@ void PassiveRoleHandler::siblingHealthChange(bool alive)
 
     if (alive)
     {
-        // Probably redundancy would be disabled here,
-        // but try anyway just in case.
-        ctx.spawn(tryFullSync());
+        auto& sibling = providers.getSibling();
+
+        // Force a refresh of the redundancy properties here as they default
+        // to false when the active starts up and may not change again.
+        auto sibRedEnabled = sibling.getRedundancyEnabled();
+        if (sibRedEnabled.has_value())
+        {
+            // Would do a full sync if redundancy is enabled
+            siblingRedEnabledHandler(sibRedEnabled.value());
+        }
+
+        auto sibAllowed = sibling.getFailoversAllowed();
+        if (sibAllowed.has_value())
+        {
+            siblingFailoversAllowedHandler(sibAllowed.value());
+        }
     }
     else
     {
