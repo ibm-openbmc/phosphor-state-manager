@@ -176,6 +176,12 @@ void addFileData(AdditionalData& data)
             data["CodeUpdate"] = boolToYesOrNo(true);
         }
 
+        auto cuFOMode = data::read<bool>(data::key::codeUpdateFOMode);
+        if (cuFOMode.value_or(false))
+        {
+            data["CUFOMode"] = boolToYesOrNo(true);
+        }
+
         auto inputs = util::readExternalRedundancyInputs();
         if (!inputs.empty())
         {
