@@ -10,7 +10,7 @@ namespace pcie_data
 {
 // Default values for PCIe configuration
 constexpr auto defaultDevicePath = "/dev/bmc-device0";
-constexpr auto defaultRedundancyOffset = 0x3F00000;
+constexpr auto defaultRedundancyOffset = 0x3EFFF80;
 constexpr size_t redundancySize = 1;
 
 constexpr uint8_t redundancyDataVersion = 1;
@@ -122,7 +122,9 @@ class PCIeStorageImpl : public PCIeStorage
 {
   private:
     int fd{-1};
-    void* mmioBase{nullptr};
+    void* mmapBase{nullptr}; // page-aligned base returned by mmap
+    void* mmioBase{nullptr}; // actual byte address (mmapBase + page offset)
+    size_t mmapSize{0};      // total mapped size (for munmap)
     std::mutex stateMutex;
     std::string devicePath;
     size_t redundancyOffset;

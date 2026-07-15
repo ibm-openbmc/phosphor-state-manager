@@ -34,7 +34,7 @@ It is then installed into
   ],
   "pcie_config": {
     "device_path": "/dev/bmc-device0",
-    "redundancy_offset": "0x3F00000"
+    "redundancy_offset": "0x3EFFF80"
   }
 }
 ```
@@ -68,7 +68,7 @@ It is then installed into
 - **device_path** (string, required): Path to the PCIe device (e.g.,
   '/dev/bmc-device0').
 - **redundancy_offset** (string, required): Offset in the PCIe device for
-  redundancy data as a hex string (e.g., '0x3F000000').
+  redundancy data as a hex string (e.g., '0x3EFFF80').
 
 ### Validating Config Files
 
