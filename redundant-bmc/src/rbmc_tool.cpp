@@ -283,6 +283,11 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
             output["In Code Update"] = true;
         }
 
+        if (data::read<bool>(data::key::codeUpdateFOMode).value_or(false))
+        {
+            output["Code Update FO Mode"] = true;
+        }
+
         if (role != "Unknown")
         {
             output["Role Reason"] =
