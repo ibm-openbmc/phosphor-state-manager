@@ -13,6 +13,7 @@ namespace rbmc
 using Failover = sdbusplus::common::xyz::openbmc_project::control::Failover;
 
 constexpr auto bmcActiveTarget = "obmc-bmc-active.target";
+const std::chrono::minutes bmcActiveTargetTimeout{30};
 const std::chrono::minutes siblingHealthTimeout{5};
 
 // NOLINTNEXTLINE
@@ -44,7 +45,7 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
     try
     {
         // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
-        co_await services.startUnit(bmcActiveTarget, std::chrono::minutes{10});
+        co_await services.startUnit(bmcActiveTarget, bmcActiveTargetTimeout);
     }
     catch (const std::exception& e)
     {
@@ -295,7 +296,7 @@ sdbusplus::async::task<> ActiveRoleHandler::failoverStartActiveTarget()
     {
         // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
         co_await providers.getServices().startUnit(bmcActiveTarget,
-                                                   std::chrono::minutes{10});
+                                                   bmcActiveTargetTimeout);
     }
     catch (const std::exception& e)
     {
