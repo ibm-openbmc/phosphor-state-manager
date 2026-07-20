@@ -124,6 +124,40 @@ class MockServices : public testing::NiceMock<Services>
             return test_helpers::makeCompletedTask();
         });
     }
+
+    /**
+     * @brief Run the registered system state callback for a given role.
+     *
+     * Allows tests to simulate system state transitions after the manager
+     * has registered its callback.
+     *
+     * @param[in] role - The role whose callback to run
+     * @param[in] state - The new system state to deliver
+     */
+    void runSystemStateCallback(Role role, SystemState state)
+    {
+        if (auto it = systemStateCBs.find(role); it != systemStateCBs.end())
+        {
+            it->second(state);
+        }
+    }
+
+    /**
+     * @brief Run the registered code update callback for a given role.
+     *
+     * Allows tests to simulate code update activation events after the
+     * manager has registered its callback.
+     *
+     * @param[in] role - The role whose callback to run
+     * @param[in] started - true if the update started, false if it failed
+     */
+    void runCodeUpdateCallback(Role role, bool started)
+    {
+        if (auto it = codeUpdateCBs.find(role); it != codeUpdateCBs.end())
+        {
+            it->second(started);
+        }
+    }
 };
 
 } // namespace rbmc
