@@ -27,7 +27,7 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
         bool siblingServiceRunning = true;
         bool siblingPresent = true;
         bool siblingAlive = true;
-        Role siblingRole = Role::Passive;
+        Role siblingRole = Role::Unknown;
         bool siblingPaired = true;
         bool siblingFailoverInProgress = false;
     };
@@ -104,6 +104,29 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
         std::vector<Redundancy::ReasonForNoRedundancy> reasonsForNoRedundancy;
         FailoversNotAllowedReason failoversNotAllowedReason;
     };
+
+    static const inline RedundancyProps activeRedundancyEnabledProps{
+        .role = Role::Active,
+        .redEnabled = true,
+        .failoverInProgress = false,
+        .failoversAllowed = true,
+        .failoverImminent = false,
+        .reasonsForNoRedundancy = {},
+        .failoversNotAllowedReason = FailoversNotAllowedReason::None};
+
+    static RedundancyProps activeRedundancyDisabledProps(
+        std::vector<Redundancy::ReasonForNoRedundancy> reasons)
+    {
+        return RedundancyProps{
+            .role = Role::Active,
+            .redEnabled = false,
+            .failoverInProgress = false,
+            .failoversAllowed = false,
+            .failoverImminent = false,
+            .reasonsForNoRedundancy = std::move(reasons),
+            .failoversNotAllowedReason =
+                FailoversNotAllowedReason::NoRedundancy};
+    }
 
     static void verifyRedundancyProps(const RedundancyInterface& iface,
                                       const RedundancyProps& expected)
@@ -217,6 +240,7 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
     std::unique_ptr<Manager> manager;
     std::string siblingServiceName;
     std::chrono::seconds passiveTargetTimeout{300};
+    std::chrono::seconds activeTargetTimeout{1800};
     sdbusplus::async::context ctx;
 };
 
@@ -506,4 +530,143 @@ TEST_F(ManagerTest, ReadsPreviousRole_OnStartup)
 
     verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
     verifyPersistentData(expectedProps.role, "Resuming previous role", false);
+}
+
+/**
+ * @brief Test: BMC becomes passive when position is 1
+ */
+TEST_F(ManagerTest, BecomesPassive_Position1)
+{
+    // Configure scenario: Sibling is alive, this BMC is position 1
+    TestScenarioConfig config{.bmcPosition = 1, .siblingRole = Role::Unknown};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-passive.target", passiveTargetTimeout))
+        .Times(1);
+
+    RedundancyProps expectedProps{
+        .role = Role::Passive,
+        .redEnabled = false,
+        .failoverInProgress = false,
+        .failoversAllowed = false,
+        .failoverImminent = false,
+        .reasonsForNoRedundancy = {},
+        .failoversNotAllowedReason = FailoversNotAllowedReason::None};
+
+    setupPCIeStorageExpects(expectedProps);
+
+    createManagerAndRun(ProgressPoint::passiveHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(expectedProps.role, "BMC is not position 0", false);
+}
+
+/**
+ * @brief Test: BMC becomes active when position is 0
+ */
+TEST_F(ManagerTest, BecomesActive_Position0)
+{
+    // Configure scenario: Sibling is alive, this BMC is position 0
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Unknown};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-active.target", activeTargetTimeout))
+        .Times(1);
+
+    RedundancyProps expectedProps{
+        .role = Role::Active,
+        .redEnabled = false,
+        .failoverInProgress = false,
+        .failoversAllowed = false,
+        .failoverImminent = false,
+        // This testcase only tests role selection, so not mocking the sibling
+        // changing to passive and other things to enable redundancy.
+        .reasonsForNoRedundancy =
+            {Redundancy::ReasonForNoRedundancy::SiblingNotPassive},
+        .failoversNotAllowedReason = FailoversNotAllowedReason::NoRedundancy};
+
+    setupPCIeStorageExpects(expectedProps);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(expectedProps.role, "BMC is position 0", false);
+}
+
+/**
+ * @brief Test: BMC becomes active when no sibling present
+ */
+TEST_F(ManagerTest, BecomesActive_NoSibling)
+{
+    // Configure scenario: Sibling is not present
+    TestScenarioConfig config{.bmcPosition = 1,
+                              .siblingPresent = false,
+                              .siblingAlive = false,
+                              .siblingRole = Role::Unknown};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+
+    // The wait functions shouldn't be called
+    EXPECT_CALL(sibling, waitForSiblingUp()).Times(0);
+    EXPECT_CALL(sibling, waitForSiblingRole()).Times(0);
+    EXPECT_CALL(sibling, waitForBMCSteadyState()).Times(0);
+    EXPECT_CALL(services, waitForPeerConnection(_)).Times(0);
+
+    EXPECT_CALL(services, acquireFullHardwareAccess()).Times(1);
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-active.target", activeTargetTimeout))
+        .Times(1);
+
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::SiblingMissing});
+
+    setupPCIeStorageExpects(expectedProps);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(Role::Active, "Sibling not alive", false);
+}
+
+/**
+ * @brief Test: BMC becomes active when sibling is dead
+ */
+TEST_F(ManagerTest, BecomesActive_SiblingDead)
+{
+    // Configure scenario: Sibling present but not alive
+    TestScenarioConfig config{
+        .bmcPosition = 1, .siblingPresent = true, .siblingAlive = false};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+
+    // Only 1 wait function should be called
+    EXPECT_CALL(sibling, waitForSiblingUp()).Times(1);
+    EXPECT_CALL(sibling, waitForSiblingRole()).Times(0);
+    EXPECT_CALL(sibling, waitForBMCSteadyState()).Times(0);
+    EXPECT_CALL(services, waitForPeerConnection(_)).Times(0);
+
+    EXPECT_CALL(services, acquireFullHardwareAccess()).Times(1);
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-active.target", activeTargetTimeout))
+        .Times(1);
+
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::SiblingNotAlive});
+
+    setupPCIeStorageExpects(expectedProps);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(Role::Active, "Sibling not alive", false);
 }
