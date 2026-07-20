@@ -31,7 +31,7 @@ class MockSyncInterface : public testing::NiceMock<SyncInterface>
     void setupDefaultBehavior()
     {
         ON_CALL(*this, doFullSync()).WillByDefault([this]() {
-            fullSyncComplete = true;
+            SyncInterface::fullSyncComplete = true;
             return test_helpers::makeCompletedTask(true);
         });
 
@@ -39,8 +39,6 @@ class MockSyncInterface : public testing::NiceMock<SyncInterface>
             return test_helpers::makeCompletedTask();
         });
     }
-
-    bool fullSyncComplete{false};
 };
 
 } // namespace rbmc
