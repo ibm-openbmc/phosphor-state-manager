@@ -853,7 +853,7 @@ TEST_F(ManagerTest, BecomeActive_PeerConnectionNeverConnects_RedundancyDisabled)
 
 /**
  * @brief Test: Redundancy is disabled because a passive BMC hardware
- *             problem external redundancy input is set.
+ *              problem external redundancy input is set.
  */
 TEST_F(ManagerTest, BecomeActive_PassiveHWProblem_RedundancyDisabled)
 {
@@ -891,7 +891,7 @@ TEST_F(ManagerTest, BecomeActive_PassiveHWProblem_RedundancyDisabled)
 
 /**
  * @brief Test: Redundancy is disabled because redundancy was off when the
- *             system previously entered runtime state.
+ *              system previously entered runtime state.
  */
 TEST_F(ManagerTest, BecomeActive_RedundancyOffAtRuntimeStart_RedundancyDisabled)
 {
@@ -928,4 +928,200 @@ TEST_F(ManagerTest, BecomeActive_RedundancyOffAtRuntimeStart_RedundancyDisabled)
 
     verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
     verifyPersistentData(Role::Active, "Sibling is already passive", false);
+}
+
+/**
+ * @brief Test: Redundancy disabled due to code version mismatch, with no
+ *              code update in progress.
+ */
+TEST_F(ManagerTest, NoCodeUpdate_ErrorLogOnVersionMismatch)
+{
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Sibling has a different FW version
+    ON_CALL(sibling, getFWVersion())
+        .WillByDefault(Return(std::make_optional<std::string>("AAAAAAAA")));
+
+    // There should be an error log
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+}
+
+/**
+ * @brief Test: Redundancy disabled due to code version mismatch, but a code
+ *              update is in progress. The error should not be logged when
+ *              CodeVersionMismatch is the sole reason and a code update is
+ *              in progress.
+ */
+TEST_F(ManagerTest, CodeUpdateInProgress_NoErrorLogOnVersionMismatch)
+{
+    // Mark a code update as in progress before the manager starts
+    data::write(data::key::codeUpdateInProgress, true);
+
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Sibling has a different FW version — as expected during a code update
+    ON_CALL(sibling, getFWVersion())
+        .WillByDefault(Return(std::make_optional<std::string>("AAAAAAAA")));
+
+    // With a code update in progress, the error log must NOT be emitted
+    EXPECT_CALL(services, logError(_, _, _)).Times(0);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::CodeVersionMismatch});
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+
+    // Code update is still in progress since the mismatch hasn't been resolved
+    EXPECT_TRUE(manager->getCodeUpdateActivation().codeUpdateInProgress());
+}
+
+/**
+ * @brief Test: A code update is in progress but redundancy is disabled for
+ *              a reason other than CodeVersionMismatch (here: no peer
+ *              connection).  CodeUpdateInProgress should get cleared
+ **/
+TEST_F(ManagerTest,
+       CodeUpdateInProgress_ClearedWhenDisabledForNonMismatchReason)
+{
+    // Mark a code update as in progress before the manager starts
+    data::write(data::key::codeUpdateInProgress, true);
+
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Peer not connected so redundancy can't be enabled.
+    ON_CALL(services, getPeerConnected()).WillByDefault(Return(false));
+
+    // Should be an error log.
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    // Check these to verify NetworkError is only reason.
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::NetworkError});
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+
+    // Code update no longer in progress
+    EXPECT_FALSE(manager->getCodeUpdateActivation().codeUpdateInProgress());
+}
+
+/**
+ * @brief Test: A code update was in progress on startup, but by the time
+ *              redundancy is evaluated both BMCs have the same version.
+ *              The code update in progress indication must be cleared.
+ */
+TEST_F(ManagerTest, CodeUpdateInProgress_ClearedWhenVersionsMatch)
+{
+    // Set a code update as in progress before the manager starts
+    data::write(data::key::codeUpdateInProgress, true);
+
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    // Code update in progress must have been cleared since versions matched
+    // and redundancy was successfully enabled
+    EXPECT_FALSE(manager->getCodeUpdateActivation().codeUpdateInProgress());
+}
+
+/**
+ * @brief Test: When the system transitions to booting while a code update
+ *              is in progress, the code update in progress indication is
+ *              cleared.
+ */
+TEST_F(ManagerTest, CodeUpdateClearedOnBoot)
+{
+    // Mark a code update as in progress before the manager starts
+    data::write(data::key::codeUpdateInProgress, true);
+
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Sibling has a different FW version so the code update flag survives
+    // startup.
+    ON_CALL(sibling, getFWVersion())
+        .WillByDefault(Return(std::make_optional<std::string>("AAAAAAAA")));
+
+    // Error log suppressed since code update is in progress
+    EXPECT_CALL(services, logError(_, _, _)).Times(0);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    // Confirm code update is still flagged after startup
+    ASSERT_TRUE(manager->getCodeUpdateActivation().codeUpdateInProgress())
+        << "Code update should still be in progress";
+
+    // Simulate the system transitioning to booting.
+    services.runSystemStateCallback(Role::Active, SystemState::booting);
+
+    // The booting transition should have cleared the code update indication
+    EXPECT_FALSE(manager->getCodeUpdateActivation().codeUpdateInProgress());
+}
+
+/**
+ * @brief Test: The code update callback correctly sets and clears the
+ *             code-update-in-progress indication.
+ *
+ * Runs the callback with started=true to verify the flag is set, then
+ * with started=false (failure) to verify it is cleared.
+ */
+TEST_F(ManagerTest, CodeUpdateCallback_SetsAndClearsInProgress)
+{
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    auto& services = mockProviders->getMockServices();
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    // Confirm flag is clear before a code update starts
+    ASSERT_FALSE(manager->getCodeUpdateActivation().codeUpdateInProgress());
+
+    // Simulate a code update starting
+    services.runCodeUpdateCallback(Role::Active, true);
+
+    EXPECT_TRUE(manager->getCodeUpdateActivation().codeUpdateInProgress())
+        << "codeUpdateInProgress should be true";
+
+    // Simulate the update failing
+    services.runCodeUpdateCallback(Role::Active, false);
+
+    EXPECT_FALSE(manager->getCodeUpdateActivation().codeUpdateInProgress())
+        << "codeUpdateInProgress should be false";
 }

@@ -4,6 +4,7 @@ test(
     'rbmc-tests',
     executable(
         'rbmc-tests',
+        'code_update_activation_test.cpp',
         'config_parser_test.cpp',
         'error_data_test.cpp',
         'manager_test.cpp',

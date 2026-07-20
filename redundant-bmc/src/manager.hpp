@@ -89,6 +89,16 @@ class Manager :
     }
 
     /**
+     * @brief Returns the CodeUpdateActivation D-Bus interface object
+     *
+     * @return Reference to the code update activation interface
+     */
+    const CodeUpdateActivation& getCodeUpdateActivation() const
+    {
+        return codeUpdateActivation;
+    }
+
+    /**
      * @brief Returns the Providers instance used
      *
      * @return Reference to providers
