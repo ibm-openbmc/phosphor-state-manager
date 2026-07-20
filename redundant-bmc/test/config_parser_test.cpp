@@ -60,7 +60,7 @@ TEST_F(ConfigParserTest, ParseValidConfig)
         ],
         "pcie_config": {
             "device_path": "/dev/bmc-device0",
-            "redundancy_offset": "66060288"
+            "redundancy_offset": "66060160"
         }
     })";
 
@@ -98,7 +98,7 @@ TEST_F(ConfigParserTest, ParseOptionalBMCConfigs)
         },
         "pcie_config": {
             "device_path": "/dev/bmc-device0",
-            "redundancy_offset": "66060288"
+            "redundancy_offset": "66060160"
         }
     })";
 
@@ -119,7 +119,7 @@ TEST_F(ConfigParserTest, ParseEmptyBMCConfigsArray)
         "bmc_configs": [],
         "pcie_config": {
             "device_path": "/dev/bmc-device0",
-            "redundancy_offset": "66060288"
+            "redundancy_offset": "66060160"
         }
     })";
 
@@ -382,7 +382,7 @@ TEST_F(ConfigParserTest, ParsePCIeConfig)
         "bmc_configs": [],
         "pcie_config": {
             "device_path": "/dev/bmc-device0",
-            "redundancy_offset": "0x3F00000"
+            "redundancy_offset": "0x3EFFF80"
         }
     })";
 
@@ -392,7 +392,7 @@ TEST_F(ConfigParserTest, ParsePCIeConfig)
 
     ASSERT_TRUE(result.pcieConfig.has_value());
     EXPECT_EQ(result.pcieConfig->devicePath, "/dev/bmc-device0");
-    EXPECT_EQ(result.pcieConfig->redundancyOffset, "0x3F00000");
+    EXPECT_EQ(result.pcieConfig->redundancyOffset, "0x3EFFF80");
 }
 
 TEST_F(ConfigParserTest, ParseOptionalPCIeConfig)
@@ -421,7 +421,7 @@ TEST_F(ConfigParserTest, ParsePCIeConfigMissingDevicePath)
         },
         "bmc_configs": [],
         "pcie_config": {
-            "redundancy_offset": "0x3F00000"
+            "redundancy_offset": "0x3EFFF80"
         }
     })";
 

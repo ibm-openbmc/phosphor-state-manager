@@ -26,20 +26,31 @@ PCIeStorageImpl::PCIeStorageImpl(const std::string& devPath, size_t offset) :
             return;
         }
 
-        mmioBase = mmap(nullptr, redundancySize, PROT_READ | PROT_WRITE,
-                        MAP_SHARED, fd, static_cast<off_t>(redundancyOffset));
-        if (mmioBase == MAP_FAILED)
+        const size_t pageSize = static_cast<size_t>(getpagesize());
+        const size_t pageAlignedOffset =
+            (redundancyOffset / pageSize) * pageSize;
+        const size_t pageOffsetDelta = redundancyOffset - pageAlignedOffset;
+        mmapSize = pageOffsetDelta + redundancySize;
+
+        mmapBase = mmap(nullptr, mmapSize, PROT_READ | PROT_WRITE, MAP_SHARED,
+                        fd, static_cast<off_t>(pageAlignedOffset));
+        if (mmapBase == MAP_FAILED)
         {
             close(fd);
             fd = -1;
-            lg2::error("PCIe mmap failed at offset {OFFSET}", "OFFSET",
-                       redundancyOffset);
+            lg2::error(
+                "PCIe mmap failed at page-aligned offset {OFFSET} (requested offset {REQ})",
+                "OFFSET", lg2::hex, pageAlignedOffset, "REQ", lg2::hex,
+                redundancyOffset);
             return;
         }
 
+        // Advance past the in-page delta to reach the actual target byte
+        mmioBase = static_cast<uint8_t*>(mmapBase) + pageOffsetDelta;
+
         lg2::debug(
             "PCIe storage initialized successfully at {PATH} offset {OFFSET}",
-            "PATH", devicePath, "OFFSET", redundancyOffset);
+            "PATH", devicePath, "OFFSET", lg2::hex, redundancyOffset);
     }
     catch (const std::exception& e)
     {
@@ -49,9 +60,9 @@ PCIeStorageImpl::PCIeStorageImpl(const std::string& devPath, size_t offset) :
 
 PCIeStorageImpl::~PCIeStorageImpl()
 {
-    if (mmioBase != nullptr && mmioBase != MAP_FAILED)
+    if (mmapBase != nullptr && mmapBase != MAP_FAILED)
     {
-        munmap(mmioBase, redundancySize);
+        munmap(mmapBase, mmapSize);
     }
     if (fd != -1)
     {

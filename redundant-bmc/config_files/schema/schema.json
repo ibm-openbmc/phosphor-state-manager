@@ -73,7 +73,7 @@
                 },
                 "redundancy_offset": {
                     "type": "string",
-                    "description": "Offset in the PCIe device for redundancy data as a hex string (e.g., '0x3F000000')",
+                    "description": "Offset in the PCIe device for redundancy data as a hex string (e.g., '0x3EFFF80')",
                     "minLength": 1
                 }
             },
