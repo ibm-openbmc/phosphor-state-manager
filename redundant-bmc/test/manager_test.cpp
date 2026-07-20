@@ -3,11 +3,13 @@
 #include "mocks/async_helpers.hpp"
 #include "mocks/mock_providers.hpp"
 #include "persistent_data_test_fixture.hpp"
+#include "util.hpp"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 using namespace rbmc;
+using namespace rbmc::util;
 using namespace testing;
 using namespace test_helpers;
 
@@ -161,6 +163,43 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
             .Times(vals.failoverInProgress ? 1 : 0);
         EXPECT_CALL(storage, updateFailoversAllowed(vals.failoversAllowed))
             .Times(vals.failoversAllowed ? 1 : 0);
+
+        // The constructor initializes PCIe storage with false; if the final
+        // expected value differs, expect the initial false call as well.
+        // if (vals.redEnabled)
+        // {
+        //     EXPECT_CALL(storage, updateRedundancyEnabled(false)).Times(1);
+        // }
+        // EXPECT_CALL(storage,
+        // updateRedundancyEnabled(vals.redEnabled)).Times(1);
+        //
+        // EXPECT_CALL(storage,
+        // updateFailoverInProgress(vals.failoverInProgress));
+        //
+        // if (vals.failoversAllowed)
+        // {
+        //     EXPECT_CALL(storage, updateFailoversAllowed(false)).Times(1);
+        // }
+        // EXPECT_CALL(storage, updateFailoversAllowed(vals.failoversAllowed))
+        //     .Times(1);
+    }
+
+    /**
+     * @brief Set the standard EXPECT_CALLs for when the BMC is active
+     *        and the sibling is alive.
+     */
+    void setupActiveBMCWithAliveSiblingExpects()
+    {
+        auto& services = mockProviders->getMockServices();
+        auto& sibling = mockProviders->getMockSibling();
+
+        EXPECT_CALL(services, acquireFullHardwareAccess()).Times(1);
+        EXPECT_CALL(services,
+                    startUnit("obmc-bmc-active.target", activeTargetTimeout))
+            .Times(1);
+        EXPECT_CALL(sibling, waitForSiblingRole()).Times(1);
+        EXPECT_CALL(sibling, waitForBMCSteadyState()).Times(1);
+        EXPECT_CALL(services, waitForPeerConnection(_)).Times(1);
     }
 
     /**
@@ -669,4 +708,224 @@ TEST_F(ManagerTest, BecomesActive_SiblingDead)
 
     verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
     verifyPersistentData(Role::Active, "Sibling not alive", false);
+}
+
+/**
+ * @brief Test: BMC becomes active and enables redundancy
+ */
+TEST_F(ManagerTest, BecomeActive_EnableRedundancy)
+{
+    // Configure scenario: This BMC should become active
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    EXPECT_CALL(services, logError(_, _, _)).Times(0);
+    EXPECT_CALL(syncInterface, doFullSync()).Times(1);
+
+    setupPCIeStorageExpects(activeRedundancyEnabledProps);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(),
+                          activeRedundancyEnabledProps);
+    verifyPersistentData(Role::Active, "Sibling is already passive", false);
+}
+
+/**
+ * @brief Test: BMC becomes active with redundancy enable but failovers
+ *        not allowed due to the system booting.
+ */
+TEST_F(ManagerTest, BecomeActive_FailoversNotAllowed_SystemBooting)
+{
+    // Configure scenario: This BMC should become active
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Configure system state to be 'booting'
+    ON_CALL(services, getSystemState())
+        .WillByDefault(Return(SystemState::booting));
+
+    RedundancyProps expectedProps{
+        .role = Role::Active,
+        .redEnabled = true,
+        .failoverInProgress = false,
+        .failoversAllowed = false,
+        .failoverImminent = false,
+        .reasonsForNoRedundancy = {},
+        .failoversNotAllowedReason =
+            FailoversNotAllowedReason::WrongSystemState};
+
+    setupPCIeStorageExpects(expectedProps);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(expectedProps.role, "Sibling is already passive",
+                         false);
+}
+
+/**
+ * @brief Test: BMC becomes active but disables redundancy
+ *        due to full sync failure
+ */
+TEST_F(ManagerTest, BecomeActive_FullSyncFails_RedundancyDisabled)
+{
+    // Configure scenario: This BMC should become active
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Configure full sync to fail
+    ON_CALL(syncInterface, doFullSync()).WillByDefault([]() {
+        return test_helpers::makeCompletedTask(false);
+    });
+
+    // Expect full sync to be called and fail
+    EXPECT_CALL(syncInterface, doFullSync()).Times(1);
+
+    // Expect disableBackgroundSync to be called when redundancy is disabled
+    EXPECT_CALL(syncInterface, disableBackgroundSync()).Times(1);
+
+    // Expect error log to be created when redundancy can't be enabled
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::DataSyncFailed});
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(expectedProps.role, "Sibling is already passive",
+                         false);
+}
+
+/**
+ * @brief Test: BMC becomes active but redundancy not enabled due to no
+ *        peer connection
+ */
+TEST_F(ManagerTest, BecomeActive_PeerConnectionNeverConnects_RedundancyDisabled)
+{
+    // Configure scenario: This BMC should become active
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Configure getPeerConnected to always return false
+    ON_CALL(services, getPeerConnected()).WillByDefault(Return(false));
+
+    // Full sync should not be called.
+    EXPECT_CALL(syncInterface, doFullSync()).Times(0);
+    EXPECT_CALL(syncInterface, disableBackgroundSync()).Times(1);
+
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::NetworkError});
+
+    setupPCIeStorageExpects(expectedProps);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(Role::Active, "Sibling is already passive", false);
+}
+
+/**
+ * @brief Test: Redundancy is disabled because a passive BMC hardware
+ *             problem external redundancy input is set.
+ */
+TEST_F(ManagerTest, BecomeActive_PassiveHWProblem_RedundancyDisabled)
+{
+    // Set the external redundancy input value used in the checks.
+    util::writeExternalRedundancyInput(
+        RedundancyInput::PassiveBMCHardwareProblem, true);
+
+    // Configure scenario: This BMC should become active
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Full sync should not be called since redundancy is disabled
+    EXPECT_CALL(syncInterface, doFullSync()).Times(0);
+    EXPECT_CALL(syncInterface, disableBackgroundSync()).Times(1);
+
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::SystemHWConfigIssue});
+
+    setupPCIeStorageExpects(expectedProps);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(Role::Active, "Sibling is already passive", false);
+}
+
+/**
+ * @brief Test: Redundancy is disabled because redundancy was off when the
+ *             system previously entered runtime state.
+ */
+TEST_F(ManagerTest, BecomeActive_RedundancyOffAtRuntimeStart_RedundancyDisabled)
+{
+    // Set redundancy off at runtime.  The tuple is {valid, off}.
+    data::write(data::key::redundancyOffAtRuntime,
+                std::tuple<bool, bool>{true, true});
+
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    // System is at runtime.
+    ON_CALL(services, getSystemState())
+        .WillByDefault(Return(SystemState::runtime));
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Redundancy is disabled before sync is attempted
+    EXPECT_CALL(syncInterface, doFullSync()).Times(0);
+    EXPECT_CALL(syncInterface, disableBackgroundSync()).Times(1);
+
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::RedundancyOffAtRuntimeStart});
+
+    setupPCIeStorageExpects(expectedProps);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(Role::Active, "Sibling is already passive", false);
 }
