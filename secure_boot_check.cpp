@@ -72,7 +72,7 @@ bool isMfgModeEnabled()
     std::string path = "/xyz/openbmc_project/logging/settings";
     std::string interface = LoggingSettings::interface;
     const std::string propertyName =
-        LoggingSettings::property_names::quiesce_on_hw_error;
+        "QuiesceOnHwError";
     std::variant<bool> mfgModeEnabled;
 
     std::string service =

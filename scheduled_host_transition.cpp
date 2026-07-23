@@ -97,7 +97,7 @@ void ScheduledHostTransition::hostTransition()
          "REQUESTED_TRANSITION", reqTrans);
 
     utils::setProperty(bus, hostPath, HostState::interface,
-                       HostState::property_names::requested_host_transition,
+                       "RequestedHostTransition",
                        reqTrans);
 
     // Set RestartCause to indicate this transition is occurring due to a
@@ -108,7 +108,7 @@ void ScheduledHostTransition::hostTransition()
         auto resCause =
             convertForMessage(HostState::RestartCause::ScheduledPowerOn);
         utils::setProperty(bus, hostPath, HostState::interface,
-                           HostState::property_names::restart_cause, resCause);
+                           "RestartCause", resCause);
     }
 }
 

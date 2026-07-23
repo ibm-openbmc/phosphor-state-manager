@@ -214,7 +214,7 @@ option(
 option (
     'rbmc-state-management',
     type: 'feature',
-    value 'enabled',
+    value: 'enabled',
     description: 'Enable redundant BMC state management',
 )
 

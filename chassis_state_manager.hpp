@@ -44,7 +44,7 @@ class Chassis : public ChassisInherit
      */
     Chassis(sdbusplus::bus_t& bus, const sdbusplus::object_path& objPath,
             size_t id) :
-        ChassisInherit(bus, objPath, ChassisInherit::action::defer_emit),
+        ChassisInherit(bus, objPath.str.c_str(), ChassisInherit::action::defer_emit),
         bus(bus),
         systemdSignals(
             bus,

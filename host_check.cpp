@@ -43,7 +43,7 @@ bool checkFirmwareConditionRunning(sdbusplus::bus_t& bus)
     // Find all implementations of host firmware condition interface
     auto mapper = bus.new_method_call(
         ObjectMapper::default_service, ObjectMapper::instance_path,
-        ObjectMapper::interface, ObjectMapper::method_names::get_sub_tree);
+        ObjectMapper::interface, "GetSubTree");
 
     mapper.append("/", 0, std::vector<std::string>({HostFirmware::interface}));
 
@@ -90,11 +90,11 @@ bool checkFirmwareConditionRunning(sdbusplus::bus_t& bus)
                                                   PROPERTY_INTERFACE, "Get");
                 method.append(
                     HostFirmware::interface,
-                    HostFirmware::property_names::current_firmware_condition);
+                    "CurrentFirmwareCondition");
 
                 auto response = bus.call(method);
-                auto currentFwCondV = response.unpack<
-                    std::variant<HostFirmware::FirmwareCondition>>();
+                std::variant<HostFirmware::FirmwareCondition> currentFwCondV;
+                response.read(currentFwCondV);
 
                 auto currentFwCond =
                     std::get<HostFirmware::FirmwareCondition>(currentFwCondV);
@@ -134,11 +134,11 @@ bool isChassiPowerOn(sdbusplus::bus_t& bus, size_t id)
         auto method = bus.new_method_call(svcname.c_str(), objpath.c_str(),
                                           PROPERTY_INTERFACE, "Get");
         method.append(Chassis::interface,
-                      Chassis::property_names::current_power_state);
+                      "CurrentPowerState");
 
         auto response = bus.call(method);
-        auto currentPowerStateV =
-            response.unpack<std::variant<Chassis::PowerState>>();
+        std::variant<Chassis::PowerState> currentPowerStateV;
+        response.read(currentPowerStateV);
 
         auto currentPowerState =
             std::get<Chassis::PowerState>(currentPowerStateV);

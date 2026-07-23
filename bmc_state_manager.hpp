@@ -33,7 +33,7 @@ class BMC : public BMCInherit
      * @param[in] objPath   - The Dbus object path
      */
     BMC(sdbusplus::bus_t& bus, const sdbusplus::object_path& objPath) :
-        BMCInherit(bus, objPath, BMCInherit::action::defer_emit), bus(bus),
+        BMCInherit(bus, objPath.str.c_str(), BMCInherit::action::defer_emit), bus(bus),
         stateSignal(std::make_unique<decltype(stateSignal)::element_type>(
             bus,
             sdbusRule::type::signal() + sdbusRule::member("JobRemoved") +

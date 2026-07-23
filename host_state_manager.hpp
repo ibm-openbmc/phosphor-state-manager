@@ -51,7 +51,7 @@ class Host : public HostInherit
      */
     Host(sdbusplus::bus_t& bus, const sdbusplus::object_path& objPath,
          size_t id) :
-        HostInherit(bus, objPath, HostInherit::action::defer_emit), bus(bus),
+        HostInherit(bus, objPath.str.c_str(), HostInherit::action::defer_emit), bus(bus),
         systemdSignalJobRemoved(
             bus,
             sdbusRule::type::signal() + sdbusRule::member("JobRemoved") +

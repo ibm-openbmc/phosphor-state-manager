@@ -39,7 +39,7 @@ int main(int argc, char** argv)
     // a non-zero rc so the system does not power on
     auto currentPowerStatus = phosphor::state::manager::utils::getProperty(
         bus, chassisPath, ChassisState::interface,
-        ChassisState::property_names::current_power_status);
+        "CurrentPowerStatus");
     if (currentPowerStatus != ChassisState::convertPowerStatusToString(
                                   ChassisState::PowerStatus::Good))
     {

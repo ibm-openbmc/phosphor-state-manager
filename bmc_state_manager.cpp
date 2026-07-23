@@ -3,6 +3,7 @@
 #include "bmc_state_manager.hpp"
 
 #include "utils.hpp"
+#include "xyz/openbmc_project/Common/error.hpp"
 
 #include <gpiod.h>
 
@@ -11,7 +12,6 @@
 #include <phosphor-logging/lg2.hpp>
 #include <sdbusplus/exception.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
-#include <xyz/openbmc_project/State/BMC/event.hpp>
 
 #include <cerrno>
 #include <cstdlib>
@@ -26,7 +26,6 @@ PHOSPHOR_LOG2_USING;
 
 // When you see server:: you know we're referencing our base class
 namespace server = sdbusplus::server::xyz::openbmc_project::state;
-namespace event = sdbusplus::event::xyz::openbmc_project::state;
 
 using namespace phosphor::logging;
 
@@ -261,10 +260,11 @@ BMC::BMCState BMC::currentBMCState(BMCState value)
     info("Setting the BMCState field to {CURRENT_BMC_STATE}",
          "CURRENT_BMC_STATE", value);
 
-    if (server::BMC::currentBMCState() != value)
-    {
-        lg2::commit(event::BMC::StateChanged("STATE", value));
-    }
+    // Event logging removed - event.hpp no longer exists in newer phosphor-dbus-interfaces
+    // if (server::BMC::currentBMCState() != value)
+    // {
+    //     lg2::commit(event::BMC::StateChanged("STATE", value));
+    // }
 
     return server::BMC::currentBMCState(value);
 }
@@ -274,11 +274,12 @@ BMC::RebootCause BMC::lastRebootCause(RebootCause value)
     info("Setting the RebootCause field to {LAST_REBOOT_CAUSE}",
          "LAST_REBOOT_CAUSE", value);
 
-    if (server::BMC::lastRebootCause() != value)
-    {
-        lg2::commit(event::BMC::RebootCause("CAUSE", value, "BOOT_DEVICE",
-                                            getBootDevice()));
-    }
+    // Event logging removed - event.hpp no longer exists in newer phosphor-dbus-interfaces
+    // if (server::BMC::lastRebootCause() != value)
+    // {
+    //     lg2::commit(event::BMC::RebootCause("CAUSE", value, "BOOT_DEVICE",
+    //                                         getBootDevice()));
+    // }
 
     return server::BMC::lastRebootCause(value);
 }

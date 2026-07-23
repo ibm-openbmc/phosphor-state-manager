@@ -86,7 +86,7 @@ int main(int argc, char** argv)
             sdbusplus::message::convert_from_string<BMC::RebootCause>(
                 phosphor::state::manager::utils::getProperty(
                     bus, bmcPath, BMCState::interface,
-                    BMCState::property_names::last_reboot_cause));
+                    "LastRebootCause"));
 
         if constexpr (!RUN_APR_ON_PINHOLE_RESET)
         {
@@ -129,14 +129,14 @@ int main(int argc, char** argv)
         settings.powerRestorePolicyOneTime.c_str(), PROPERTY_INTERFACE, "Get");
     methodOneTime.append(
         powerRestoreIntf,
-        PowerRestorePolicy::property_names::power_restore_policy);
+        "PowerRestorePolicy");
 
     auto methodUserSetting = bus.new_method_call(
         settings.service(settings.powerRestorePolicy, powerRestoreIntf).c_str(),
         settings.powerRestorePolicy.c_str(), PROPERTY_INTERFACE, "Get");
     methodUserSetting.append(
         powerRestoreIntf,
-        PowerRestorePolicy::property_names::power_restore_policy);
+        "PowerRestorePolicy");
 
     std::variant<std::string> result;
     try
@@ -162,7 +162,7 @@ int main(int argc, char** argv)
             info("One time set, use it and reset to default");
             phosphor::state::manager::utils::setProperty(
                 bus, settings.powerRestorePolicyOneTime, powerRestoreIntf,
-                PowerRestorePolicy::property_names::power_restore_policy,
+                "PowerRestorePolicy",
                 convertForMessage(RestorePolicy::Policy::None));
         }
 
@@ -173,7 +173,7 @@ int main(int argc, char** argv)
 
         methodUserSettingDelay.append(
             powerRestoreIntf,
-            PowerRestorePolicy::property_names::power_restore_delay);
+            "PowerRestoreDelay");
 
         std::variant<uint64_t> restoreDelay;
 
@@ -198,12 +198,12 @@ int main(int argc, char** argv)
             applyPowerRestoreDelay(bus, powerRestoreDelayUsec);
             phosphor::state::manager::utils::setProperty(
                 bus, hostPath, HostState::interface,
-                HostState::property_names::restart_cause,
+                "RestartCause",
                 convertForMessage(
                     server::Host::RestartCause::PowerPolicyAlwaysOn));
             phosphor::state::manager::utils::setProperty(
                 bus, hostPath, HostState::interface,
-                HostState::property_names::requested_host_transition,
+                "RequestedHostTransition",
                 convertForMessage(server::Host::Transition::On));
         }
         // Always execute power on if AlwaysOn is set, otherwise check config
@@ -231,13 +231,13 @@ int main(int argc, char** argv)
                 auto hostReqState =
                     phosphor::state::manager::utils::getProperty(
                         bus, hostPath, HostState::interface,
-                        HostState::property_names::requested_host_transition);
+                        "RequestedHostTransition");
                 if (hostReqState !=
                     convertForMessage(server::Host::Transition::Off))
                 {
                     phosphor::state::manager::utils::setProperty(
                         bus, hostPath, HostState::interface,
-                        HostState::property_names::requested_host_transition,
+                        "RequestedHostTransition",
                         convertForMessage(server::Host::Transition::Off));
                 }
             }
@@ -252,7 +252,7 @@ int main(int argc, char** argv)
                 auto hostReqState =
                     phosphor::state::manager::utils::getProperty(
                         bus, hostPath, HostState::interface,
-                        HostState::property_names::requested_host_transition);
+                        "RequestedHostTransition");
 
                 // As long as the host transition is not 'Off' power on host
                 // state.
@@ -261,12 +261,12 @@ int main(int argc, char** argv)
                 {
                     phosphor::state::manager::utils::setProperty(
                         bus, hostPath, HostState::interface,
-                        HostState::property_names::restart_cause,
+                        "RestartCause",
                         convertForMessage(server::Host::RestartCause::
                                               PowerPolicyPreviousState));
                     phosphor::state::manager::utils::setProperty(
                         bus, hostPath, HostState::interface,
-                        HostState::property_names::requested_host_transition,
+                        "RequestedHostTransition",
                         convertForMessage(server::Host::Transition::On));
                 }
             }
