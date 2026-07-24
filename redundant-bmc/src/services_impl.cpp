@@ -481,9 +481,6 @@ void ServicesImpl::updateSystemState()
     SystemState newState =
         calculateSystemState(hostState.value(), bootProgress.value());
 
-    lg2::info("Calculated system state is {STATE}", "STATE",
-              getSystemStateName(newState));
-
     if (!systemState.has_value() || (newState != systemState.value()))
     {
         if (systemState.has_value())
