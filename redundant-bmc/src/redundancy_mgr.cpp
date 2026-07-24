@@ -356,22 +356,23 @@ void RedundancyMgr::determineAndSetFailoversAllowed()
 
     auto reason = fona::getFailoversNotAllowedReason(input);
 
+    auto orig = redundancyInterface.failovers_not_allowed_reason();
     redundancyInterface.failovers_not_allowed_reason(reason);
 
     if (reason != FailoversNotAllowedReason::None)
     {
-        lg2::warning("Failovers not allowed because {REASON}", "REASON",
-                     fona::getFailoversNotAllowedDescription(reason));
+        if (orig != reason)
+        {
+            lg2::warning("Failovers not allowed because {REASON}", "REASON",
+                         fona::getFailoversNotAllowedDescription(reason));
+        }
 
         redundancyInterface.failovers_allowed(false);
     }
-    else
+    else if (!redundancyInterface.failovers_allowed())
     {
-        if (!redundancyInterface.failovers_allowed())
-        {
-            lg2::info("Changing failovers to allowed");
-            redundancyInterface.failovers_allowed(true);
-        }
+        lg2::info("Changing failovers to allowed");
+        redundancyInterface.failovers_allowed(true);
     }
 }
 
