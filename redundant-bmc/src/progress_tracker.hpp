@@ -7,7 +7,8 @@ namespace rbmc
 enum class ProgressPoint
 {
     activeHandlerStartComplete,
-    passiveHandlerStartComplete
+    passiveHandlerStartComplete,
+    failoverComplete
 };
 
 /**
