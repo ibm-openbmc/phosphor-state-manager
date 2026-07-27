@@ -278,6 +278,13 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
         EXPECT_EQ(savedRoleReason.value(), expectedRoleReason);
     }
 
+    template <typename F>
+    void spawnFunc(F func, sdbusplus::async::context& ctx)
+    {
+        ctx.spawn(func());
+        ctx.run();
+    }
+
     std::unique_ptr<MockProviders> mockProviders;
     std::unique_ptr<Manager> manager;
     std::string siblingServiceName;
@@ -1127,4 +1134,588 @@ TEST_F(ManagerTest, CodeUpdateCallback_SetsAndClearsInProgress)
 
     EXPECT_FALSE(manager->getCodeUpdateActivation().codeUpdateInProgress())
         << "codeUpdateInProgress should be false";
+}
+
+/**
+ * @brief Test: Passive BMC successfully fails over and becomes Active
+ */
+TEST_F(ManagerTest, StartFailover_SuccessfulFailoverToActive)
+{
+    TestScenarioConfig config{.bmcPosition = 1, .siblingRole = Role::Active};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+    auto& siblingReset = mockProviders->getMockSiblingReset();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    // The active BMC sibling has redundancy enabled and failovers allowed
+    ON_CALL(sibling, getRedundancyEnabled())
+        .WillByDefault(Return(std::optional<bool>(true)));
+    ON_CALL(sibling, getFailoversAllowed())
+        .WillByDefault(Return(std::optional<bool>(true)));
+
+    // The sibling role starts as Active and changes to Passive when
+    // the sibling is reset during the failover.
+    Role siblingRole = Role::Active;
+    ON_CALL(sibling, getRole()).WillByDefault([&siblingRole]() {
+        return std::optional<Role>(siblingRole);
+    });
+
+    // First the passive target starts, then the active
+    // on during the failover.
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-passive.target", passiveTargetTimeout))
+        .Times(1);
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-active.target", activeTargetTimeout))
+        .Times(1);
+
+    // Background sync disabled (called during passive startup and failover)
+    EXPECT_CALL(syncInterface, disableBackgroundSync()).Times(AtLeast(1));
+
+    // Failover imminent delay
+    EXPECT_CALL(services, doFailoverImminentDelay()).Times(1);
+
+    // The sibling is reset; its role then reports as Passive
+    EXPECT_CALL(siblingReset, toggleReset()).WillOnce([&siblingRole]() {
+        siblingRole = Role::Passive;
+        return test_helpers::makeCompletedTask();
+    });
+
+    // Hardware access is acquired
+    EXPECT_CALL(services, acquireFullHardwareAccess()).Times(1);
+
+    // The failover started error should be logged
+    EXPECT_CALL(services, logError(errors::error_msg::failoverStarted,
+                                   errors::Level::Informational, _))
+        .Times(1);
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    // Run to starting the passive role handler, then request the failover,
+    // then wait for the progress point saying it's complete.
+    spawnFunc(
+        [this]() -> sdbusplus::async::task<> {
+            co_await waitForProgressPoint(
+                ProgressPoint::passiveHandlerStartComplete, false);
+
+            FailoverOptions options;
+            co_await manager->method_call(Manager::start_failover_t{},
+                                          Requester::Host, options);
+
+            co_await waitForProgressPoint(ProgressPoint::failoverComplete);
+        },
+        ctx);
+
+    // This BMC now reports its active with redundancy enabled.
+    verifyRedundancyProps(manager->getRedundancyInterface(),
+                          activeRedundancyEnabledProps);
+
+    verifyPersistentData(Role::Active, "Failover", false);
+}
+
+/**
+ * @brief Test: Passive BMC with redundancy enabled tries to
+ *        failover but is blocked because failovers are not allowed.
+ */
+TEST_F(ManagerTest, FailoverBlocked_NotAllowed)
+{
+    TestScenarioConfig config{.bmcPosition = 1, .siblingRole = Role::Active};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+    auto& siblingReset = mockProviders->getMockSiblingReset();
+
+    // The active BMC sibling has redundancy enabled
+    // and failovers not allowed
+    ON_CALL(sibling, getRedundancyEnabled())
+        .WillByDefault(Return(std::optional<bool>(true)));
+    ON_CALL(sibling, getFailoversAllowed())
+        .WillByDefault(Return(std::optional<bool>(false)));
+
+    // Expect error log for blocked failover
+    EXPECT_CALL(services, logError(errors::error_msg::failoverBlocked,
+                                   errors::Level::Warning, _))
+        .Times(1);
+
+    // Failover should not proceed, so these should not be called
+    EXPECT_CALL(services, doFailoverImminentDelay()).Times(0);
+    EXPECT_CALL(services, acquireFullHardwareAccess()).Times(0);
+    EXPECT_CALL(siblingReset, toggleReset()).Times(0);
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    spawnFunc(
+        [this]() -> sdbusplus::async::task<> {
+            using namespace std::chrono_literals;
+            // Wait for startup to complete
+            co_await waitForProgressPoint(
+                ProgressPoint::passiveHandlerStartComplete, false);
+
+            // StartFailover should throw because failovers aren't allowed.
+            try
+            {
+                FailoverOptions options;
+                co_await manager->method_call(Manager::start_failover_t{},
+                                              Requester::Host, options);
+                ADD_FAILURE() << "StartFailover should not have have succeeded";
+            }
+            catch (const sdbusplus::xyz::openbmc_project::Common::Error::
+                       Unavailable&)
+            {}
+
+            ctx.request_stop();
+        },
+        ctx);
+
+    // Still passive
+    RedundancyProps expectedProps{
+        .role = Role::Passive,
+        .redEnabled = true,
+        .failoverInProgress = false,
+        .failoversAllowed = false,
+        .failoverImminent = false,
+        .reasonsForNoRedundancy = {},
+        .failoversNotAllowedReason = FailoversNotAllowedReason::None};
+
+    const auto& redInterface = manager->getRedundancyInterface();
+
+    verifyRedundancyProps(redInterface, expectedProps);
+
+    verifyPersistentData(expectedProps.role, "Sibling is already active",
+                         false);
+}
+
+/**
+ * @brief Test: Passive BMC with redundancy enabled tries to failover,
+ *        failovers are not allowed, but the forced failover option
+ *        overrides the block and the failover succeeds.
+ */
+TEST_F(ManagerTest, FailoversNotAllowed_ForcedSucceeds)
+{
+    TestScenarioConfig config{.bmcPosition = 1, .siblingRole = Role::Active};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+    auto& siblingReset = mockProviders->getMockSiblingReset();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    // The active BMC sibling has redundancy enabled
+    // and failovers not allowed
+    ON_CALL(sibling, getRedundancyEnabled())
+        .WillByDefault(Return(std::optional<bool>(true)));
+    ON_CALL(sibling, getFailoversAllowed())
+        .WillByDefault(Return(std::optional<bool>(false)));
+
+    // The sibling role starts as Active and changes to Passive when
+    // the sibling is reset during the failover.
+    Role siblingRole = Role::Active;
+    ON_CALL(sibling, getRole()).WillByDefault([&siblingRole]() {
+        return std::optional<Role>(siblingRole);
+    });
+
+    // First the passive target starts, then the active on during the failover.
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-passive.target", passiveTargetTimeout))
+        .Times(1);
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-active.target", activeTargetTimeout))
+        .Times(1);
+
+    EXPECT_CALL(syncInterface, disableBackgroundSync()).Times(AtLeast(1));
+    EXPECT_CALL(services, doFailoverImminentDelay()).Times(1);
+    EXPECT_CALL(services, acquireFullHardwareAccess()).Times(1);
+
+    // The failover started error should be logged
+    EXPECT_CALL(services, logError(errors::error_msg::failoverStarted,
+                                   errors::Level::Informational, _))
+        .Times(1);
+
+    // The sibling is reset; its role then reports as Passive after that
+    EXPECT_CALL(siblingReset, toggleReset()).WillOnce([&siblingRole]() {
+        siblingRole = Role::Passive;
+        return test_helpers::makeCompletedTask();
+    });
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    spawnFunc(
+        [this]() -> sdbusplus::async::task<> {
+            co_await waitForProgressPoint(
+                ProgressPoint::passiveHandlerStartComplete, false);
+
+            using Failover =
+                sdbusplus::common::xyz::openbmc_project::control::Failover;
+            FailoverOptions options;
+            options.emplace(
+                Failover::convertOptionsToString(Failover::Options::Force),
+                true);
+
+            co_await manager->method_call(Manager::start_failover_t{},
+                                          Requester::Host, options);
+
+            co_await waitForProgressPoint(ProgressPoint::failoverComplete);
+        },
+        ctx);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(),
+                          activeRedundancyEnabledProps);
+
+    verifyPersistentData(Role::Active, "Failover", false);
+}
+
+/**
+ * @brief Test: Active BMC successfully forwards a failover request to the
+ *        passive sibling.
+ */
+TEST_F(ManagerTest, StartFailoverOnActive)
+{
+    // This BMC is active with a passive sibling
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& sibling = mockProviders->getMockSibling();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    setupActiveBMCWithAliveSiblingExpects();
+    EXPECT_CALL(syncInterface, doFullSync()).Times(1);
+
+    // The failover request should be forwarded to the passive sibling
+    EXPECT_CALL(sibling, startFailover(Requester::Host, _))
+        .WillOnce([](auto /*requester*/, const auto& /*options*/) {
+            return test_helpers::makeCompletedTask();
+        });
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    // After the active start is complete, call startFailover.
+    spawnFunc(
+        [this]() -> sdbusplus::async::task<> {
+            co_await waitForProgressPoint(
+                ProgressPoint::activeHandlerStartComplete, false);
+
+            FailoverOptions options;
+            co_await manager->method_call(Manager::start_failover_t{},
+                                          Requester::Host, options);
+
+            // The active BMC now waits for a reset that won't come in tests.
+            ctx.request_stop();
+        },
+        ctx);
+
+    RedundancyProps expectedProps{
+        .role = Role::Active,
+        .redEnabled = true,
+        .failoverInProgress = false,
+        .failoversAllowed = true,
+        .failoverImminent = false,
+        .reasonsForNoRedundancy = {},
+        .failoversNotAllowedReason = FailoversNotAllowedReason::None};
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+}
+/**
+ * @brief Test: Active BMC forwards a failover request to the passive sibling
+ *        with a UseRedundancyInput option, and verifies the option is
+ *        passed through unchanged to the sibling.
+ */
+TEST_F(ManagerTest, StartFailoverOnActive_WithUseRedundancyInput)
+{
+    // This BMC is active with a passive sibling
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& sibling = mockProviders->getMockSibling();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    setupActiveBMCWithAliveSiblingExpects();
+    EXPECT_CALL(syncInterface, doFullSync()).Times(1);
+
+    using Failover = sdbusplus::common::xyz::openbmc_project::control::Failover;
+    using Redundancy =
+        sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy;
+
+    const std::string expectedKey =
+        Failover::convertOptionsToString(Failover::Options::UseRedundancyInput);
+    const std::string expectedValue =
+        Redundancy::convertRedundancyInputToString(
+            Redundancy::RedundancyInput::PassiveBMCHardwareProblem);
+
+    // The failover request should be forwarded to the passive sibling with
+    // the UseRedundancyInput option intact.
+    EXPECT_CALL(sibling,
+                startFailover(Requester::Host,
+                              Contains(Pair(expectedKey,
+                                            FailoverOptions::mapped_type{
+                                                expectedValue}))))
+        .WillOnce([](auto /*requester*/, const auto& /*opts*/) {
+            return test_helpers::makeCompletedTask();
+        });
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    spawnFunc(
+        [this, &expectedKey, &expectedValue]() -> sdbusplus::async::task<> {
+            co_await waitForProgressPoint(
+                ProgressPoint::activeHandlerStartComplete, false);
+
+            FailoverOptions options;
+            options.emplace(expectedKey, expectedValue);
+
+            co_await manager->method_call(Manager::start_failover_t{},
+                                          Requester::Host, options);
+
+            // The active BMC now waits for a reset that won't come in tests.
+            ctx.request_stop();
+        },
+        ctx);
+}
+
+/**
+ * @brief Test: Active BMC blocks a failover request because the system
+ *        is still booting and failovers are not allowed.
+ */
+TEST_F(ManagerTest, StartFailover_ActiveBlocked_FailoversNotAllowed)
+{
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    // System is booting which will turn off failoversAllowed
+    ON_CALL(services, getSystemState())
+        .WillByDefault(Return(SystemState::booting));
+
+    setupActiveBMCWithAliveSiblingExpects();
+    EXPECT_CALL(syncInterface, doFullSync()).Times(1);
+
+    // Failover should be blocked so shouldn't call startFailover
+    EXPECT_CALL(sibling, startFailover(_, _)).Times(0);
+
+    EXPECT_CALL(services, logError(errors::error_msg::failoverBlocked,
+                                   errors::Level::Warning, _))
+        .Times(1);
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    spawnFunc(
+        [this]() -> sdbusplus::async::task<> {
+            co_await waitForProgressPoint(
+                ProgressPoint::activeHandlerStartComplete, false);
+
+            // The call should throw.
+            try
+            {
+                FailoverOptions options;
+                co_await manager->method_call(Manager::start_failover_t{},
+                                              Requester::Host, options);
+                ADD_FAILURE() << "StartFailover should not have succeeded";
+            }
+            catch (const sdbusplus::xyz::openbmc_project::Common::Error::
+                       Unavailable&)
+            {}
+
+            ctx.request_stop();
+        },
+        ctx);
+
+    RedundancyProps expectedProps{
+        .role = Role::Active,
+        .redEnabled = true,
+        .failoverInProgress = false,
+        .failoversAllowed = false,
+        .failoverImminent = false,
+        .reasonsForNoRedundancy = {},
+        .failoversNotAllowedReason =
+            FailoversNotAllowedReason::WrongSystemState};
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+}
+
+/**
+ * @brief Test: After a failover, the new passive (formerly active) BMC comes
+ *              back in Quiesced state so redundancy is never enabled.
+ */
+TEST_F(ManagerTest, StartFailover_SiblingQuiesced_RedundancyNeverEnabled)
+{
+    TestScenarioConfig config{.bmcPosition = 1, .siblingRole = Role::Active};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+    auto& siblingReset = mockProviders->getMockSiblingReset();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    // The active BMC sibling has redundancy enabled and failovers allowed
+    ON_CALL(sibling, getRedundancyEnabled())
+        .WillByDefault(Return(std::optional<bool>(true)));
+    ON_CALL(sibling, getFailoversAllowed())
+        .WillByDefault(Return(std::optional<bool>(true)));
+
+    // The sibling role starts as Active
+    Role siblingRole = Role::Active;
+    ON_CALL(sibling, getRole()).WillByDefault([&siblingRole]() {
+        return std::optional<Role>(siblingRole);
+    });
+
+    // After the reset the sibling returns Quiesced instead of Ready
+    ON_CALL(sibling, getBMCState())
+        .WillByDefault(Return(std::make_optional(BMCState::Quiesced)));
+
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-passive.target", passiveTargetTimeout))
+        .Times(1);
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-active.target", activeTargetTimeout))
+        .Times(1);
+
+    EXPECT_CALL(syncInterface, disableBackgroundSync()).Times(AtLeast(1));
+    EXPECT_CALL(services, doFailoverImminentDelay()).Times(1);
+
+    EXPECT_CALL(siblingReset, toggleReset()).WillOnce([&siblingRole]() {
+        siblingRole = Role::Passive;
+        return test_helpers::makeCompletedTask();
+    });
+
+    EXPECT_CALL(services, acquireFullHardwareAccess()).Times(1);
+
+    EXPECT_CALL(services, logError(errors::error_msg::failoverStarted,
+                                   errors::Level::Informational, _))
+        .Times(1);
+
+    // Redundancy disabled since sibling the new passive is Quiesced
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    spawnFunc(
+        [this]() -> sdbusplus::async::task<> {
+            co_await waitForProgressPoint(
+                ProgressPoint::passiveHandlerStartComplete, false);
+
+            FailoverOptions options;
+            co_await manager->method_call(Manager::start_failover_t{},
+                                          Requester::Host, options);
+
+            co_await waitForProgressPoint(ProgressPoint::failoverComplete);
+        },
+        ctx);
+
+    // Redundancy was never enabled
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::SiblingNotAtReady});
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(Role::Active, "Failover", false);
+}
+
+/**
+ * @brief Test: Passive BMC starts a failover with UseRedundancyInput set to
+ *        PassiveBMCHardwareProblem.  After becoming active the input must be
+ *        persisted in the data file, and redundancy must be disabled with the
+ *        SystemHWConfigIssue reason.
+ */
+TEST_F(ManagerTest, StartFailover_WithUseRedundancyInput_DisablesRedundancy)
+{
+    TestScenarioConfig config{.bmcPosition = 1, .siblingRole = Role::Active};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+    auto& siblingReset = mockProviders->getMockSiblingReset();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    ON_CALL(sibling, getRedundancyEnabled())
+        .WillByDefault(Return(std::optional<bool>(true)));
+    ON_CALL(sibling, getFailoversAllowed())
+        .WillByDefault(Return(std::optional<bool>(true)));
+
+    ON_CALL(sibling, getBMCState())
+        .WillByDefault(Return(std::make_optional(BMCState::Ready)));
+
+    // The sibling role starts as Active and changes to Passive on reset
+    Role siblingRole = Role::Active;
+    ON_CALL(sibling, getRole()).WillByDefault([&siblingRole]() {
+        return std::optional<Role>(siblingRole);
+    });
+
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-passive.target", passiveTargetTimeout))
+        .Times(1);
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-active.target", activeTargetTimeout))
+        .Times(1);
+
+    EXPECT_CALL(syncInterface, disableBackgroundSync()).Times(AtLeast(1));
+    EXPECT_CALL(services, doFailoverImminentDelay()).Times(1);
+
+    EXPECT_CALL(siblingReset, toggleReset()).WillOnce([&siblingRole]() {
+        siblingRole = Role::Passive;
+        return test_helpers::makeCompletedTask();
+    });
+
+    EXPECT_CALL(services, acquireFullHardwareAccess()).Times(1);
+
+    EXPECT_CALL(services, logError(errors::error_msg::failoverStarted,
+                                   errors::Level::Informational, _))
+        .Times(1);
+
+    // Redundancy must be disabled after the failover due to the HW issue input
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    using Failover = sdbusplus::common::xyz::openbmc_project::control::Failover;
+
+    const std::string redInputValue =
+        Redundancy::convertRedundancyInputToString(
+            Redundancy::RedundancyInput::PassiveBMCHardwareProblem);
+
+    spawnFunc(
+        [this, &redInputValue]() -> sdbusplus::async::task<> {
+            co_await waitForProgressPoint(
+                ProgressPoint::passiveHandlerStartComplete, false);
+
+            // Add in the UseRedundancyInput = PassiveBMCHardwareProblem option
+            FailoverOptions options;
+            options.emplace(Failover::convertOptionsToString(
+                                Failover::Options::UseRedundancyInput),
+                            redInputValue);
+
+            co_await manager->method_call(Manager::start_failover_t{},
+                                          Requester::Host, options);
+
+            co_await waitForProgressPoint(ProgressPoint::failoverComplete);
+        },
+        ctx);
+
+    // Verify the redundancy input was persisted to the data file
+    const auto savedInputs = readExternalRedundancyInputs();
+    ASSERT_TRUE(savedInputs.contains(
+        Redundancy::RedundancyInput::PassiveBMCHardwareProblem))
+        << "PassiveBMCHardwareProblem should be persisted after failover";
+
+    // Verify redundancy is disabled with the SystemHWConfigIssue reason
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::SystemHWConfigIssue});
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(Role::Active, "Failover", false);
 }
