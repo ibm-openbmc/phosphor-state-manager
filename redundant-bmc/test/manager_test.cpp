@@ -250,6 +250,33 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
     }
 
     /**
+     * @brief Poll until redundancy_enabled() equals the expected value,
+     *        or fail after a 1-second timeout.
+     *
+     * @param[in] expected - The value to wait for
+     */
+    // NOLINTBEGIN(clang-analyzer-core.uninitialized.Branch)
+    sdbusplus::async::task<> waitForRedundancyEnabledValue(bool expected)
+    {
+        using namespace std::chrono_literals;
+        auto deadline = std::chrono::steady_clock::now() + 1s;
+
+        while (manager->getRedundancyInterface().redundancy_enabled() !=
+               expected)
+        {
+            if (std::chrono::steady_clock::now() >= deadline)
+            {
+                ADD_FAILURE()
+                    << "Timed out waiting for redundancy_enabled=" << expected;
+                co_return;
+            }
+
+            co_await sdbusplus::async::sleep_for(ctx, 10ms);
+        }
+    }
+    // NOLINTEND(clang-analyzer-core.uninitialized.Branch)
+
+    /**
      * @brief Verify 3 values in the persistent data.
      */
     static void verifyPersistentData(Role expectedRole,
@@ -1718,4 +1745,193 @@ TEST_F(ManagerTest, StartFailover_WithUseRedundancyInput_DisablesRedundancy)
 
     verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
     verifyPersistentData(Role::Active, "Failover", false);
+}
+
+/**
+ * @brief Test: On startup with system off and host was previously on (AC loss),
+ *              external redundancy inputs are cleared.
+ */
+TEST_F(ManagerTest, InitSystemState_ClearsExternalInputs_OnACLoss)
+{
+    // Simulate that the host was on during the last run (AC loss occurred)
+    data::write(data::key::hostOff, false);
+
+    // Pre-populate an external redundancy input
+    writeExternalRedundancyInput(RedundancyInput::PassiveBMCHardwareProblem,
+                                 true);
+    ASSERT_FALSE(readExternalRedundancyInputs().empty());
+
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+
+    // System is off on startup
+    ON_CALL(services, getSystemState()).WillByDefault(Return(SystemState::off));
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    // Inputs should be cleared because it was an AC loss (host was on before)
+    EXPECT_TRUE(readExternalRedundancyInputs().empty());
+}
+
+/**
+ * @brief Test: On startup with system off but host was already off (normal
+ *              reboot, not AC loss), external redundancy inputs are not
+ *              cleared.
+ */
+TEST_F(ManagerTest, InitSystemState_DoesNotClearExternalInputs_WhenHostWasOff)
+{
+    // Simulate that the host is known to be off.
+    data::write(data::key::hostOff, true);
+
+    // Pre-populate an external redundancy input
+    writeExternalRedundancyInput(RedundancyInput::PassiveBMCHardwareProblem,
+                                 true);
+    ASSERT_FALSE(readExternalRedundancyInputs().empty());
+
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+
+    // System is off on startup
+    ON_CALL(services, getSystemState()).WillByDefault(Return(SystemState::off));
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    // Redundancy inputs are not cleared since not an AC loss.
+    EXPECT_FALSE(readExternalRedundancyInputs().empty());
+}
+
+/**
+ * @brief Test: When the system state transitions to off at runtime, external
+ *              redundancy inputs are cleared and redundancy re-enables.
+ */
+TEST_F(ManagerTest, SystemStateChange_ClearsExternalInputs_WhenOff)
+{
+    // Pre-populate the input before startup so redundancy starts disabled
+    writeExternalRedundancyInput(RedundancyInput::PassiveBMCHardwareProblem,
+                                 true);
+
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Startup: redundancy is disabled due to the ext redundancy input so no
+    // sync. After the state-change clears the inputs,
+    // determineRedundancyAndSync() is spawned and redundancy re-enables, so
+    // doFullSync is called once then.
+    EXPECT_CALL(syncInterface, doFullSync()).Times(1);
+    EXPECT_CALL(syncInterface, disableBackgroundSync()).Times(1);
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    spawnFunc(
+        [this, &services]() -> sdbusplus::async::task<> {
+            using namespace std::chrono_literals;
+
+            co_await waitForProgressPoint(
+                ProgressPoint::activeHandlerStartComplete, false);
+
+            auto disabledProps = activeRedundancyDisabledProps(
+                {Redundancy::ReasonForNoRedundancy::SystemHWConfigIssue});
+
+            // Redundancy is disabled at startup because of the HW input
+            verifyRedundancyProps(manager->getRedundancyInterface(),
+                                  disabledProps);
+
+            // Simulate the system transitioning to off; this spawns
+            // determineRedundancyAndSync() which will re-evaluate redundancy
+            // now that the inputs have been cleared.
+            services.runSystemStateCallback(Role::Active, SystemState::off);
+
+            // The inputs should have been cleared synchronously
+            EXPECT_TRUE(readExternalRedundancyInputs().empty());
+
+            // Wait for the spawned determineRedundancyAndSync() to finish
+            co_await waitForRedundancyEnabledValue(true);
+
+            // Redundancy is now enabled after inputs were cleared
+            verifyRedundancyProps(manager->getRedundancyInterface(),
+                                  activeRedundancyEnabledProps);
+            ctx.request_stop();
+        },
+        ctx);
+}
+
+/**
+ * @brief Test: SetRedundancyInput disables redundancy when set to true, then
+ *              re-enables it when set back to false.
+ */
+TEST_F(ManagerTest, SetRedundancyInput_DisablesThenReEnablesRedundancy)
+{
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // doFullSync called once at startup and once when the input is cleared
+    EXPECT_CALL(syncInterface, doFullSync()).Times(2);
+
+    // logError called once when the input is set (redundancy goes off)
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    spawnFunc(
+        [this]() -> sdbusplus::async::task<> {
+            using namespace std::chrono_literals;
+
+            co_await waitForProgressPoint(
+                ProgressPoint::activeHandlerStartComplete, false);
+
+            // Redundancy starts enabled
+            verifyRedundancyProps(manager->getRedundancyInterface(),
+                                  activeRedundancyEnabledProps);
+
+            // Set the input — this spawns determineRedundancyAndSync()
+            manager->setExternalRedundancyInput(
+                RedundancyInput::PassiveBMCHostProcessorProblem, true);
+
+            // Wait for redundancy to be disabled
+            co_await waitForRedundancyEnabledValue(false);
+
+            auto disabledProps = activeRedundancyDisabledProps(
+                {Redundancy::ReasonForNoRedundancy::SystemHWConfigIssue});
+
+            verifyRedundancyProps(manager->getRedundancyInterface(),
+                                  disabledProps);
+
+            // Clear the input — this spawns determineRedundancyAndSync() again
+            manager->setExternalRedundancyInput(
+                RedundancyInput::PassiveBMCHostProcessorProblem, false);
+
+            // Wait for redundancy to re-enable
+            co_await waitForRedundancyEnabledValue(true);
+
+            verifyRedundancyProps(manager->getRedundancyInterface(),
+                                  activeRedundancyEnabledProps);
+
+            ctx.request_stop();
+        },
+        ctx);
 }
