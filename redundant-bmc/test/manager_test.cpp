@@ -2318,3 +2318,97 @@ TEST_F(ManagerTest, StartFailover_PassiveBMC_HostFailoversAllowed)
                           activeRedundancyEnabledProps);
     verifyPersistentData(Role::Active, "Failover", false);
 }
+
+/**
+ * @brief Test: New active BMC reboots in middle of failover
+ *
+ * An active BMC that is rebooted with failoverInProgress persisted
+ * should be active again.
+ */
+TEST_F(ManagerTest, NewActive_RebootDuringFailover)
+{
+    // Start with failoverInProgress = true
+    data::write(data::key::failoverInProgress, true);
+
+    // The new passive would be coming back from its reset, waiting
+    // with for the new active to come back with a role of Unknown to start.
+    TestScenarioConfig config{.bmcPosition = 1, .siblingRole = Role::Unknown};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    // The sibling role starts Unknown and becomes Passive once
+    // waitForSiblingRole() completes, so that redundancy can be enabled.
+    Role siblingRole = Role::Unknown;
+    ON_CALL(sibling, getRole()).WillByDefault([&siblingRole]() {
+        return std::optional<Role>(siblingRole);
+    });
+    ON_CALL(sibling, waitForSiblingRole()).WillByDefault([&siblingRole]() {
+        siblingRole = Role::Passive;
+        return makeCompletedTask();
+    });
+
+    EXPECT_CALL(services, acquireFullHardwareAccess()).Times(1);
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-active.target", activeTargetTimeout))
+        .Times(1);
+
+    // waitForSiblingRole is called twice:
+    // 1. From active_role_handler start() (sibling alive, not yet passive)
+    // 2. From postStartupClearFOInProgress
+    EXPECT_CALL(sibling, waitForSiblingRole()).Times(2);
+    EXPECT_CALL(sibling, waitForBMCSteadyState()).Times(1);
+    EXPECT_CALL(services, waitForPeerConnection(_)).Times(1);
+
+    EXPECT_CALL(syncInterface, doFullSync()).Times(1);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(),
+                          activeRedundancyEnabledProps);
+    verifyPersistentData(Role::Active, "Newly active from failover", false);
+}
+
+/**
+ * @brief Test: New passive BMC when new active rebooted during failover
+ *
+ * When the new passive is coming out of the failover reset and the
+ * new active has 'failover in progress' set, it should choose
+ * passive because of reason RoleReason::siblingFailoverInProgress.
+ */
+TEST_F(ManagerTest, NewPassive_SiblingFailoverInProgress)
+{
+    // Sibling role is Unknown still but it has failover in progress.
+    TestScenarioConfig config{.bmcPosition = 0,
+                              .siblingRole = Role::Unknown,
+                              .siblingFailoverInProgress = true};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-passive.target", passiveTargetTimeout))
+        .Times(1);
+
+    // Wasn't passive before, and doesn't itself have failover
+    // in progress set, so shouldn't call this.
+    EXPECT_CALL(sibling, waitForSiblingRole()).Times(0);
+
+    RedundancyProps expectedProps{
+        .role = Role::Passive,
+        .redEnabled = false,
+        .failoverInProgress = false, // Now turned off
+        .failoversAllowed = false,
+        .failoverImminent = false,
+        .reasonsForNoRedundancy = {},
+        .failoversNotAllowedReason = FailoversNotAllowedReason::None};
+
+    createManagerAndRun(ProgressPoint::passiveHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(expectedProps.role, "Sibling was driving a failover",
+                         false);
+}
