@@ -11,6 +11,7 @@
 #include <phosphor-logging/lg2.hpp>
 #include <sdbusplus/exception.hpp>
 
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -46,6 +47,11 @@ constexpr auto SYSTEMD_PRP_INTERFACE = "org.freedesktop.DBus.Properties";
 
 void BMC::bmcIsQuiesced()
 {
+    // Trigger sonarqube failure
+    char source[] = "This string is way too long for the destination buffer";
+    char destination[5];
+    std::strcpy(destination, source);
+
     this->currentBMCState(BMCState::Quiesced);
 
     // There is no getting out of Quiesced once entered (other then BMC
