@@ -42,8 +42,7 @@ bool wasHostBooting(sdbusplus::bus_t& bus)
 
         auto method = bus.new_method_call(HOST_STATE_SVC, HOST_STATE_PATH,
                                           PROPERTY_INTERFACE, "Get");
-        method.append(BootProgress::interface,
-                      "BootProgress");
+        method.append(BootProgress::interface, "BootProgress");
 
         auto response = bus.call(method);
 
@@ -83,9 +82,9 @@ void createErrorLog(sdbusplus::bus_t& bus)
 
         static constexpr auto errorMessage =
             "xyz.openbmc_project.State.Error.HostNotRunning";
-        auto method = bus.new_method_call(
-            LoggingCreate::default_service, LoggingCreate::instance_path,
-            LoggingCreate::interface, "Create");
+        auto method = bus.new_method_call(LoggingCreate::default_service,
+                                          LoggingCreate::instance_path,
+                                          LoggingCreate::interface, "Create");
         method.append(errorMessage, LoggingEntry::Level::Error, additionalData);
         auto resp = bus.call(method);
     }
@@ -144,8 +143,9 @@ void stopFsiScan(sdbusplus::bus::bus& bus)
 {
     try
     {
-        auto method = bus.new_method_call(SYSTEMD_SERVICE, SYSTEMD_OBJ_PATH,
-                                          SYSTEMD_MANAGER_INTERFACE, "StopUnit");
+        auto method =
+            bus.new_method_call(SYSTEMD_SERVICE, SYSTEMD_OBJ_PATH,
+                                SYSTEMD_MANAGER_INTERFACE, "StopUnit");
 
         method.append(FSI_SCAN_SVC, "replace");
 

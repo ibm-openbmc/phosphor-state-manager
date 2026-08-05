@@ -80,10 +80,7 @@ test(
     executable(
         'test_host_state_manager',
         'test_host_state_manager.cpp',
-        dependencies: [
-            gtest,
-            phosphorlogging,
-        ],
+        dependencies: [gtest, phosphorlogging],
         implicit_include_directories: true,
         include_directories: '../',
     ),
@@ -94,10 +91,7 @@ test(
     executable(
         'test_bmc_state_manager',
         'test_bmc_state_manager.cpp',
-        dependencies: [
-            gtest,
-            phosphorlogging,
-        ],
+        dependencies: [gtest, phosphorlogging],
         implicit_include_directories: true,
         include_directories: '../',
     ),

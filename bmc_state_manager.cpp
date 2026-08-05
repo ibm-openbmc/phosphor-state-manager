@@ -260,8 +260,8 @@ BMC::BMCState BMC::currentBMCState(BMCState value)
     info("Setting the BMCState field to {CURRENT_BMC_STATE}",
          "CURRENT_BMC_STATE", value);
 
-    // Event logging removed - event.hpp no longer exists in newer phosphor-dbus-interfaces
-    // if (server::BMC::currentBMCState() != value)
+    // Event logging removed - event.hpp no longer exists in newer
+    // phosphor-dbus-interfaces if (server::BMC::currentBMCState() != value)
     // {
     //     lg2::commit(event::BMC::StateChanged("STATE", value));
     // }
@@ -274,8 +274,8 @@ BMC::RebootCause BMC::lastRebootCause(RebootCause value)
     info("Setting the RebootCause field to {LAST_REBOOT_CAUSE}",
          "LAST_REBOOT_CAUSE", value);
 
-    // Event logging removed - event.hpp no longer exists in newer phosphor-dbus-interfaces
-    // if (server::BMC::lastRebootCause() != value)
+    // Event logging removed - event.hpp no longer exists in newer
+    // phosphor-dbus-interfaces if (server::BMC::lastRebootCause() != value)
     // {
     //     lg2::commit(event::BMC::RebootCause("CAUSE", value, "BOOT_DEVICE",
     //                                         getBootDevice()));

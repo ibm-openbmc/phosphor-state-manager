@@ -97,8 +97,7 @@ void ScheduledHostTransition::hostTransition()
          "REQUESTED_TRANSITION", reqTrans);
 
     utils::setProperty(bus, hostPath, HostState::interface,
-                       "RequestedHostTransition",
-                       reqTrans);
+                       "RequestedHostTransition", reqTrans);
 
     // Set RestartCause to indicate this transition is occurring due to a
     // scheduled host transition as long as it's not an off request
@@ -107,8 +106,8 @@ void ScheduledHostTransition::hostTransition()
         info("Set RestartCause to scheduled power on reason");
         auto resCause =
             convertForMessage(HostState::RestartCause::ScheduledPowerOn);
-        utils::setProperty(bus, hostPath, HostState::interface,
-                           "RestartCause", resCause);
+        utils::setProperty(bus, hostPath, HostState::interface, "RestartCause",
+                           resCause);
     }
 }
 

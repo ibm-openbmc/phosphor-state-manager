@@ -41,9 +41,9 @@ constexpr auto CHASSIS_STATE_SVC = "xyz.openbmc_project.State.Chassis";
 bool checkFirmwareConditionRunning(sdbusplus::bus_t& bus)
 {
     // Find all implementations of host firmware condition interface
-    auto mapper = bus.new_method_call(
-        ObjectMapper::default_service, ObjectMapper::instance_path,
-        ObjectMapper::interface, "GetSubTree");
+    auto mapper = bus.new_method_call(ObjectMapper::default_service,
+                                      ObjectMapper::instance_path,
+                                      ObjectMapper::interface, "GetSubTree");
 
     mapper.append("/", 0, std::vector<std::string>({HostFirmware::interface}));
 
@@ -88,9 +88,8 @@ bool checkFirmwareConditionRunning(sdbusplus::bus_t& bus)
             {
                 auto method = bus.new_method_call(service.c_str(), path.c_str(),
                                                   PROPERTY_INTERFACE, "Get");
-                method.append(
-                    HostFirmware::interface,
-                    "CurrentFirmwareCondition");
+                method.append(HostFirmware::interface,
+                              "CurrentFirmwareCondition");
 
                 auto response = bus.call(method);
                 std::variant<HostFirmware::FirmwareCondition> currentFwCondV;
@@ -133,8 +132,7 @@ bool isChassiPowerOn(sdbusplus::bus_t& bus, size_t id)
     {
         auto method = bus.new_method_call(svcname.c_str(), objpath.c_str(),
                                           PROPERTY_INTERFACE, "Get");
-        method.append(Chassis::interface,
-                      "CurrentPowerState");
+        method.append(Chassis::interface, "CurrentPowerState");
 
         auto response = bus.call(method);
         std::variant<Chassis::PowerState> currentPowerStateV;

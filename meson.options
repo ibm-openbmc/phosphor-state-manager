@@ -211,7 +211,7 @@ option(
     description: 'Maximum number of chassis instances to aggregate in multi-chassis SMP mode (1-N)',
 )
 
-option (
+option(
     'rbmc-state-management',
     type: 'feature',
     value: 'enabled',
