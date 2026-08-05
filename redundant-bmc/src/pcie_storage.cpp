@@ -83,10 +83,7 @@ void PCIeStorageImpl::writeState(const RedundancyState& state)
     std::lock_guard<std::mutex> lock(stateMutex);
     validateMMIO();
 
-    RedundancyState modifiedState = state;
-    modifiedState.version = redundancyDataVersion;
-
-    std::memcpy(mmioBase, &modifiedState, sizeof(RedundancyState));
+    std::memcpy(mmioBase, &state, sizeof(RedundancyState));
     __sync_synchronize();
 }
 

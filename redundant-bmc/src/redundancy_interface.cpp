@@ -60,10 +60,11 @@ RedundancyInterface::RedundancyInterface(sdbusplus::async::context& ctx,
     {
         try
         {
-            pcieStorage->updateFailoverInProgress(failover_in_progress_);
-            pcieStorage->updateRedundancyEnabled(redundancy_enabled_);
-            pcieStorage->updateFailoversAllowed(failovers_allowed_);
-            pcieStorage->updateRole(static_cast<uint8_t>(role_));
+            pcieStorage->writeState(
+                {pcie_data::redundancyDataVersion, static_cast<uint8_t>(role_),
+                 static_cast<uint8_t>(redundancy_enabled_),
+                 static_cast<uint8_t>(failover_in_progress_),
+                 static_cast<uint8_t>(failovers_allowed_)});
         }
         catch (const std::exception& e)
         {

@@ -123,15 +123,21 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
     {
         auto& storage = mockProviders->getMockPCIeStorage();
 
-        // Initialized to Unknown first
-        EXPECT_CALL(storage, updateRole(static_cast<uint8_t>(Role::Unknown)))
-            .Times(1);
+        // Constructor writes full initial state (role=Unknown) via writeState
+        EXPECT_CALL(storage, writeState(_)).Times(1);
 
+        // Role always changes from Unknown to the final role
         EXPECT_CALL(storage, updateRole(static_cast<uint8_t>(vals.role)))
             .Times(1);
-        EXPECT_CALL(storage, updateRedundancyEnabled(vals.redEnabled));
-        EXPECT_CALL(storage, updateFailoverInProgress(vals.failoverInProgress));
-        EXPECT_CALL(storage, updateFailoversAllowed(vals.failoversAllowed));
+
+        // Boolean properties only fire if the value differs from the default
+        // (false), so allow zero or one call each
+        EXPECT_CALL(storage, updateRedundancyEnabled(vals.redEnabled))
+            .Times(vals.redEnabled ? 1 : 0);
+        EXPECT_CALL(storage, updateFailoverInProgress(vals.failoverInProgress))
+            .Times(vals.failoverInProgress ? 1 : 0);
+        EXPECT_CALL(storage, updateFailoversAllowed(vals.failoversAllowed))
+            .Times(vals.failoversAllowed ? 1 : 0);
     }
 
     /**
