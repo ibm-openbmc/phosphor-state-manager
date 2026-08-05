@@ -22,30 +22,30 @@ CodeUpdateActivation::CodeUpdateActivation(sdbusplus::async::context& ctx) :
 {
     try
     {
-        activation_ =
+        properties.activation =
             data::read<bool>(data::key::codeUpdateInProgress).value_or(false)
                 ? Activations::Activating
                 : Activations::Active;
     }
     catch (const std::exception& e)
     {
-        activation_ = Activations::Active;
+        properties.activation = Activations::Active;
         lg2::error("Failed reading code-update-in-progress state: {ERROR}",
                    "ERROR", e);
     }
 
-    if (activation_ == Activations::Activating)
+    if (properties.activation == Activations::Activating)
     {
         lg2::info("Code update in progress on startup");
     }
 
-    requested_activation_ = RequestedActivations::None;
+    properties.requested_activation = RequestedActivations::None;
     emit_added();
 }
 
 bool CodeUpdateActivation::codeUpdateInProgress() const
 {
-    return activation_ == Activations::Activating;
+    return properties.activation == Activations::Activating;
 }
 
 void CodeUpdateActivation::setCodeUpdateInProgress()
@@ -61,20 +61,20 @@ void CodeUpdateActivation::clearCodeUpdateInProgress()
 bool CodeUpdateActivation::set_property([[maybe_unused]] activation_t type,
                                         Activations activation)
 {
-    if (activation == activation_)
+    if (activation == properties.activation)
     {
         return false;
     }
 
     lg2::info("Activation property changing to {VALUE}", "VALUE", activation);
 
-    activation_ = activation;
+    properties.activation = activation;
 
     // This needs to be saved through a reboot, so persist it.
     try
     {
         data::write(data::key::codeUpdateInProgress,
-                    activation_ == Activations::Activating);
+                    properties.activation == Activations::Activating);
     }
     catch (const std::exception& e)
     {

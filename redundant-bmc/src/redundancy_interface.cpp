@@ -21,7 +21,7 @@ RedundancyInterface::RedundancyInterface(sdbusplus::async::context& ctx,
 {
     try
     {
-        disable_redundancy_override_ =
+        properties.disable_redundancy_override =
             data::read<bool>(data::key::disableRed).value_or(false);
     }
     catch (const std::exception& e)
@@ -32,9 +32,9 @@ RedundancyInterface::RedundancyInterface(sdbusplus::async::context& ctx,
 
     try
     {
-        failover_in_progress_ =
+        properties.failover_in_progress =
             data::read<bool>(data::key::failoverInProgress).value_or(false);
-        if (failover_in_progress_)
+        if (properties.failover_in_progress)
         {
             lg2::info("Failover was previously in progress");
         }
@@ -61,10 +61,11 @@ RedundancyInterface::RedundancyInterface(sdbusplus::async::context& ctx,
         try
         {
             pcieStorage->writeState(
-                {pcie_data::redundancyDataVersion, static_cast<uint8_t>(role_),
-                 static_cast<uint8_t>(redundancy_enabled_),
-                 static_cast<uint8_t>(failover_in_progress_),
-                 static_cast<uint8_t>(failovers_allowed_)});
+                {pcie_data::redundancyDataVersion,
+                 static_cast<uint8_t>(properties.role),
+                 static_cast<uint8_t>(properties.redundancy_enabled),
+                 static_cast<uint8_t>(properties.failover_in_progress),
+                 static_cast<uint8_t>(properties.failovers_allowed)});
         }
         catch (const std::exception& e)
         {
@@ -83,18 +84,18 @@ RedundancyInterface::RedundancyInterface(sdbusplus::async::context& ctx,
 
 bool RedundancyInterface::set_property([[maybe_unused]] role_t type, Role role)
 {
-    if (role == role_)
+    if (role == properties.role)
     {
         return false;
     }
 
-    role_ = role;
+    properties.role = role;
 
     if (pcieStorage != nullptr)
     {
         try
         {
-            pcieStorage->updateRole(static_cast<uint8_t>(role_));
+            pcieStorage->updateRole(static_cast<uint8_t>(properties.role));
         }
         catch (const std::exception& e)
         {
@@ -128,7 +129,7 @@ bool RedundancyInterface::set_property(
         }
     }
 
-    redundancy_enabled_ = enabled;
+    properties.redundancy_enabled = enabled;
     return true;
 }
 
@@ -156,7 +157,7 @@ bool RedundancyInterface::set_property(
             "DISABLE", disable, "ERROR", e);
     }
 
-    disable_redundancy_override_ = disable;
+    properties.disable_redundancy_override = disable;
     return true;
 }
 
@@ -193,7 +194,7 @@ bool RedundancyInterface::set_property(
         }
     }
 
-    failover_in_progress_ = inProgress;
+    properties.failover_in_progress = inProgress;
     return true;
 }
 
@@ -201,7 +202,7 @@ bool RedundancyInterface::set_property(
     [[maybe_unused]] reasons_for_no_redundancy_t type,
     const std::vector<ReasonForNoRedundancy>& reasons)
 {
-    if (reasons == reasons_for_no_redundancy_)
+    if (reasons == properties.reasons_for_no_redundancy)
     {
         return false;
     }
@@ -225,7 +226,7 @@ bool RedundancyInterface::set_property(
                    e);
     }
 
-    reasons_for_no_redundancy_ = reasons;
+    properties.reasons_for_no_redundancy = reasons;
     return true;
 }
 
@@ -259,7 +260,7 @@ bool RedundancyInterface::set_property(
         }
     }
 
-    failovers_allowed_ = allowed;
+    properties.failovers_allowed = allowed;
     return true;
 }
 
