@@ -92,8 +92,9 @@ bool SMPChassisWaiter::isChassisPresent(size_t chassisId)
         auto inventoryBusName =
             utils::getService(bus, inventoryPath, InventoryItem::interface);
 
-        auto method = bus.new_method_call(
-            inventoryBusName.c_str(), inventoryPath.str.c_str(), PROPERTY_INTERFACE, "Get");
+        auto method = bus.new_method_call(inventoryBusName.c_str(),
+                                          inventoryPath.str.c_str(),
+                                          PROPERTY_INTERFACE, "Get");
         method.append(InventoryItem::interface,
                       InventoryItem::property_names::present);
 
