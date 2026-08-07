@@ -78,6 +78,13 @@ class PCIeStorage
     virtual RedundancyState readState() = 0;
 
     /**
+     * @brief Write the complete redundancy state to PCIe storage
+     *
+     * @param[in] state - The full redundancy state to write
+     */
+    virtual void writeState(const RedundancyState& state) = 0;
+
+    /**
      * @brief Update only the role field in PCIe storage
      *
      * @param[in] role - The role value to set
@@ -129,14 +136,12 @@ class PCIeStorageImpl : public PCIeStorage
     ~PCIeStorageImpl() override;
 
     RedundancyState readState() override;
+    void writeState(const RedundancyState& state) override;
 
     void updateRole(uint8_t role) override;
     void updateRedundancyEnabled(bool enabled) override;
     void updateFailoverInProgress(bool inProgress) override;
     void updateFailoversAllowed(bool allowed) override;
-
-  private:
-    void writeState(const RedundancyState& state);
 };
 
 } // namespace pcie_data
