@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <format>
+#include <fstream>
 #include <print>
 
 using Redundancy =
@@ -201,6 +202,24 @@ void addActiveWaits(nlohmann::ordered_json& output)
     }
 }
 
+void addBMCUptime(nlohmann::ordered_json& output)
+{
+    std::ifstream f("/proc/uptime");
+    if (!f)
+    {
+        return;
+    }
+
+    // Read only the integer seconds; kernel writes e.g. "5416.64 0.22"
+    uint64_t total{};
+    if (!(f >> total))
+    {
+        return;
+    }
+
+    output["BMC Uptime"] = rbmc::util::uptimeToString(total);
+}
+
 // NOLINTNEXTLINE
 sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
                                          bool extended,
@@ -273,6 +292,8 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
                 data::read<std::string>(data::key::roleReason)
                     .value_or("No reason found");
         }
+
+        addBMCUptime(output);
 
         if ((role == "Active") && !props.redundancy_enabled)
         {

@@ -8,7 +8,12 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <cstdint>
+#include <format>
 #include <fstream>
+#include <ranges>
+#include <string>
+#include <vector>
 
 namespace rbmc::util
 {
@@ -95,6 +100,41 @@ void writeExternalRedundancyInput(RedundancyInput input, bool set)
                    "ERROR", e);
         throw;
     }
+}
+
+std::string uptimeToString(uint64_t total)
+{
+    constexpr uint64_t secondsPerMinute = 60;
+    constexpr uint64_t secondsPerHour = 60 * secondsPerMinute;
+    constexpr uint64_t secondsPerDay = 24 * secondsPerHour;
+
+    // Full days elapsed
+    auto days = total / secondsPerDay;
+    // Hours portion of the remainder within a day
+    auto hours = (total % secondsPerDay) / secondsPerHour;
+    // Minutes portion of the remainder within an hour
+    auto minutes = (total % secondsPerHour) / secondsPerMinute;
+
+    std::vector<std::string> parts;
+    if (days > 0)
+    {
+        parts.emplace_back(std::format("{}d", days));
+    }
+    if (hours > 0)
+    {
+        parts.emplace_back(std::format("{}h", hours));
+    }
+    if (minutes > 0)
+    {
+        parts.emplace_back(std::format("{}m", minutes));
+    }
+    if (parts.empty())
+    {
+        parts.emplace_back("0m");
+    }
+
+    auto joined = parts | std::views::join_with(' ');
+    return {joined.begin(), joined.end()};
 }
 
 bool clearExternalRedundancyInputs()

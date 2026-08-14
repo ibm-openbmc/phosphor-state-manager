@@ -7,8 +7,10 @@
 #include <xyz/openbmc_project/Control/Failover/common.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <set>
+#include <string>
 
 namespace rbmc::util
 {
@@ -123,5 +125,15 @@ std::optional<std::string> getOSReleaseValue(const std::string& filePath,
  */
 sdbusplus::async::task<int> runAsyncCmd(sdbusplus::async::context& ctx,
                                         const std::string& cmd);
+/**
+ * @brief Convert a raw uptime in seconds to a human-readable string
+ *        of the form "Xd Xh Xm", omitting leading zero components.
+ *        If total is less than one minute, returns "0m".
+ *
+ * @param[in] uptimeSeconds - Seconds since boot
+ *
+ * @return std::string - Human-readable uptime string
+ */
+std::string uptimeToString(uint64_t uptimeSeconds);
 
 } // namespace rbmc::util

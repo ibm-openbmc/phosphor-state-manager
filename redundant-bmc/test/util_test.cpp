@@ -310,3 +310,15 @@ TEST(RunAsyncCmdTest, CommandWithNonZeroExitCode)
 
     EXPECT_EQ(result, 1);
 }
+
+TEST(UptimeToStringTest, FormatsCorrectly)
+{
+    EXPECT_EQ(uptimeToString(0), "0m");            // less than a minute
+    EXPECT_EQ(uptimeToString(45), "0m");           // still less than a minute
+    EXPECT_EQ(uptimeToString(60), "1m");           // exact minute
+    EXPECT_EQ(uptimeToString(125), "2m");          // minutes only
+    EXPECT_EQ(uptimeToString(3600), "1h");         // exact hour
+    EXPECT_EQ(uptimeToString(3723), "1h 2m");      // hours and minutes
+    EXPECT_EQ(uptimeToString(86400), "1d");        // exact day
+    EXPECT_EQ(uptimeToString(183845), "2d 3h 4m"); // all components
+}
