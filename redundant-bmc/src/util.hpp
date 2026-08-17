@@ -18,6 +18,8 @@ namespace rbmc::util
 using RedundancyInput = sdbusplus::common::xyz::openbmc_project::state::bmc::
     Redundancy::RedundancyInput;
 using RedundancyInputSet = std::set<RedundancyInput>;
+using SubTreeMap =
+    std::map<std::string, std::map<std::string, std::vector<std::string>>>;
 
 /**
  * @brief Read all saved external redundancy inputs
@@ -135,5 +137,45 @@ sdbusplus::async::task<int> runAsyncCmd(sdbusplus::async::context& ctx,
  * @return std::string - Human-readable uptime string
  */
 std::string uptimeToString(uint64_t uptimeSeconds);
+
+/**
+ * @brief Get the D-Bus service name for the given object path and interface
+ *
+ * @param[in] ctx - The async context
+ * @param[in] path - The D-Bus object path
+ * @param[in] interface - The D-Bus interface name
+ *
+ * @return std::string - The service name
+ */
+sdbusplus::async::task<std::string> getService(sdbusplus::async::context& ctx,
+                                               const std::string& path,
+                                               const std::string& interface);
+
+/**
+ * @brief Calls the mapper's GetSubTree method
+ *
+ * @param ctx - The async context
+ * @param path - The root path to search from
+ * @param depth - Search depth (0 = unlimited)
+ * @param interfaces - Interface name to search for
+ *
+ * @return Map of object paths to service names and their interfaces
+ */
+sdbusplus::async::task<SubTreeMap> getSubTree(
+    sdbusplus::async::context& ctx, const std::string& path, int depth,
+    const std::string& interfaces);
+
+/**
+ * @brief Find the system inventory object path via the object mapper
+ *
+ * Throws std::runtime_error if no system inventory object is found.
+ * Throws std::invalid_argument if more than one is found.
+ *
+ * @param[in] ctx - The async context
+ *
+ * @return std::string - The object path
+ */
+sdbusplus::async::task<std::string> findSystemInventoryPath(
+    sdbusplus::async::context& ctx);
 
 } // namespace rbmc::util

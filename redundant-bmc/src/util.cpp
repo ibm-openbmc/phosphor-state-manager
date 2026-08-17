@@ -8,6 +8,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <xyz/openbmc_project/Inventory/Item/System/common.hpp>
+#include <xyz/openbmc_project/ObjectMapper/client.hpp>
+
 #include <cstdint>
 #include <format>
 #include <fstream>
@@ -17,6 +20,8 @@
 
 namespace rbmc::util
 {
+
+using ObjectMapper = sdbusplus::client::xyz::openbmc_project::ObjectMapper<>;
 
 RedundancyInputSet readExternalRedundancyInputs()
 {
@@ -293,5 +298,53 @@ sdbusplus::async::task<int> runAsyncCmd(sdbusplus::async::context& ctx,
     co_return cmdRC;
 }
 // NOLINTEND(clang-analyzer-core.uninitialized.Branch)
+
+sdbusplus::async::task<SubTreeMap> getSubTree(
+    sdbusplus::async::context& ctx, const std::string& path, int depth,
+    const std::string& interface)
+{
+    auto mapper = ObjectMapper(ctx)
+                      .service(ObjectMapper::default_service)
+                      .path(ObjectMapper::instance_path);
+
+    co_return co_await mapper.get_sub_tree(path, depth, {interface});
+}
+
+sdbusplus::async::task<std::string> getService(sdbusplus::async::context& ctx,
+                                               const std::string& path,
+                                               const std::string& interface)
+{
+    auto mapper = ObjectMapper(ctx)
+                      .service(ObjectMapper::default_service)
+                      .path(ObjectMapper::instance_path);
+
+    auto object = co_await mapper.get_object(path, {interface});
+    co_return object.begin()->first;
+}
+
+sdbusplus::async::task<std::string> findSystemInventoryPath(
+    sdbusplus::async::context& ctx)
+{
+    using SystemInv =
+        sdbusplus::common::xyz::openbmc_project::inventory::item::System;
+
+    auto objects = co_await getSubTree(ctx, "/xyz/openbmc_project/inventory", 0,
+                                       SystemInv::interface);
+
+    if (objects.empty())
+    {
+        throw std::runtime_error("No system inventory object found");
+    }
+
+    // Until there is a reason to expect more, check
+    // that there is just one System interface.
+    if (objects.size() != 1)
+    {
+        throw std::invalid_argument(std::format(
+            "Wrong number of system inventory objects: {}", objects.size()));
+    }
+
+    co_return objects.begin()->first;
+}
 
 } // namespace rbmc::util
