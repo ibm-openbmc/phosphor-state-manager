@@ -32,7 +32,6 @@ constexpr auto HOST_STATE_SVC = "xyz.openbmc_project.State.Host";
 constexpr auto HOST_STATE_PATH = "/xyz/openbmc_project/state/host0";
 
 constexpr auto HOST_STATE_QUIESCE_TGT = "obmc-host-quiesce@0.target";
-constexpr auto FSI_SCAN_SVC = "fsi-scan@0.service";
 
 bool wasHostBooting(sdbusplus::bus_t& bus)
 {
@@ -139,28 +138,6 @@ void moveToHostQuiesce(sdbusplus::bus_t& bus)
     }
 }
 
-void stopFsiScan(sdbusplus::bus::bus& bus)
-{
-    try
-    {
-        auto method =
-            bus.new_method_call(SYSTEMD_SERVICE, SYSTEMD_OBJ_PATH,
-                                SYSTEMD_MANAGER_INTERFACE, "StopUnit");
-
-        method.append(FSI_SCAN_SVC, "replace");
-
-        bus.call_noreply(method);
-    }
-    catch (const sdbusplus::exception::exception& e)
-    {
-        error("sdbusplus call exception stopping FSI scan target: {ERROR}",
-              "ERROR", e);
-
-        throw std::runtime_error(
-            "Error in invoking D-Bus systemd StopUnit method");
-    }
-}
-
 } // namespace phosphor::state::manager
 
 int main()
@@ -200,7 +177,6 @@ int main()
     // the BMC reboot occurred
     if (!wasHostBooting(bus))
     {
-        stopFsiScan(bus);
         return 0;
     }
 
