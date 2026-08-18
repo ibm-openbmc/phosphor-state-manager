@@ -619,6 +619,9 @@ void displayPCIeState()
 
 int main(int argc, char** argv)
 {
+    // Set lg2 output to just the message
+    setenv("LG2_FORMAT", "%m", 0);
+
     CLI::App app{"RBMC Tool"};
     bool info{};
     bool extended{};
@@ -631,7 +634,6 @@ int main(int argc, char** argv)
     bool jsonOutput{};
     bool readPCIe{};
     sdbusplus::async::context ctx;
-
     auto* displayGroup = app.add_option_group("Display RBMC information");
     auto* flag =
         displayGroup->add_flag("-d", info, "Display basic RBMC information");
