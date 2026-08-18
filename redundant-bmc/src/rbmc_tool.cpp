@@ -264,10 +264,7 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
                                     .service(pairingService)
                                     .path(Pairing::instance_path)
                                     .properties();
-            if (!pairingProps.provisioned)
-            {
-                output["Paired"] = pairingProps.provisioned;
-            }
+            output["Paired"] = pairingProps.provisioned;
 
             if (pairingProps.peer_connected != PeerConnectionStatus::Connected)
             {
@@ -372,10 +369,7 @@ sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
         output["Failovers Allowed"] = rProps.failovers_allowed;
         output["BMC State"] = getPDIEnumString(state);
         output["FW Version Hash"] = fwVersion;
-        if (!pairingProps.provisioned)
-        {
-            output["Paired"] = pairingProps.provisioned;
-        }
+        output["Paired"] = pairingProps.provisioned;
     }
     catch (const std::exception& e)
     {
