@@ -49,6 +49,7 @@ class Services
     using PeerConnectedCallback = std::function<void(bool)>;
     using PairedCallback = std::function<void(bool)>;
     using CodeUpdateCallback = std::move_only_function<void(bool)>;
+    using SiblingChassisAvailCallback = std::function<void(bool)>;
 
     /**
      * @brief Sets up the D-Bus matches
@@ -56,6 +57,13 @@ class Services
      * @return - The task object
      */
     virtual sdbusplus::async::task<> init() = 0;
+
+    /**
+     * @brief Initializes chassis-related watches
+     *
+     * @return - The task object
+     */
+    virtual sdbusplus::async::task<> initSiblingChassisWatch() = 0;
 
     /**
      * @brief Returns this BMC's position.
@@ -135,6 +143,13 @@ class Services
      */
     virtual sdbusplus::async::task<> waitForPeerConnection(
         AbortPredicate shouldAbort = nullptr) = 0;
+
+    /**
+     * @brief Returns if the sibling BMC's chassis is available
+     *
+     * @return true if sibling chassis is available, false otherwise
+     */
+    virtual bool getSiblingChassisAvailable() const = 0;
 
     /**
      * @brief Execute the 'failover imminent' delay to the other BMC
@@ -253,6 +268,42 @@ class Services
     }
 
     /**
+     * @brief Add a function that gets called when the sibling chassis
+     *        availability changes.
+     *
+     * @param[in] role - The role to register with
+     * @param[in] callback - The function to call
+     */
+    void addSiblingChassisAvailCallback(Role role,
+                                        SiblingChassisAvailCallback&& callback)
+    {
+        siblingAvailCBs.emplace(role, std::move(callback));
+    }
+
+    /**
+     * @brief Remove a specific sibling chassis availability change callback
+     *        by role.
+     *
+     * @param[in] role - The role of the callback to remove
+     */
+    void removeSiblingChassisAvailCallback(Role role)
+    {
+        siblingAvailCBs.erase(role);
+    }
+
+    /**
+     * @brief Fire all registered sibling chassis availability callbacks.
+     *
+     * @param[in] available - The new Available value
+     */
+    void callSiblingChassisAvailCallbacks(bool available)
+    {
+        std::ranges::for_each(siblingAvailCBs, [available](const auto& entry) {
+            entry.second(available);
+        });
+    }
+
+    /**
      * @brief On the system inventory object, check that its Progress
      *        Status property is 'Completed'.
      *
@@ -311,6 +362,13 @@ class Services
      * @brief The functions to call when a code update starts or fails
      */
     std::map<Role, CodeUpdateCallback> codeUpdateCBs;
+
+    /**
+     * @brief The functions to call when the sibling's chassis
+     *        Available property changes.
+     */
+
+    std::map<Role, SiblingChassisAvailCallback> siblingAvailCBs;
 };
 
 } // namespace rbmc

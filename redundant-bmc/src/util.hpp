@@ -178,4 +178,15 @@ sdbusplus::async::task<SubTreeMap> getSubTree(
 sdbusplus::async::task<std::string> findSystemInventoryPath(
     sdbusplus::async::context& ctx);
 
+/**
+ * @brief Find a chassis object by its position
+ *
+ * @param ctx - The async context
+ * @param position - The chassis position to search for
+ *
+ * @return Optional pair of service name and object path if found
+ */
+sdbusplus::async::task<std::optional<std::pair<std::string, std::string>>>
+    getChassisObject(sdbusplus::async::context& ctx, size_t position);
+
 } // namespace rbmc::util

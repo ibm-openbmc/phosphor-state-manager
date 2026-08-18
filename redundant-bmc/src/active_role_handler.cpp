@@ -78,6 +78,9 @@ sdbusplus::async::task<> ActiveRoleHandler::start()
                    e);
     }
 
+    // Now that the inventory is final, start watching the sibling chassis
+    co_await services.initSiblingChassisWatch();
+
     if (sibling.alive())
     {
         // Before trying to enable redundancy, wait for:
@@ -331,6 +334,9 @@ sdbusplus::async::task<> ActiveRoleHandler::failoverStartActiveTarget()
             "Failed while starting BMC active target during failover: {ERROR}",
             "ERROR", e);
     }
+
+    // Now that the inventory is final, start watching the sibling chassis
+    co_await providers.getServices().initSiblingChassisWatch();
 }
 
 // NOLINTNEXTLINE

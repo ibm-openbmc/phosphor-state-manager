@@ -30,6 +30,7 @@ rbmc_lib = static_library(
     'redundancy_mgr.cpp',
     'role_determination.cpp',
     'services_impl.cpp',
+    'sibling_chassis_watcher.cpp',
     'sibling_impl.cpp',
     'sibling_reset_impl.cpp',
     'sync_interface_impl.cpp',
