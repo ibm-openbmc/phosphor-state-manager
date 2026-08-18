@@ -1021,4 +1021,11 @@ bool ServicesImpl::isInSingleBMCLabMode() const
     return *labMode;
 }
 
+sdbusplus::async::task<> ServicesImpl::initSiblingChassisWatch()
+{
+    chassisWatcher =
+        std::make_unique<SiblingChassisWatcher>(ctx, config, *this);
+    co_await chassisWatcher->init();
+}
+
 } // namespace rbmc

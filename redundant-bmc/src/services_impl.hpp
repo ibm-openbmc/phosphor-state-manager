@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #pragma once
 
+#include "config_data.hpp"
 #include "services.hpp"
+#include "sibling_chassis_watcher.hpp"
 #include "wait_tracker.hpp"
 
 #include <sdbusplus/async/barrier.hpp>
@@ -45,15 +47,36 @@ class ServicesImpl : public Services
      *
      * @param[in] ctx - The async context object
      * @param[in] waitTracker - The wait tracker
+     * @param[in] config - The redundant BMC configuration
      */
-    ServicesImpl(sdbusplus::async::context& ctx, WaitTracker& waitTracker) :
-        ctx(ctx), waitTracker(waitTracker)
+    ServicesImpl(sdbusplus::async::context& ctx, WaitTracker& waitTracker,
+                 const RedundantBMCConfig& config) :
+        ctx(ctx), waitTracker(waitTracker), config(config)
     {}
 
     /**
      * @brief Sets up watches on the host state
      */
     sdbusplus::async::task<> init() override;
+
+    /**
+     * @brief Initializes sibling chassis watches
+     */
+    sdbusplus::async::task<> initSiblingChassisWatch() override;
+
+    /**
+     * @brief Returns if the sibling BMC's chassis is available
+     *
+     * @return true if sibling chassis is available, false otherwise
+     */
+    bool getSiblingChassisAvailable() const override
+    {
+        if (!chassisWatcher)
+        {
+            return true;
+        }
+        return chassisWatcher->available();
+    }
 
     /**
      * @brief Returns this BMC's position.
@@ -360,6 +383,17 @@ class ServicesImpl : public Services
      * @brief D-Bus path for the Item.System object
      */
     std::string systemInvPath;
+
+    /**
+     * @brief The redundant BMC configuration from the config file
+     */
+    const RedundantBMCConfig& config;
+
+    /**
+     * @brief Watcher for the sibling BMC's parent chassis Available property.
+     *        Null until initSiblingChassisWatch() is called.
+     */
+    std::unique_ptr<SiblingChassisWatcher> chassisWatcher;
 };
 
 } // namespace rbmc

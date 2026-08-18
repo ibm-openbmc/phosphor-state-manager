@@ -8,6 +8,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <xyz/openbmc_project/Inventory/Decorator/Position/client.hpp>
+#include <xyz/openbmc_project/Inventory/Item/Chassis/common.hpp>
 #include <xyz/openbmc_project/Inventory/Item/System/common.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
 
@@ -22,6 +24,10 @@ namespace rbmc::util
 {
 
 using ObjectMapper = sdbusplus::client::xyz::openbmc_project::ObjectMapper<>;
+using ChassisInv =
+    sdbusplus::common::xyz::openbmc_project::inventory::item::Chassis;
+using Position =
+    sdbusplus::client::xyz::openbmc_project::inventory::decorator::Position<>;
 
 RedundancyInputSet readExternalRedundancyInputs()
 {
@@ -347,4 +353,50 @@ sdbusplus::async::task<std::string> findSystemInventoryPath(
     co_return objects.begin()->first;
 }
 
+sdbusplus::async::task<std::optional<std::pair<std::string, std::string>>>
+    getChassisObject(sdbusplus::async::context& ctx, size_t position)
+{
+    try
+    {
+        auto chassisObjects = co_await getSubTree(
+            ctx, "/xyz/openbmc_project/inventory", 0, ChassisInv::interface);
+
+        for (const auto& [path, services] : chassisObjects)
+        {
+            if (services.empty())
+            {
+                continue;
+            }
+
+            const auto& service = services.begin()->first;
+
+            try
+            {
+                auto chassisPos = co_await Position(ctx)
+                                      .service(service)
+                                      .path(path)
+                                      .position();
+
+                if (chassisPos == position)
+                {
+                    co_return std::make_pair(service, path);
+                }
+            }
+            catch (const sdbusplus::exception_t& e)
+            {
+                // This chassis may not have a Position interface, continue
+                lg2::debug("Could not get position for chassis {PATH}: {ERROR}",
+                           "PATH", path, "ERROR", e);
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Error finding chassis object at position {POS}: {ERROR}",
+                   "POS", position, "ERROR", e);
+    }
+
+    lg2::warning("No chassis object found at position {POS}", "POS", position);
+    co_return std::nullopt;
+}
 } // namespace rbmc::util
