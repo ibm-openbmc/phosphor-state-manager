@@ -12,6 +12,7 @@ It is then installed into
 
 ```json
 {
+  "check_passive_bmc_chassis_available": true,
   "sibling_bmc_reset_gpio": {
     "name": "sibling-bmc-reset-n",
     "polarity": "low"
@@ -19,6 +20,7 @@ It is then installed into
   "bmc_configs": [
     {
       "bmc_pos": 0,
+      "parent_chassis_num": 1,
       "sibling_bmc_present_gpio": {
         "name": "chassis2-present",
         "polarity": "low"
@@ -26,6 +28,7 @@ It is then installed into
     },
     {
       "bmc_pos": 1,
+      "parent_chassis_num": 2,
       "sibling_bmc_present_gpio": {
         "name": "chassis1-present",
         "polarity": "high"
@@ -43,11 +46,17 @@ It is then installed into
 
 ### Top Level
 
+- **check_passive_bmc_chassis_available** (boolean, optional): Controls whether
+  the active BMC should check the passive BMC's parent chassis `Available`
+  property before enabling redundancy. Defaults to `false` if not specified.
+  When `true`, the `bmc_configs` array is required and each BMC configuration
+  must include a `parent_chassis_num` field.
+
 - **sibling_bmc_reset_gpio** (object, required): GPIO configuration for
   resetting the sibling BMC.
 - **bmc_configs** (array, conditionally required): Array of BMC configuration
-  objects. Required when there is a `sibling_bmc_reset_gpio`, optional when
-  false.
+  objects. Required when there is a `sibling_bmc_reset_gpio`, or when
+  `check_passive_bmc_chassis_available` is true, optional when false.
 - **pcie_config** (object, optional): PCIe storage configuration for redundancy
   data. If not present, PCIe storage functionality is disabled.
 
@@ -56,6 +65,9 @@ It is then installed into
 - **bmc_pos** (number, required): Position/index of this BMC (0 or 1).
 - **sibling_bmc_present_gpio** (object, required): GPIO configuration for
   detecting sibling BMC presence.
+- **parent_chassis_num** (number, conditional): The chassis number that is the
+  parent of this BMC. Required when `check_passive_bmc_chassis_available` is
+  `true`.
 
 ### GPIO Config Object (optional)
 

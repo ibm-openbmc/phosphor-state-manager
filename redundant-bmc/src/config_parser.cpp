@@ -74,11 +74,13 @@ GPIOConfig parseGPIOConfig(const nlohmann::json& gpioJSON,
  * @brief Parse a single BMC configuration from JSON
  *
  * @param[in] bmcJSON - The JSON object containing BMC config
+ * @param[in] requireParentChassisNum - Whether parent_chassis_num is required
  *
  * @return BMCConfig object
  * @throws std::runtime_error if required fields are missing or invalid
  */
-BMCConfig parseBMCConfig(const nlohmann::json& bmcJSON)
+BMCConfig parseBMCConfig(const nlohmann::json& bmcJSON,
+                         bool requireParentChassisNum)
 {
     BMCConfig config;
 
@@ -98,6 +100,19 @@ BMCConfig parseBMCConfig(const nlohmann::json& bmcJSON)
     config.siblingBMCPresentGPIO =
         parseGPIOConfig(*gpioIt, "sibling_bmc_present_gpio");
 
+    auto parentChassisIt = bmcJSON.find("parent_chassis_num");
+    if (parentChassisIt != bmcJSON.end())
+    {
+        config.parentChassisNum = parentChassisIt->get<size_t>();
+    }
+    else if (requireParentChassisNum)
+    {
+        throw std::runtime_error(
+            "BMC config for bmc_pos " + std::to_string(config.bmcPos) +
+            " missing required 'parent_chassis_num' field"
+            " (check_passive_bmc_chassis_available is true)");
+    }
+
     return config;
 }
 
@@ -109,7 +124,8 @@ BMCConfig parseBMCConfig(const nlohmann::json& bmcJSON)
  * @return Map of BMC position to BMCConfig
  * @throws std::runtime_error if array is invalid or configs are malformed
  */
-std::map<size_t, BMCConfig> parseBMCConfigs(const nlohmann::json& jsonData)
+std::map<size_t, BMCConfig> parseBMCConfigs(const nlohmann::json& jsonData,
+                                            bool requireParentChassisNum)
 {
     std::map<size_t, BMCConfig> configs;
 
@@ -127,7 +143,7 @@ std::map<size_t, BMCConfig> parseBMCConfigs(const nlohmann::json& jsonData)
 
     for (const auto& bmcJSON : bmcConfigsJSON)
     {
-        auto bmcConfig = parseBMCConfig(bmcJSON);
+        auto bmcConfig = parseBMCConfig(bmcJSON, requireParentChassisNum);
         auto [it, inserted] =
             configs.emplace(bmcConfig.bmcPos, std::move(bmcConfig));
         if (!inserted)
@@ -203,6 +219,12 @@ RedundantBMCConfig parse(const std::filesystem::path& path)
 
         RedundantBMCConfig config;
 
+        auto checkPassiveIt =
+            jsonData.find("check_passive_bmc_chassis_available");
+        config.checkPassiveBMCChassisAvailable =
+            (checkPassiveIt != jsonData.end()) ? checkPassiveIt->get<bool>()
+                                               : false;
+
         auto resetGpioIt = jsonData.find("sibling_bmc_reset_gpio");
         if (resetGpioIt == jsonData.end())
         {
@@ -213,7 +235,8 @@ RedundantBMCConfig parse(const std::filesystem::path& path)
         config.siblingBMCResetGPIO =
             parseGPIOConfig(*resetGpioIt, "sibling_bmc_reset_gpio");
 
-        config.bmcConfigs = parseBMCConfigs(jsonData);
+        config.bmcConfigs =
+            parseBMCConfigs(jsonData, config.checkPassiveBMCChassisAvailable);
         config.pcieConfig = parsePCIeConfig(jsonData);
 
         return config;

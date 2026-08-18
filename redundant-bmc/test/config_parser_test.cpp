@@ -449,3 +449,130 @@ TEST_F(ConfigParserTest, ParsePCIeConfigMissingOffset)
     EXPECT_THROW(parse(testDir / "pcie_missing_offset.json"),
                  std::runtime_error);
 }
+
+TEST_F(ConfigParserTest, ParseCheckPassiveBMCChassisAvailableTrue)
+{
+    const std::string config = R"({
+        "check_passive_bmc_chassis_available": true,
+        "sibling_bmc_reset_gpio": {
+            "name": "sibling-bmc-reset-n",
+            "polarity": "low"
+        },
+        "bmc_configs": [
+            {
+                "bmc_pos": 0,
+                "sibling_bmc_present_gpio": {
+                    "name": "presence-chassis2",
+                    "polarity": "low"
+                },
+                "parent_chassis_num": 1
+            },
+            {
+                "bmc_pos": 1,
+                "sibling_bmc_present_gpio": {
+                    "name": "presence-chassis1",
+                    "polarity": "low"
+                },
+                "parent_chassis_num": 2
+            }
+        ]
+    })";
+
+    writeConfigFile("check_passive_true.json", config);
+
+    auto result = parse(testDir / "check_passive_true.json");
+
+    EXPECT_TRUE(result.checkPassiveBMCChassisAvailable);
+    ASSERT_TRUE(result.bmcConfigs.contains(0));
+    ASSERT_TRUE(result.bmcConfigs.at(0).parentChassisNum.has_value());
+    EXPECT_EQ(result.bmcConfigs.at(0).parentChassisNum.value(), 1);
+    ASSERT_TRUE(result.bmcConfigs.contains(1));
+    ASSERT_TRUE(result.bmcConfigs.at(1).parentChassisNum.has_value());
+    EXPECT_EQ(result.bmcConfigs.at(1).parentChassisNum.value(), 2);
+}
+
+TEST_F(ConfigParserTest, ParseCheckPassiveBMCChassisAvailableAbsent)
+{
+    const std::string config = R"({
+        "sibling_bmc_reset_gpio": {
+            "name": "sibling-bmc-reset-n",
+            "polarity": "low"
+        },
+        "bmc_configs": []
+    })";
+
+    writeConfigFile("check_passive_absent.json", config);
+
+    auto result = parse(testDir / "check_passive_absent.json");
+
+    EXPECT_FALSE(result.checkPassiveBMCChassisAvailable);
+}
+
+TEST_F(ConfigParserTest, ParseCheckPassiveBMCChassisAvailableFalse)
+{
+    const std::string config = R"({
+        "check_passive_bmc_chassis_available": false,
+        "sibling_bmc_reset_gpio": {
+            "name": "sibling-bmc-reset-n",
+            "polarity": "low"
+        },
+        "bmc_configs": []
+    })";
+
+    writeConfigFile("check_passive_false.json", config);
+
+    auto result = parse(testDir / "check_passive_false.json");
+
+    EXPECT_FALSE(result.checkPassiveBMCChassisAvailable);
+}
+
+TEST_F(ConfigParserTest, ParseParentChassisNumAbsent)
+{
+    const std::string config = R"({
+        "sibling_bmc_reset_gpio": {
+            "name": "sibling-bmc-reset-n",
+            "polarity": "low"
+        },
+        "bmc_configs": [
+            {
+                "bmc_pos": 0,
+                "sibling_bmc_present_gpio": {
+                    "name": "test-gpio",
+                    "polarity": "low"
+                }
+            }
+        ]
+    })";
+
+    writeConfigFile("parent_chassis_absent.json", config);
+
+    auto result = parse(testDir / "parent_chassis_absent.json");
+
+    ASSERT_TRUE(result.bmcConfigs.contains(0));
+    EXPECT_FALSE(result.bmcConfigs.at(0).parentChassisNum.has_value());
+}
+
+TEST_F(ConfigParserTest, ParseCheckPassiveTrueMissingParentChassisNum)
+{
+    const std::string config = R"({
+        "check_passive_bmc_chassis_available": true,
+        "sibling_bmc_reset_gpio": {
+            "name": "sibling-bmc-reset-n",
+            "polarity": "low"
+        },
+        "bmc_configs": [
+            {
+                "bmc_pos": 0,
+                "sibling_bmc_present_gpio": {
+                    "name": "test-gpio",
+                    "polarity": "low"
+                }
+            }
+        ]
+    })";
+
+    writeConfigFile("check_passive_true_missing_chassis.json", config);
+
+    EXPECT_THROW(parse(testDir / "check_passive_true_missing_chassis.json"),
+                 std::runtime_error);
+}

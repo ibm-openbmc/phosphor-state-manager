@@ -6,12 +6,17 @@
     "type": "object",
     "required": ["sibling_bmc_reset_gpio"],
     "properties": {
+        "check_passive_bmc_chassis_available": {
+            "type": "boolean",
+            "description": "Controls whether the active BMC should check the passive BMC's parent chassis Available property before enabling redundancy. Defaults to false if not specified. When true, bmc_configs is required and each BMC config must include parent_chassis_num.",
+            "default": false
+        },
         "sibling_bmc_reset_gpio": {
             "description": "GPIO configuration for resetting the sibling BMC",
             "$ref": "#/$defs/gpio_config"
         },
         "bmc_configs": {
-            "description": "Array of BMC configuration objects. Required when sibling_bmc_present_gpio is necessary, optional otherwise.",
+            "description": "Array of BMC configuration objects. Required when sibling_bmc_present_gpio is necessary or check_passive_bmc_chassis_available is true.",
             "type": "array",
             "items": {
                 "$ref": "#/$defs/bmc_config"
@@ -25,6 +30,22 @@
         }
     },
     "additionalProperties": false,
+    "if": {
+        "required": ["check_passive_bmc_chassis_available"],
+        "properties": {
+            "check_passive_bmc_chassis_available": {
+                "const": true
+            }
+        }
+    },
+    "then": {
+        "required": ["bmc_configs"],
+        "properties": {
+            "bmc_configs": {
+                "minItems": 2
+            }
+        }
+    },
     "$defs": {
         "gpio_config": {
             "type": "object",
@@ -47,11 +68,24 @@
         "bmc_config": {
             "type": "object",
             "description": "Configuration for a single BMC in the redundant system",
-            "required": ["bmc_pos", "sibling_bmc_present_gpio"],
+            "required": ["bmc_pos"],
+            "anyOf": [
+                {
+                    "required": ["parent_chassis_num"]
+                },
+                {
+                    "required": ["sibling_bmc_present_gpio"]
+                }
+            ],
             "properties": {
                 "bmc_pos": {
                     "type": "integer",
                     "description": "Position/index of this BMC (0-based). Typically 0 or 1 for dual BMC systems.",
+                    "minimum": 0
+                },
+                "parent_chassis_num": {
+                    "type": "integer",
+                    "description": "The chassis number that is the parent of this BMC. Required when check_passive_bmc_chassis_available is true.",
                     "minimum": 0
                 },
                 "sibling_bmc_present_gpio": {
