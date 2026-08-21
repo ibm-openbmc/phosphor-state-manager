@@ -172,7 +172,7 @@ int getGpioValue(const std::string& gpioName)
     return gpioval;
 }
 
-void createError(
+sdbusplus::message::object_path createError(
     sdbusplus::bus_t& bus, const std::string& errorMsg,
     sdbusplus::server::xyz::openbmc_project::logging::Entry::Level errLevel,
     std::map<std::string, std::string> additionalData)
@@ -191,6 +191,10 @@ void createError(
 
         method.append(errorMsg, errLevel, additionalData);
         auto resp = bus.call(method);
+
+        sdbusplus::message::object_path entryPath;
+        resp.read(entryPath);
+        return entryPath;
     }
     catch (const sdbusplus::exception_t& e)
     {
@@ -210,16 +214,35 @@ void createError(
 
 void createBmcDump(sdbusplus::bus_t& bus)
 {
+    createBmcDump(bus, {});
+}
+
+void createBmcDump(sdbusplus::bus_t& bus, const std::string& objectPath)
+{
     using DumpCreate = sdbusplus::client::xyz::openbmc_project::dump::Create<>;
+    using DumpIntr = sdbusplus::common::xyz::openbmc_project::dump::Create;
+    using CreateParameters = DumpIntr::CreateParameters;
+
     auto dumpPath = sdbusplus::object_path(DumpCreate::namespace_path::value) /
                     DumpCreate::namespace_path::bmc;
 
     auto method =
         bus.new_method_call(DumpCreate::default_service, dumpPath.str.c_str(),
                             DumpCreate::interface, "CreateDump");
-    method.append(
-        std::vector<
-            std::pair<std::string, std::variant<std::string, uint64_t>>>());
+
+    // Pass the log entry object path as FilePath — the dump manager extracts
+    // this into dreport -p, and dreport -t elog runs the elog plugin which
+    // does basename($optional_path) for the id and busctl queries the full
+    // path.
+    std::vector<std::pair<std::string, std::variant<std::string, uint64_t>>>
+        params;
+    if (!objectPath.empty())
+    {
+        params.emplace_back(DumpIntr::convertCreateParametersToString(
+                                CreateParameters::FilePath),
+                            objectPath);
+    }
+    method.append(params);
     try
     {
         bus.call_noreply(method);
