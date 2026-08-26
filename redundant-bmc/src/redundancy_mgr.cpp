@@ -147,6 +147,17 @@ sdbusplus::async::task<> RedundancyMgr::determineRedundancyAndSync()
         {
             // Full sync is done so recalculate FailoversAllowed
             determineAndSetFailoversAllowed();
+
+            // Sibling watches are off now.  If the sibling itself
+            // or the network were to die in the full sync, the full
+            // sync would have failed, but BMC state and chassis
+            // available could have changed, though very unlikely.
+            // Do a quick scan of redundancy health again, and
+            // disable redundancy if it now can't be enabled.
+            if (!getNoRedundancyReasons().empty())
+            {
+                determineAndSetRedundancy();
+            }
         }
     }
 
@@ -182,7 +193,8 @@ redundancy::ReasonsForNoRedundancy RedundancyMgr::getNoRedundancyReasons()
         .peerConnected = services.getPeerConnected(),
         .passiveHWIssue = util::hasExternalRedundancyInput(
             RedundancyInput::PassiveBMCHardwareProblem,
-            RedundancyInput::PassiveBMCHostProcessorProblem)};
+            RedundancyInput::PassiveBMCHostProcessorProblem),
+        .passiveChassisAvailable = services.getSiblingChassisAvailable()};
 
     return redundancy::getNoRedundancyReasons(input);
 }

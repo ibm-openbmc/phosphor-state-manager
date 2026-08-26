@@ -136,6 +136,9 @@ class MockServices : public testing::NiceMock<Services>
         ON_CALL(*this, initSiblingChassisWatch()).WillByDefault([]() {
             return test_helpers::makeCompletedTask();
         });
+
+        ON_CALL(*this, getSiblingChassisAvailable())
+            .WillByDefault(Return(true));
     }
 
     /**
@@ -169,6 +172,24 @@ class MockServices : public testing::NiceMock<Services>
         if (auto it = codeUpdateCBs.find(role); it != codeUpdateCBs.end())
         {
             it->second(started);
+        }
+    }
+
+    /**
+     * @brief Run the registered sibling chassis availability callback
+     *        for a given role.
+     *
+     * Allows tests to simulate chassis availability changes after the
+     * manager has registered its callback.
+     *
+     * @param[in] role - The role whose callback to run
+     * @param[in] available - The new availability value to deliver
+     */
+    void runSiblingChassisAvailCallback(Role role, bool available)
+    {
+        if (auto it = siblingAvailCBs.find(role); it != siblingAvailCBs.end())
+        {
+            it->second(available);
         }
     }
 };

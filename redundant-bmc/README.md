@@ -106,6 +106,8 @@ items to see if redundancy can be enabled:
 1. The sibling BMC has been paired.
 1. The firmware versions are the same on the BMCs.
 1. The network between the BMCs is connected.
+1. If configured for it, the Available property on the passive BMC's parent
+   chassis must be true.
 1. If attempting to enable any time at runtime, redundancy must have been
    enabled when runtime was first reached.
 1. The 'passive hardware problem'
@@ -192,6 +194,15 @@ code will:
 
 Lab mode is only honored when no sibling BMC is physically present. If a sibling
 is detected, lab mode is ignored and normal behavior applies.
+
+### Passive BMC's chassis availability state changes
+
+If this functionality is configured in the
+[config file](config_files/README.md), the code will watch the Available
+property on the passive BMC's parent chassis. This property indicates if the
+chassis is in a state where hardware in it can be accessed. If it changes to
+false, redundancy will immediately be disabled. If it was false and changes to
+true, redundancy will be re-evaluated again and enabled if possible.
 
 ## Code Updates
 

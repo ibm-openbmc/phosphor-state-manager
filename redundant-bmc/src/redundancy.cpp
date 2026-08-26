@@ -29,6 +29,14 @@ ReasonsForNoRedundancy getNoRedundancyReasons(const Input& input)
     }
     else
     {
+        // If the passive BMC's chassis isn't available, there is no
+        // guarantee what state the BMC is in so don't check anything else.
+        if (!input.passiveChassisAvailable)
+        {
+            reasons.push_back(PassiveBMCChassisNotAvailable);
+            return reasons;
+        }
+
         if (!input.siblingAlive)
         {
             reasons.push_back(SiblingNotAlive);
