@@ -254,6 +254,33 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
     }
 
     /**
+     * @brief Poll until redundancy_enabled() equals the expected value,
+     *        or fail after a 1-second timeout.
+     *
+     * @param[in] expected - The value to wait for
+     */
+    // NOLINTBEGIN(clang-analyzer-core.uninitialized.Branch)
+    sdbusplus::async::task<> waitForRedundancyEnabledValue(bool expected)
+    {
+        using namespace std::chrono_literals;
+        auto deadline = std::chrono::steady_clock::now() + 1s;
+
+        while (manager->getRedundancyInterface().redundancy_enabled() !=
+               expected)
+        {
+            if (std::chrono::steady_clock::now() >= deadline)
+            {
+                ADD_FAILURE()
+                    << "Timed out waiting for redundancy_enabled=" << expected;
+                co_return;
+            }
+
+            co_await sdbusplus::async::sleep_for(ctx, 10ms);
+        }
+    }
+    // NOLINTEND(clang-analyzer-core.uninitialized.Branch)
+
+    /**
      * @brief Verify 3 values in the persistent data.
      */
     static void verifyPersistentData(Role expectedRole,
@@ -974,6 +1001,157 @@ TEST_F(ManagerTest, BecomeActive_PassiveHWProblem_RedundancyDisabled)
 
     verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
     verifyPersistentData(Role::Active, "Sibling is already passive", false);
+}
+
+/**
+ * @brief Test: Redundancy is disabled at startup because the passive
+ *              chassis is not available.
+ */
+TEST_F(ManagerTest, BecomeActive_PassiveChassisNotAvailable_RedundancyDisabled)
+{
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Passive chassis is not available
+    ON_CALL(services, getSiblingChassisAvailable())
+        .WillByDefault(Return(false));
+
+    // Full sync should not be called since redundancy is disabled
+    EXPECT_CALL(syncInterface, doFullSync()).Times(0);
+    EXPECT_CALL(syncInterface, disableBackgroundSync()).Times(1);
+
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::PassiveBMCChassisNotAvailable});
+
+    setupPCIeStorageExpects(expectedProps);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(Role::Active, "Sibling is already passive", false);
+}
+
+/**
+ * @brief Test: Redundancy is disabled at runtime when the passive
+ *              chassis becomes unavailable.
+ */
+TEST_F(ManagerTest, BecomeActive_ChassisBecomesUnavailable_RedundancyDisabled)
+{
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Full sync called once at startup (redundancy enabled), then
+    // disableBackgroundSync once when chassis goes away.
+    EXPECT_CALL(syncInterface, doFullSync()).Times(1);
+    EXPECT_CALL(syncInterface, disableBackgroundSync()).Times(1);
+
+    // After the chassis goes away a noRedundancy error is logged.
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    // After redundancy gets enabled, passive chassis changes to unavailable
+    spawnFunc(
+        [this, &services]() -> sdbusplus::async::task<> {
+            co_await waitForProgressPoint(
+                ProgressPoint::activeHandlerStartComplete, false);
+
+            // Verify redundancy is enabled before the chassis goes away
+            EXPECT_TRUE(manager->getRedundancyInterface().redundancy_enabled());
+
+            // Make getSiblingChassisAvailable return false so that
+            // determineAndSetRedundancy sees it as unavailable.
+            ON_CALL(services, getSiblingChassisAvailable())
+                .WillByDefault(Return(false));
+
+            // Run the callback function that runs when available changes
+            // to false.  Redundancy should be disabled.
+            services.runSiblingChassisAvailCallback(Role::Active, false);
+
+            EXPECT_FALSE(
+                manager->getRedundancyInterface().redundancy_enabled());
+
+            ctx.request_stop();
+        },
+        ctx);
+
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::PassiveBMCChassisNotAvailable});
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+}
+
+/**
+ * @brief Test: Redundancy is re-enabled when the passive chassis becomes
+ *              available again after having been unavailable.
+ */
+TEST_F(ManagerTest, BecomeActive_ChassisBecomesAvailable_RedundancyReEnabled)
+{
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    EXPECT_CALL(services, acquireFullHardwareAccess()).Times(1);
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-active.target", activeTargetTimeout))
+        .Times(1);
+
+    // Called on startup and again when chassis becomes available
+    EXPECT_CALL(sibling, waitForSiblingRole()).Times(2);
+    EXPECT_CALL(sibling, waitForBMCSteadyState()).Times(2);
+    EXPECT_CALL(services, waitForPeerConnection(_)).Times(2);
+    EXPECT_CALL(syncInterface, doFullSync()).Times(2);
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    // Passive chassis goes to not available and then back to available.
+    spawnFunc(
+        [this, &services]() -> sdbusplus::async::task<> {
+            co_await waitForProgressPoint(
+                ProgressPoint::activeHandlerStartComplete, false);
+
+            // Make chassis not available. Redundancy will be disabled.
+            ON_CALL(services, getSiblingChassisAvailable())
+                .WillByDefault(Return(false));
+            services.runSiblingChassisAvailCallback(Role::Active, false);
+
+            EXPECT_FALSE(
+                manager->getRedundancyInterface().redundancy_enabled());
+
+            // Available again.
+            ON_CALL(services, getSiblingChassisAvailable())
+                .WillByDefault(Return(true));
+            services.runSiblingChassisAvailCallback(Role::Active, true);
+
+            // Wait for redundancy to be re-enabled.
+            co_await waitForRedundancyEnabledValue(true);
+            ctx.request_stop();
+        },
+        ctx);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(),
+                          activeRedundancyEnabledProps);
 }
 
 /**

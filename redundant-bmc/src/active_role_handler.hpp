@@ -121,6 +121,14 @@ class ActiveRoleHandler : public RoleHandler
      */
     void stopAllWatches() override
     {
+        stopAllWatchesButChassisWatch();
+
+        // Stop sibling chassis available watch
+        providers.getServices().removeSiblingChassisAvailCallback(Role::Active);
+    }
+
+    void stopAllWatchesButChassisWatch()
+    {
         // Stop sibling watches
         siblingHealthTimer.stop();
         providers.getSibling().clearCallbacks(Role::Active);
@@ -161,6 +169,12 @@ class ActiveRoleHandler : public RoleHandler
         providers.getServices().addPeerConnectedCallback(
             Role::Active,
             std::bind_front(&ActiveRoleHandler::peerConnectionChange, this));
+
+        // Start sibling chassis available watch
+        providers.getServices().addSiblingChassisAvailCallback(
+            Role::Active,
+            std::bind_front(&ActiveRoleHandler::siblingChassisAvailableChange,
+                            this));
     }
 
     using BMCState =
@@ -252,6 +266,22 @@ class ActiveRoleHandler : public RoleHandler
      *
      */
     void siblingFailoverImminent(bool imminent);
+
+    /**
+     * @brief Called when the sibling chassis available property changes
+     *
+     * @param[in] available - The new availability value.
+     */
+    void siblingChassisAvailableChange(bool available);
+
+    /**
+     * @brief Called when the sibling chassis becomes available after
+     *        chassis monitoring has been enabled.
+     *
+     * This will attempt to re-enable redundancy, though it might
+     * not be possible for other reasons.
+     */
+    sdbusplus::async::task<> siblingChassisAvailable();
 
     /**
      * @brief Redundancy manager object

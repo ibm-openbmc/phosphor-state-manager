@@ -391,4 +391,56 @@ void ActiveRoleHandler::siblingFailoverImminent(bool imminent)
     }
 }
 
+void ActiveRoleHandler::siblingChassisAvailableChange(bool available)
+{
+    lg2::info("Sibling chassis available changed to {AVAIL}", "AVAIL",
+              available);
+
+    if (!available)
+    {
+        // The BMC could become physically inaccessible now, so stop
+        // watching it.  Only continue watching for Available to
+        // change back to true.
+        stopAllWatchesButChassisWatch();
+
+        // Redundancy will be disabled and data sync stopped.
+        redMgr.determineAndSetRedundancy();
+    }
+    else
+    {
+        ctx.spawn(siblingChassisAvailable());
+    }
+}
+
+sdbusplus::async::task<> ActiveRoleHandler::siblingChassisAvailable()
+{
+    stopAllWatches();
+
+    auto& sibling = providers.getSibling();
+    auto& services = providers.getServices();
+
+    // Turn off failovers allowed right away before
+    // everything comes back.
+    providers.getSyncInterface().clearFullSyncComplete();
+    redMgr.determineAndSetFailoversAllowed();
+
+    // The passive BMC could have been replaced or had an AC cycle
+    // while the chassis wasn't available.  Theoretically, other code
+    // will have waited for that BMC to come back online again before
+    // the chassis is available, but this code can't enforce that.
+    // Just in case it didn't, treat it like the sibling may have
+    // just been plugged in.  If it is already up, these waits will
+    // all return immediately.
+    co_await sibling.waitForSiblingUp();
+
+    co_await sdbusplus::async::execution::when_all(
+        sibling.waitForSiblingRole(), sibling.waitForBMCSteadyState(),
+        services.waitForPeerConnection(std::bind_front(
+            &ActiveRoleHandler::canStopPeerConnectionWait, this)));
+
+    co_await redMgr.determineRedundancyAndSync();
+
+    startAllWatches();
+}
+
 } // namespace rbmc
