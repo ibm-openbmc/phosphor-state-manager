@@ -13,6 +13,7 @@ unit_files = [
     'xyz.openbmc_project.State.BMC.service',
     'xyz.openbmc_project.State.BMC.Redundancy.service',
     'xyz.openbmc_project.State.Chassis@.service',
+    'phosphor-chassis-availability.service',
     'xyz.openbmc_project.State.Host@.service',
     'xyz.openbmc_project.State.Hypervisor.service',
     'xyz.openbmc_project.State.ScheduledHostTransition@.service',
