@@ -178,6 +178,21 @@ If redundancy was enabled when called, it will immediately be disabled, and
 remain so until the next time the host is powered off, at which point this input
 will be cleared and redundancy calculated again.
 
+### Single BMC Lab Mode
+
+There is a lab mode to make the code only expect a single BMC. If the file
+`/run/openbmc/single_chassis_lab_mode` exists to indicate that mode, then the
+code will:
+
+1. Skip the [checks](#cases-that-require-a-bmc-must-be-passive) that might
+   require the BMC to be passive and always become active due to the missing
+   sibling.
+2. Skip the self-pairing wait on startup as the BMC doesn't need to be paired.
+3. Not create an error log for redundancy not being enabled.
+
+Lab mode is only honored when no sibling BMC is physically present. If a sibling
+is detected, lab mode is ignored and normal behavior applies.
+
 ## Code Updates
 
 ### Preventing error logs due to code updates

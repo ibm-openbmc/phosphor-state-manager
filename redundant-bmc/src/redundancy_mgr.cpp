@@ -74,9 +74,17 @@ void RedundancyMgr::determineAndSetRedundancy()
         // 3. The manual override to disable redundancy is now off but
         //    was previously on, meaning there is some other reason.
         // 4. An in progress code update didn't cause it.
-        if ((oldEnabled || firstTime ||
-             (!manualDisable && wasManuallyDisabled)) &&
-            !(codeUpdateInProgress && codeMismatchOnly))
+        auto shouldLog = (oldEnabled || firstTime ||
+                          (!manualDisable && wasManuallyDisabled)) &&
+                         !(codeUpdateInProgress && codeMismatchOnly);
+
+        // In single BMC lab mode with a single BMC, then no error
+        // log is necessary.
+        auto suppressedByLabMode =
+            !providers.getSibling().isBMCPresent() &&
+            providers.getServices().isInSingleBMCLabMode();
+
+        if (shouldLog && !suppressedByLabMode)
         {
             using namespace errors;
             std::string error{error_msg::noRedundancy};

@@ -204,6 +204,11 @@ class ServicesImpl : public Services
      */
     sdbusplus::async::task<> waitForSelfPairing() override;
 
+    /**
+     * @brief Returns true if the system is in single BMC lab mode.
+     */
+    bool isInSingleBMCLabMode() const override;
+
   private:
     /**
      * @brief Returns the D-Bus object path for the unit in the

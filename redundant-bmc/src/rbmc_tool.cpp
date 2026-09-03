@@ -278,6 +278,12 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
             output["Peer Connected"] = e.what();
         }
 
+        std::error_code ec;
+        if (std::filesystem::exists("/run/openbmc/single_chassis_lab_mode", ec))
+        {
+            output["Single BMC Lab Mode"] = true;
+        }
+
         if (data::read<bool>(data::key::codeUpdateInProgress).value_or(false))
         {
             output["In Code Update"] = true;

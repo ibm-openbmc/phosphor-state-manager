@@ -70,6 +70,8 @@ class MockServices : public testing::NiceMock<Services>
 
     MOCK_METHOD(sdbusplus::async::task<>, waitForSelfPairing, (), (override));
 
+    MOCK_METHOD(bool, isInSingleBMCLabMode, (), (const, override));
+
     /**
      * @brief Setup default behaviors for common test scenarios to save
      *        setup in the testcases.
@@ -123,6 +125,8 @@ class MockServices : public testing::NiceMock<Services>
         ON_CALL(*this, waitForSelfPairing()).WillByDefault([]() {
             return test_helpers::makeCompletedTask();
         });
+
+        ON_CALL(*this, isInSingleBMCLabMode()).WillByDefault(Return(false));
     }
 
     /**

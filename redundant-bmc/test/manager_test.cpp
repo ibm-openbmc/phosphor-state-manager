@@ -32,6 +32,7 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
         Role siblingRole = Role::Unknown;
         bool siblingPaired = true;
         bool siblingFailoverInProgress = false;
+        bool inLabMode = false;
     };
 
     ~ManagerTest() noexcept override = default;
@@ -94,6 +95,9 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
 
         ON_CALL(sibling, getFailoverInProgress())
             .WillByDefault(Return(config.siblingFailoverInProgress));
+
+        ON_CALL(services, isInSingleBMCLabMode())
+            .WillByDefault(Return(config.inLabMode));
     }
 
     struct RedundancyProps
@@ -322,6 +326,79 @@ TEST_F(ManagerTest, BecomesPassive_NotPaired)
             {Redundancy::ReasonForNoRedundancy::SiblingCannotBeActive},
         .failoversNotAllowedReason = FailoversNotAllowedReason::None};
 
+    setupPCIeStorageExpects(expectedProps);
+
+    createManagerAndRun(ProgressPoint::passiveHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(expectedProps.role, "BMC is not paired", true);
+}
+
+/**
+ * @brief Test: BMC becomes active when not paired but in single BMC lab mode
+ *        with no sibling present.
+ */
+TEST_F(ManagerTest, BecomesActive_LabMode_NoSibling)
+{
+    TestScenarioConfig config{.paired = false,
+                              .siblingPresent = false,
+                              .siblingAlive = false,
+                              .siblingRole = Role::Unknown,
+                              .inLabMode = true};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+
+    EXPECT_CALL(services, logError(errors::error_msg::bmcIsPassiveDueToError,
+                                   errors::Level::Error, _))
+        .Times(0);
+    EXPECT_CALL(sibling, waitForSiblingUp()).Times(0);
+    EXPECT_CALL(sibling, waitForSiblingRole()).Times(0);
+    EXPECT_CALL(services, waitForSelfPairing()).Times(0);
+    EXPECT_CALL(services, acquireFullHardwareAccess()).Times(1);
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-active.target", activeTargetTimeout))
+        .Times(1);
+
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::SiblingMissing});
+    setupPCIeStorageExpects(expectedProps);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(Role::Active, "Sibling not alive", false);
+}
+
+/**
+ * @brief Test: BMC becomes passive when not paired, in lab mode, but a
+ *        sibling BMC is physically present.
+ */
+TEST_F(ManagerTest, BecomesPassive_LabMode_SiblingPresent)
+{
+    TestScenarioConfig config{
+        .paired = false, .siblingPresent = true, .inLabMode = true};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    EXPECT_CALL(services, waitForSelfPairing()).Times(1);
+    EXPECT_CALL(services, logError(errors::error_msg::bmcIsPassiveDueToError,
+                                   errors::Level::Error, _))
+        .Times(1);
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-passive.target", passiveTargetTimeout))
+        .Times(1);
+
+    RedundancyProps expectedProps{
+        .role = Role::Passive,
+        .redEnabled = false,
+        .failoverInProgress = false,
+        .failoversAllowed = false,
+        .failoverImminent = false,
+        .reasonsForNoRedundancy =
+            {Redundancy::ReasonForNoRedundancy::SiblingCannotBeActive},
+        .failoversNotAllowedReason = FailoversNotAllowedReason::None};
     setupPCIeStorageExpects(expectedProps);
 
     createManagerAndRun(ProgressPoint::passiveHandlerStartComplete);
