@@ -286,6 +286,11 @@ class Services
      */
     virtual sdbusplus::async::task<> waitForSelfPairing() = 0;
 
+    /**
+     * @brief Returns true if the system is in single BMC lab mode.
+     */
+    virtual bool isInSingleBMCLabMode() const = 0;
+
   protected:
     /**
      * @brief The functions to call when the system state changes

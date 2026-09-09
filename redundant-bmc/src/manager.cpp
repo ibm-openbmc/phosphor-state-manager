@@ -108,7 +108,11 @@ sdbusplus::async::task<> Manager::startup()
     co_await sdbusplus::async::execution::when_all(services.init(),
                                                    sibling.init());
 
-    co_await services.waitForSelfPairing();
+    // Don't care about pairing in lab mode without a sibling...
+    if (!services.isInSingleBMCLabMode() || sibling.isBMCPresent())
+    {
+        co_await services.waitForSelfPairing();
+    }
 
     // If we know the role must be passive, set that now,
     // before starting the heartbeat or waiting for the sibling.
@@ -284,6 +288,21 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
     Manager::determinePassiveRoleIfRequired()
 {
     using namespace role_determination;
+
+    // If in single BMC lab mode with a single BMC, none of
+    // these checks are necessary.
+    if (providers->getServices().isInSingleBMCLabMode())
+    {
+        if (providers->getSibling().isBMCPresent())
+        {
+            lg2::warning(
+                "Single BMC lab mode is active but there is still another BMC");
+        }
+        else
+        {
+            co_return std::nullopt;
+        }
+    }
 
     // An unpaired BMC cannot be active.
     if (!providers->getServices().getPaired())

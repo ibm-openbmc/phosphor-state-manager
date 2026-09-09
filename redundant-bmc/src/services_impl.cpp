@@ -1047,4 +1047,25 @@ void ServicesImpl::setRedundancyDetermined()
     }
 }
 
+bool ServicesImpl::isInSingleBMCLabMode() const
+{
+    static std::optional<bool> labMode;
+
+    if (labMode.has_value())
+    {
+        return *labMode;
+    }
+
+    std::error_code ec;
+    labMode =
+        std::filesystem::exists("/run/openbmc/single_chassis_lab_mode", ec);
+
+    if (*labMode)
+    {
+        lg2::warning("System is in single BMC lab mode");
+    }
+
+    return *labMode;
+}
+
 } // namespace rbmc
