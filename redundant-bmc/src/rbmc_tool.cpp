@@ -655,26 +655,25 @@ int main(int argc, char** argv)
 
     auto* overrideGroup =
         app.add_option_group("Modify the redundancy override");
-    auto* disable = overrideGroup->add_flag(
-        "-s, --set-disable-redundancy-override", disableRedundancy,
-        "Set override to disable redundancy");
+    overrideGroup->add_flag("-s, --set-disable-redundancy-override",
+                            disableRedundancy,
+                            "Set override to disable redundancy");
 
-    overrideGroup
-        ->add_flag("-c, --clear-disable-redundancy-override", enableRedundancy,
-                   "Clear override to disable redundancy")
-        ->excludes(disable);
+    overrideGroup->add_flag("-c, --clear-disable-redundancy-override",
+                            enableRedundancy,
+                            "Clear override to disable redundancy");
+    overrideGroup->require_option(0, 1);
 
     auto* resetGroup = app.add_option_group("Reset sibling BMC");
     resetGroup->add_flag("--reset-sibling", resetSibling,
                          "Reset the sibling BMC");
 
     auto* failoverGroup = app.add_option_group("Starting failovers");
-    auto* fo =
-        failoverGroup->add_flag("-f, --failover", failover, "Start a failover");
-    failoverGroup
-        ->add_flag("-r, --force-failover", forceFailover,
-                   "Start a forced failover. Only for emergencies.")
-        ->excludes(fo);
+    failoverGroup->add_flag("-f, --failover", failover, "Start a failover");
+    failoverGroup->add_flag(
+        "-r, --force-failover", forceFailover,
+        "Failover even if FailoversAllowed=false. Only for emergencies.");
+    failoverGroup->require_option(0, 1);
 
     auto* pcieGroup = app.add_option_group("PCIe MMIO operations");
     pcieGroup->add_flag("-p, --read-pcie", readPCIe,
@@ -684,7 +683,7 @@ int main(int argc, char** argv)
     waitGroup->add_flag("-w, --wait-status", waitStatus,
                         "Display detailed active wait operations");
 
-    app.require_option(1);
+    app.require_option(1, 1);
 
     CLI11_PARSE(app, argc, argv);
 
