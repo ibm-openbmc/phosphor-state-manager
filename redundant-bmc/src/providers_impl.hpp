@@ -36,7 +36,7 @@ class ProvidersImpl : public Providers
      * @param[in] ctx - The async context object
      */
     explicit ProvidersImpl(sdbusplus::async::context& ctx) :
-        config(config_parser::readConfig()), services(ctx, waitTracker),
+        config(config_parser::readConfig()), services(ctx, waitTracker, config),
         sibling(ctx, config, services, waitTracker),
         syncInterface(ctx, waitTracker), siblingReset(ctx, config),
         pcieStorage(createPCIeStorage())

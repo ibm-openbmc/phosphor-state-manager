@@ -47,6 +47,13 @@ struct BMCConfig
      * @brief GPIO configuration for detecting sibling BMC presence
      */
     GPIOConfig siblingBMCPresentGPIO;
+
+    /**
+     * @brief The chassis number that is the parent of this BMC
+     *
+     * Required when check_passive_bmc_chassis_available is true
+     */
+    std::optional<size_t> parentChassisNum;
 };
 
 /**
@@ -74,6 +81,12 @@ struct PCIeConfig
  */
 struct RedundantBMCConfig
 {
+    /**
+     * @brief Whether to check passive BMC's parent chassis Available property
+     *        before enabling redundancy (optional, defaults to false)
+     */
+    bool checkPassiveBMCChassisAvailable{false};
+
     /**
      * @brief GPIO configuration for resetting the sibling BMC
      */

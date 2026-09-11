@@ -72,6 +72,11 @@ class MockServices : public testing::NiceMock<Services>
 
     MOCK_METHOD(bool, isInSingleBMCLabMode, (), (const, override));
 
+    MOCK_METHOD(sdbusplus::async::task<>, initSiblingChassisWatch, (),
+                (override));
+
+    MOCK_METHOD(bool, getSiblingChassisAvailable, (), (const, override));
+
     /**
      * @brief Setup default behaviors for common test scenarios to save
      *        setup in the testcases.
@@ -127,6 +132,10 @@ class MockServices : public testing::NiceMock<Services>
         });
 
         ON_CALL(*this, isInSingleBMCLabMode()).WillByDefault(Return(false));
+
+        ON_CALL(*this, initSiblingChassisWatch()).WillByDefault([]() {
+            return test_helpers::makeCompletedTask();
+        });
     }
 
     /**
