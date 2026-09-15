@@ -75,53 +75,6 @@ namespace service
 constexpr auto systemd = "org.freedesktop.systemd1";
 } // namespace service
 
-namespace util
-{
-
-// NOLINTNEXTLINE
-sdbusplus::async::task<std::string> getService(sdbusplus::async::context& ctx,
-                                               const std::string& path,
-                                               const std::string& interface)
-{
-    auto mapper = ObjectMapper(ctx)
-                      .service(ObjectMapper::default_service)
-                      .path(ObjectMapper::instance_path);
-
-    std::vector<std::string> iface{interface};
-    auto object = co_await mapper.get_object(path, iface);
-    co_return object.begin()->first;
-}
-
-sdbusplus::async::task<std::string> findSystemInventoryPath(
-    sdbusplus::async::context& ctx)
-{
-    auto mapper = ObjectMapper(ctx)
-                      .service(ObjectMapper::default_service)
-                      .path(ObjectMapper::instance_path);
-
-    std::vector<std::string> systemIface{SystemInv::interface};
-
-    auto objects = co_await mapper.get_sub_tree(
-        "/xyz/openbmc_project/inventory", 0, systemIface);
-
-    if (objects.empty())
-    {
-        throw std::runtime_error("No system inventory object found");
-    }
-
-    // Until there is a reason to expect more, check
-    // that there is just one System interface.
-    if (objects.size() != 1)
-    {
-        throw std::invalid_argument(std::format(
-            "Wrong number of system inventory objects: {}", objects.size()));
-    }
-
-    co_return objects.begin()->first;
-}
-
-} // namespace util
-
 sdbusplus::async::task<> ServicesImpl::init()
 {
     auto barrier = std::make_shared<sdbusplus::async::barrier>(7);
@@ -1066,6 +1019,13 @@ bool ServicesImpl::isInSingleBMCLabMode() const
     }
 
     return *labMode;
+}
+
+sdbusplus::async::task<> ServicesImpl::initSiblingChassisWatch()
+{
+    chassisWatcher =
+        std::make_unique<SiblingChassisWatcher>(ctx, config, *this);
+    co_await chassisWatcher->init();
 }
 
 } // namespace rbmc

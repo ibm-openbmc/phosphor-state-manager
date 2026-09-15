@@ -240,7 +240,8 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
         output["Role"] = role;
 
         rbmc::WaitTracker waitTracker;
-        rbmc::ServicesImpl services{ctx, waitTracker};
+        rbmc::RedundantBMCConfig config{};
+        rbmc::ServicesImpl services{ctx, waitTracker, config};
         auto pos = services.getBMCPosition();
         auto bmcPos = pos.has_value() ? std::to_string(pos.value()) : "Unknown";
         output["BMC Position"] = bmcPos;
