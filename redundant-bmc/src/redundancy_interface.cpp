@@ -239,9 +239,9 @@ sdbusplus::async::task<> RedundancyInterface::method_call(
 }
 
 bool RedundancyInterface::set_property(
-    [[maybe_unused]] failovers_allowed_t type, bool allowed)
+    [[maybe_unused]] host_failovers_allowed_t type, bool allowed)
 {
-    if (allowed == failovers_allowed())
+    if (allowed == host_failovers_allowed())
     {
         return false;
     }
@@ -255,12 +255,12 @@ bool RedundancyInterface::set_property(
         catch (const std::exception& e)
         {
             lg2::warning(
-                "Could not write FailoversAllowed to PCIe memory: {ERROR}",
+                "Could not write HostFailoversAllowed to PCIe memory: {ERROR}",
                 "ERROR", e);
         }
     }
 
-    properties.failovers_allowed = allowed;
+    properties.host_failovers_allowed = allowed;
     return true;
 }
 

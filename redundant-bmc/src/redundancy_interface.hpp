@@ -107,14 +107,14 @@ class RedundancyInterface :
 
     /**
      * @brief Implements property set for the
-     *        FailoversAllowed property
+     *        HostFailoversAllowed property
      *
-     * @param[in] failovers_allowed_t - The type
+     * @param[in] host_failovers_allowed_t - The type
      * @param[in] allowed - the value being set
      *
      * @return If the property value changed
      */
-    bool set_property(failovers_allowed_t type, bool allowed);
+    bool set_property(host_failovers_allowed_t type, bool allowed);
 
   private:
     /**
