@@ -195,6 +195,7 @@ class Manager :
     /**
      * @brief Checks if a failover can be started now.
      *
+     * @param[in] requester - Who is requesting the failover
      * @param[in] options - The options passed to StartFailover
      *
      * @return std::string - The reason for the failover rejection
@@ -202,7 +203,7 @@ class Manager :
      *
      */
     sdbusplus::async::task<fo_blocked::Reason> validateFailoverRequest(
-        const FailoverOptions& options);
+        Requester requester, const FailoverOptions& options);
 
     /**
      * @brief Setup watch for pairing changes

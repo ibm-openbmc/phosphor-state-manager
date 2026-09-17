@@ -292,7 +292,8 @@ sdbusplus::async::task<> ActiveRoleHandler::syncHealthCritical()
     }
 }
 
-auto ActiveRoleHandler::getFailoverBlockedReason(const FailoverOptions& options)
+auto ActiveRoleHandler::getFailoverBlockedReason(Requester requester,
+                                                 const FailoverOptions& options)
     -> sdbusplus::async::task<fo_blocked::Reason>
 {
     auto force =
@@ -303,7 +304,9 @@ auto ActiveRoleHandler::getFailoverBlockedReason(const FailoverOptions& options)
         .redundancyEnabled = redundancyInterface.redundancy_enabled(),
         .failoversAllowed = redundancyInterface.failovers_allowed(),
         .failoverInProgress = redundancyInterface.failover_in_progress(),
-        .forceOption = force};
+        .forceOption = force,
+        .hostRequester = (requester == Requester::Host),
+        .hostFailoversAllowed = redundancyInterface.host_failovers_allowed()};
 
     co_return fo_blocked::getActiveFailoverBlockedReason(input);
 }
