@@ -38,6 +38,7 @@ class Sibling
     using BMCStateCallback = std::function<void(BMCState)>;
     using HealthCallback = std::function<void(bool)>;
     using FailoversAllowedCallback = std::function<void(bool)>;
+    using HostFailoversAllowedCallback = std::function<void(bool)>;
     using FailoverImminentCallback = std::function<void(bool)>;
     using InCodeUpdateCallback = std::function<void(bool)>;
 
@@ -130,6 +131,13 @@ class Sibling
     virtual std::optional<bool> getFailoversAllowed() const = 0;
 
     /**
+     * @brief Returns if the sibling has host failovers allowed
+     *
+     * @return - If allowed, or nullopt if not available
+     */
+    virtual std::optional<bool> getHostFailoversAllowed() const = 0;
+
+    /**
      * @brief Returns if the sibling has a failover in progress
      *
      * @return - If in progress, or nullopt if not available
@@ -213,6 +221,7 @@ class Sibling
         bmcStateCBs.erase(role);
         healthCBs.erase(role);
         foAllowedCBs.erase(role);
+        hostFoAllowedCBs.erase(role);
         foImminentCBs.erase(role);
         inCodeUpdateCBs.erase(role);
     }
@@ -270,6 +279,19 @@ class Sibling
 
     /**
      * @brief Adds a callback function to invoke when the sibling's
+     *        HostFailoversAllowed property changes
+     *
+     * @param[in] role - The role to register with
+     * @param[in] callback - The callback function
+     */
+    void addHostFailoversAllowedCallback(Role role,
+                                         HostFailoversAllowedCallback callback)
+    {
+        hostFoAllowedCBs.emplace(role, std::move(callback));
+    }
+
+    /**
+     * @brief Adds a callback function to invoke when the sibling's
      *        FailoverImminent property changes
      *
      * @param[in] role - The role to register with
@@ -313,6 +335,11 @@ class Sibling
      * @brief Callbacks for FailoversAllowed
      */
     std::map<Role, FailoversAllowedCallback> foAllowedCBs;
+
+    /**
+     * @brief Callbacks for HostFailoversAllowed
+     */
+    std::map<Role, HostFailoversAllowedCallback> hostFoAllowedCBs;
 
     /**
      * @brief Callbacks for FailoverImminent

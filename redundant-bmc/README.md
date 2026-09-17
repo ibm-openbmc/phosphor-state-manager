@@ -393,6 +393,10 @@ booting, even when the main `FailoversAllowed` D-Bus property is `false`. This
 prevents other requesters such as Redfish clients from triggering a failover at
 that time.
 
+The host may read its data from either BMC, so the passive BMC will mirror this
+field from the active BMC, similar to how it handles the other redundancy
+fields.
+
 ### Rejecting a failover request
 
 When the call is made to start the failover on the passive BMC, it will reject

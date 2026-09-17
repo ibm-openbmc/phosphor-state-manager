@@ -38,6 +38,8 @@ class MockSibling : public testing::NiceMock<Sibling>
                 (const, override));
     MOCK_METHOD(std::optional<bool>, getFailoversAllowed, (),
                 (const, override));
+    MOCK_METHOD(std::optional<bool>, getHostFailoversAllowed, (),
+                (const, override));
     MOCK_METHOD(std::optional<bool>, getFailoverInProgress, (),
                 (const, override));
     MOCK_METHOD(std::optional<bool>, getFailoverImminent, (),
