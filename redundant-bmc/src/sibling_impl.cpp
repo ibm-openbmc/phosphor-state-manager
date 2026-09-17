@@ -150,6 +150,21 @@ void SiblingImpl::loadRedundancyProps(
         }
     }
 
+    it = propertyMap.find("HostFailoversAllowed");
+    if (it != propertyMap.end())
+    {
+        auto old = redundancy.hostFailoversAllowed;
+        redundancy.hostFailoversAllowed = std::get<bool>(it->second);
+        if (redundancy.hostFailoversAllowed != old)
+        {
+            for (const auto& callback :
+                 std::ranges::views::values(hostFoAllowedCBs))
+            {
+                callback(redundancy.hostFailoversAllowed);
+            }
+        }
+    }
+
     it = propertyMap.find("FailoverImminent");
     if (it != propertyMap.end())
     {

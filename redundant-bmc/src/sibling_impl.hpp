@@ -177,6 +177,21 @@ class SiblingImpl : public Sibling
     }
 
     /**
+     * @brief Returns if the sibling has host failovers allowed.
+     *
+     * @return - If allowed, or nullopt if not available
+     */
+    std::optional<bool> getHostFailoversAllowed() const override
+    {
+        if (alive())
+        {
+            return redundancy.hostFailoversAllowed;
+        }
+
+        return std::nullopt;
+    }
+
+    /**
      * @brief Returns if the sibling has a failover in progress
      *
      * @return - If in progress, or nullopt if not available
@@ -453,6 +468,7 @@ class SiblingImpl : public Sibling
         Role role = Role::Unknown;
         bool redundancyEnabled = false;
         bool failoversAllowed = false;
+        bool hostFailoversAllowed = false;
         bool failoverInProgress = false;
         bool failoverImminent = false;
         bool hasReasonForNoRedundancy = false;
