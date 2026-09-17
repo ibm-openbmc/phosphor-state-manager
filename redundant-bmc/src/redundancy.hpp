@@ -103,6 +103,8 @@ struct PassiveInput
     bool failoverInProgress;
     bool lastKnownRedundancyEnabled;
     bool codeUpdateFailoverMode;
+    bool hostRequester;
+    bool hostFailoversAllowed;
 };
 
 /**

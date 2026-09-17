@@ -407,6 +407,7 @@ the request if any of the following are true.
 1. FailoversAllowed is false. Exceptions are:
    - The `force` option was passed into the `StartFailover` method.
    - The active BMC is in the `Quiesced` state.
+   - The host is requesting the failover and host failovers are allowed.
 1. The active BMC has no heartbeat and redundancy wasn't last known to be
    enabled. If it was last known to be enabled, a failover is allowed so that
    the remaining BMC can become active.

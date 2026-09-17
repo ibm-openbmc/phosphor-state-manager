@@ -94,6 +94,8 @@ sdbusplus::async::task<> PassiveRoleHandler::start()
 
     setupSiblingFailoversAllowedWatch();
 
+    setupSiblingHostFailoversAllowedWatch();
+
     setupSiblingHealthWatch();
 
     setupSiblingInCodeUpdateWatch();
@@ -142,6 +144,23 @@ void PassiveRoleHandler::setupSiblingFailoversAllowedWatch()
     }
 }
 
+void PassiveRoleHandler::setupSiblingHostFailoversAllowedWatch()
+{
+    auto& sibling = providers.getSibling();
+
+    // Register for changes
+    sibling.addHostFailoversAllowedCallback(
+        Role::Passive,
+        [this](bool allowed) { siblingHostFailoversAllowedHandler(allowed); });
+
+    // Handle current value
+    auto sibAllowed = sibling.getHostFailoversAllowed();
+    if (sibAllowed.has_value())
+    {
+        siblingHostFailoversAllowedHandler(sibAllowed.value());
+    }
+}
+
 void PassiveRoleHandler::siblingRedEnabledHandler(bool enable)
 {
     // Mirror the property.  If the other BMC was also passive,
@@ -157,6 +176,12 @@ void PassiveRoleHandler::siblingFailoversAllowedHandler(bool allowed)
     // Mirror the property.  If the other BMC was also passive,
     // the value would be false anyway.
     redundancyInterface.failovers_allowed(allowed);
+}
+
+void PassiveRoleHandler::siblingHostFailoversAllowedHandler(bool allowed)
+{
+    // Mirror the property.
+    redundancyInterface.host_failovers_allowed(allowed);
 }
 
 void PassiveRoleHandler::setCUFOMode(bool value)
@@ -356,6 +381,12 @@ void PassiveRoleHandler::siblingHealthChange(bool alive)
         {
             siblingFailoversAllowedHandler(sibAllowed.value());
         }
+
+        auto sibHostAllowed = sibling.getHostFailoversAllowed();
+        if (sibHostAllowed.has_value())
+        {
+            siblingHostFailoversAllowedHandler(sibHostAllowed.value());
+        }
     }
     else
     {
@@ -364,7 +395,7 @@ void PassiveRoleHandler::siblingHealthChange(bool alive)
 }
 
 auto PassiveRoleHandler::getFailoverBlockedReason(
-    [[maybe_unused]] Requester requester, const FailoverOptions& options)
+    Requester requester, const FailoverOptions& options)
     -> sdbusplus::async::task<fo_blocked::Reason>
 {
     auto force =
@@ -399,7 +430,9 @@ auto PassiveRoleHandler::getFailoverBlockedReason(
         // This will be used to know if a failover is still OK without live
         // data from the active BMC.
         .lastKnownRedundancyEnabled = redundancyInterface.redundancy_enabled(),
-        .codeUpdateFailoverMode = codeUpdateFailoverMode};
+        .codeUpdateFailoverMode = codeUpdateFailoverMode,
+        .hostRequester = (requester == Requester::Host),
+        .hostFailoversAllowed = redundancyInterface.host_failovers_allowed()};
 
     co_return fo_blocked::getPassiveFailoverBlockedReason(input);
 }

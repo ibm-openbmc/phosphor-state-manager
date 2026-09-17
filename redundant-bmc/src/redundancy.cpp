@@ -179,12 +179,19 @@ Reason getPassiveFailoverBlockedReason(const PassiveInput& input)
         {
             // Don't block a failover even if the failover is not allowed when:
             //  1. the force option was given on the start failover cmd, or
-            //  2. the active BMC is Quiesced.
+            //  2. the requester is host and host failovers are allowed, or
+            //  3. the active BMC is Quiesced.
             if (input.forceOption)
             {
                 // Trace it but don't block it.
                 lg2::warning(
                     "The failover 'Force' option is set while failovers are not allowed");
+            }
+            else if (input.hostRequester && input.hostFailoversAllowed)
+            {
+                // Host failovers may still be OK.
+                lg2::warning(
+                    "FailoversAllowed = false but requester is host and HostFailoversAllowed = true");
             }
             else if (input.siblingState == BMCState::Quiesced)
             {
