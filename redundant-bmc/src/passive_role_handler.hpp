@@ -91,6 +91,12 @@ class PassiveRoleHandler : public RoleHandler
     void setupSiblingFailoversAllowedWatch();
 
     /**
+     * @brief Setup watching the sibling BMC's
+     *        HostFailoversAllowed D-Bus property.
+     */
+    void setupSiblingHostFailoversAllowedWatch();
+
+    /**
      * @brief Setup watching the sibling BMC's code update state.
      */
     void setupSiblingInCodeUpdateWatch();
@@ -118,6 +124,14 @@ class PassiveRoleHandler : public RoleHandler
      * Will mirror the value on this BMC's Redundancy interface
      */
     void siblingFailoversAllowedHandler(bool allowed);
+
+    /**
+     * @brief Handler for the HostFailoversAllowed property
+     *        on the sibling's D-Bus interface changing.
+     *
+     * Will mirror the value on this BMC's Redundancy interface
+     */
+    void siblingHostFailoversAllowedHandler(bool allowed);
 
     /**
      * @brief Handler for the DisableRedundancyOverride

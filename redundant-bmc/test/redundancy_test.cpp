@@ -273,7 +273,9 @@ TEST(RedundancyTest, PassiveFailoverBlockedTest)
         .forceOption = false,
         .failoverInProgress = false,
         .lastKnownRedundancyEnabled = true,
-        .codeUpdateFailoverMode = false};
+        .codeUpdateFailoverMode = false,
+        .hostRequester = false,
+        .hostFailoversAllowed = false};
 
     EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(golden),
               rbmc::fo_blocked::Reason::none);
@@ -310,6 +312,28 @@ TEST(RedundancyTest, PassiveFailoverBlockedTest)
         input.siblingState = rbmc::BMCState::Quiesced;
         EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::none);
+    }
+
+    // Failovers not allowed, but requester is Host and
+    // hostFailoversAllowed=true
+    {
+        auto input = golden;
+        input.failoversNotAllowed = true;
+        input.hostRequester = true;
+        input.hostFailoversAllowed = true;
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::none);
+
+        // Host requester, but hostFailoversAllowed=false -> still blocked
+        input.hostFailoversAllowed = false;
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::failoversNotAllowed);
+
+        // hostFailoversAllowed=true, but not host requester -> still blocked
+        input.hostRequester = false;
+        input.hostFailoversAllowed = true;
+        EXPECT_EQ(rbmc::fo_blocked::getPassiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::failoversNotAllowed);
     }
 
     // Sibling not responding, but redundancy was enabled

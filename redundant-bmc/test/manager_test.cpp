@@ -2219,3 +2219,102 @@ TEST_F(ManagerTest, SetRedundancyInput_DisablesThenReEnablesRedundancy)
         },
         ctx);
 }
+
+/**
+ * @brief Test: On passive BMC, when FailoversAllowed=false but
+ *        HostFailoversAllowed=true, a Redfish failover is blocked
+ *        but a Host failover succeeds.
+ */
+TEST_F(ManagerTest, StartFailover_PassiveBMC_HostFailoversAllowed)
+{
+    TestScenarioConfig config{.bmcPosition = 1, .siblingRole = Role::Active};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+    auto& siblingReset = mockProviders->getMockSiblingReset();
+    auto& syncInterface = mockProviders->getMockSyncInterface();
+
+    // Sibling is active with redundancy enabled, failovers disallowed,
+    // but host failovers allowed.
+    ON_CALL(sibling, getRedundancyEnabled())
+        .WillByDefault(Return(std::optional<bool>(true)));
+    ON_CALL(sibling, getFailoversAllowed())
+        .WillByDefault(Return(std::optional<bool>(false)));
+    ON_CALL(sibling, getHostFailoversAllowed())
+        .WillByDefault(Return(std::optional<bool>(true)));
+
+    ON_CALL(sibling, getBMCState())
+        .WillByDefault(Return(std::make_optional(BMCState::Ready)));
+
+    // Sibling role starts as Active and changes to Passive on reset
+    Role siblingRole = Role::Active;
+    ON_CALL(sibling, getRole()).WillByDefault([&siblingRole]() {
+        return std::optional<Role>(siblingRole);
+    });
+
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-passive.target", passiveTargetTimeout))
+        .Times(1);
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-active.target", activeTargetTimeout))
+        .Times(1);
+
+    EXPECT_CALL(syncInterface, disableBackgroundSync()).Times(AtLeast(1));
+    EXPECT_CALL(services, doFailoverImminentDelay()).Times(1);
+
+    EXPECT_CALL(siblingReset, toggleReset()).WillOnce([&siblingRole]() {
+        siblingRole = Role::Passive;
+        return test_helpers::makeCompletedTask();
+    });
+
+    EXPECT_CALL(services, acquireFullHardwareAccess()).Times(1);
+
+    // Failover blocked log when Redfish attempts failover
+    EXPECT_CALL(services, logError(errors::error_msg::failoverBlocked,
+                                   errors::Level::Warning, _))
+        .Times(1);
+
+    // Failover starts when host requests it.
+    EXPECT_CALL(services, logError(errors::error_msg::failoverStarted,
+                                   errors::Level::Informational, _))
+        .Times(1);
+
+    manager =
+        std::make_unique<Manager>(ctx, std::move(mockProviders), hbInterval);
+
+    spawnFunc(
+        [this]() -> sdbusplus::async::task<> {
+            co_await waitForProgressPoint(
+                ProgressPoint::passiveHandlerStartComplete, false);
+
+            EXPECT_FALSE(manager->getRedundancyInterface().failovers_allowed());
+            EXPECT_TRUE(
+                manager->getRedundancyInterface().host_failovers_allowed());
+
+            // 1. Redfish failover should be blocked and throw Unavailable
+            try
+            {
+                FailoverOptions options;
+                co_await manager->method_call(Manager::start_failover_t{},
+                                              Requester::Redfish, options);
+                ADD_FAILURE()
+                    << "Redfish StartFailover should not have succeeded";
+            }
+            catch (const sdbusplus::xyz::openbmc_project::Common::Error::
+                       Unavailable&)
+            {}
+
+            // 2. Host failover should succeed
+            FailoverOptions options;
+            co_await manager->method_call(Manager::start_failover_t{},
+                                          Requester::Host, options);
+
+            co_await waitForProgressPoint(ProgressPoint::failoverComplete);
+        },
+        ctx);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(),
+                          activeRedundancyEnabledProps);
+    verifyPersistentData(Role::Active, "Failover", false);
+}
