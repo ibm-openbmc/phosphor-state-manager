@@ -403,10 +403,13 @@ TEST(RedundancyTest, PassiveFailoverBlockedTest)
 
 TEST(RedundancyTest, ActiveFailoverBlockedTest)
 {
-    rbmc::fo_blocked::ActiveInput golden{.redundancyEnabled = true,
-                                         .failoversAllowed = true,
-                                         .failoverInProgress = false,
-                                         .forceOption = false};
+    rbmc::fo_blocked::ActiveInput golden{
+        .redundancyEnabled = true,
+        .failoversAllowed = true,
+        .failoverInProgress = false,
+        .forceOption = false,
+        .hostRequester = false,
+        .hostFailoversAllowed = false};
 
     EXPECT_EQ(rbmc::fo_blocked::getActiveFailoverBlockedReason(golden),
               rbmc::fo_blocked::Reason::none);
@@ -434,6 +437,36 @@ TEST(RedundancyTest, ActiveFailoverBlockedTest)
         input.forceOption = true;
         EXPECT_EQ(rbmc::fo_blocked::getActiveFailoverBlockedReason(input),
                   rbmc::fo_blocked::Reason::none);
+    }
+
+    // Failovers not allowed but host requester with host failovers allowed
+    {
+        auto input = golden;
+        input.failoversAllowed = false;
+        input.hostRequester = true;
+        input.hostFailoversAllowed = true;
+        EXPECT_EQ(rbmc::fo_blocked::getActiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::none);
+    }
+
+    // Failovers not allowed, host requester but host failovers NOT allowed
+    {
+        auto input = golden;
+        input.failoversAllowed = false;
+        input.hostRequester = true;
+        input.hostFailoversAllowed = false;
+        EXPECT_EQ(rbmc::fo_blocked::getActiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::failoversNotAllowed);
+    }
+
+    // Failovers not allowed, host failovers allowed, but not a host requester
+    {
+        auto input = golden;
+        input.failoversAllowed = false;
+        input.hostRequester = false;
+        input.hostFailoversAllowed = true;
+        EXPECT_EQ(rbmc::fo_blocked::getActiveFailoverBlockedReason(input),
+                  rbmc::fo_blocked::Reason::failoversNotAllowed);
     }
 
     // Failover in progress

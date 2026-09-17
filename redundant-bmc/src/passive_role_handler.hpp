@@ -60,13 +60,14 @@ class PassiveRoleHandler : public RoleHandler
      *        Reason::none if a failover is allowed right now, or the
      *        reason that it isn't.
      *
+     * @param[in] requester - Who is requesting the failover
      * @param[in] options - The options passed into the StartFailover
      *                      D-Bus method.
      *
      * @return Reason::none if failover is OK, else the reason it isn't.
      */
     sdbusplus::async::task<fo_blocked::Reason> getFailoverBlockedReason(
-        const FailoverOptions& options) override;
+        Requester requester, const FailoverOptions& options) override;
 
   private:
     /**

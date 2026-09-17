@@ -363,9 +363,8 @@ void PassiveRoleHandler::siblingHealthChange(bool alive)
     }
 }
 
-// NOLINTNEXTLINE
 auto PassiveRoleHandler::getFailoverBlockedReason(
-    const FailoverOptions& options)
+    [[maybe_unused]] Requester requester, const FailoverOptions& options)
     -> sdbusplus::async::task<fo_blocked::Reason>
 {
     auto force =

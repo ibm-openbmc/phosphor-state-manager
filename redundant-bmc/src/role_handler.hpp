@@ -6,10 +6,14 @@
 #include "redundancy_interface.hpp"
 #include "types.hpp"
 
+#include <xyz/openbmc_project/Control/Failover/common.hpp>
+
 namespace rbmc
 {
 using Role =
     sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy::Role;
+using Requester =
+    sdbusplus::common::xyz::openbmc_project::control::Failover::Requester;
 
 /**
  * @class RoleHandler
@@ -72,13 +76,14 @@ class RoleHandler
      *        Reason::none if a failover is allowed right now, or the
      *        reason that it isn't.
      *
+     * @param[in] requester - Who is requesting the failover
      * @param[in] options - The options passed into the StartFailover
      *                      D-Bus method.
      *
      * @return Reason::none if failover is OK, else the reason it isn't.
      */
     virtual sdbusplus::async::task<fo_blocked::Reason> getFailoverBlockedReason(
-        const FailoverOptions& options) = 0;
+        Requester requester, const FailoverOptions& options) = 0;
 
   protected:
     /**

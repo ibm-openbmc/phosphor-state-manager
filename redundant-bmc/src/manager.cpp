@@ -420,7 +420,7 @@ void Manager::setExternalRedundancyInput(
 }
 
 sdbusplus::async::task<fo_blocked::Reason> Manager::validateFailoverRequest(
-    const FailoverOptions& options)
+    Requester requester, const FailoverOptions& options)
 {
     if (!util::validateFailoverRedundancyInput(options))
     {
@@ -432,7 +432,7 @@ sdbusplus::async::task<fo_blocked::Reason> Manager::validateFailoverRequest(
         co_return fo_blocked::Reason::tooEarly;
     }
 
-    co_return co_await handler->getFailoverBlockedReason(options);
+    co_return co_await handler->getFailoverBlockedReason(requester, options);
 }
 
 // NOLINTNEXTLINE
@@ -455,7 +455,7 @@ sdbusplus::async::task<> Manager::method_call(start_failover_t /* unused */,
     errors::addDefaultData(redundancyInterface, *providers, data);
     errors::addFailoverOptsToData(options, data);
 
-    auto blockedReason = co_await validateFailoverRequest(options);
+    auto blockedReason = co_await validateFailoverRequest(requester, options);
 
     if (blockedReason != fo_blocked::Reason::none)
     {

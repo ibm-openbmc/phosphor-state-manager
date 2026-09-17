@@ -114,6 +114,8 @@ struct ActiveInput
     bool failoversAllowed;
     bool failoverInProgress;
     bool forceOption;
+    bool hostRequester;
+    bool hostFailoversAllowed;
 };
 
 /**

@@ -263,6 +263,12 @@ Reason getActiveFailoverBlockedReason(const ActiveInput& input)
             lg2::warning(
                 "The failover 'Force' option is set while failovers are not allowed");
         }
+        else if (input.hostRequester && input.hostFailoversAllowed)
+        {
+            // Host failovers may still be OK.
+            lg2::warning(
+                "FailoversAllowed = false but requester is host and HostFailoversAllowed = true");
+        }
         else
         {
             return Reason::failoversNotAllowed;
