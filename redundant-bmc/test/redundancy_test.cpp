@@ -23,7 +23,8 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         .redundancyOffAtRuntimeStart = false,
         .syncFailed = false,
         .peerConnected = true,
-        .passiveHWIssue = false};
+        .passiveHWIssue = false,
+        .passiveChassisAvailable = true};
 
     // Nothing stopping redundancy
     {
@@ -159,6 +160,28 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
         EXPECT_EQ(*reasons.begin(), SystemHWConfigIssue);
+    }
+
+    // Passive Chassis not available
+    {
+        auto input = golden;
+        input.passiveChassisAvailable = false;
+
+        auto reasons = getNoRedundancyReasons(input);
+        ASSERT_EQ(reasons.size(), 1);
+        EXPECT_EQ(*reasons.begin(), PassiveBMCChassisNotAvailable);
+    }
+
+    // Passive Chassis not available, and sibling BMC not alive
+    {
+        auto input = golden;
+        input.passiveChassisAvailable = false;
+        input.siblingAlive = false;
+
+        // Still just the 1 reason reported, not 2.
+        auto reasons = getNoRedundancyReasons(input);
+        ASSERT_EQ(reasons.size(), 1);
+        EXPECT_EQ(*reasons.begin(), PassiveBMCChassisNotAvailable);
     }
 
     // Multiple fails

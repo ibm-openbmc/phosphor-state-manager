@@ -1,4 +1,5 @@
 {
+    "check_passive_bmc_chassis_available": true,
     "sibling_bmc_reset_gpio": {
         "name": "sibling-bmc-reset-n",
         "polarity": "low"
@@ -9,14 +10,16 @@
             "sibling_bmc_present_gpio": {
                 "name": "presence-chassis2",
                 "polarity": "low"
-            }
+            },
+            "parent_chassis_num": 1
         },
         {
             "bmc_pos": 1,
             "sibling_bmc_present_gpio": {
                 "name": "presence-chassis1",
                 "polarity": "low"
-            }
+            },
+            "parent_chassis_num": 2
         }
     ],
     "pcie_config": {
