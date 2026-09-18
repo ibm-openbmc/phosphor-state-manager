@@ -223,6 +223,8 @@ void SystemdTargetLogging::subscribeToSystemdSignals()
     // systemd signals
     this->systemdNameOwnedChangedSignal.~match();
 
+    expandServiceWildcards();
+
     // Now that systemd is available, set up immediate-quiesce monitoring
     initImmediateQuiesceMonitoring();
 
