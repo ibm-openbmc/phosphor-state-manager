@@ -539,6 +539,19 @@ sdbusplus::async::task<> startFailover(sdbusplus::async::context& ctx,
 
     try
     {
+        // While this may work, the stance is that an rbmctool failover
+        // should only work from the passive BMC.
+        auto role = co_await Redundancy(ctx)
+                        .service(Redundancy::interface)
+                        .path(localBMCPath.str)
+                        .role();
+        if (role != Role::Passive)
+        {
+            std::println(
+                "Error: rbmctool only allows starting a failover on the passive BMC");
+            exit(EXIT_FAILURE);
+        }
+
         if (force)
         {
             lg2::info("Initiating forced failover");
