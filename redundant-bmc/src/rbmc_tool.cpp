@@ -39,6 +39,14 @@ constexpr auto siblingService =
     "xyz.openbmc_project.State.BMC.Redundancy.Sibling";
 constexpr auto pairingService = "xyz.openbmc_project.Provisioning";
 
+const auto localBMCPath =
+    sdbusplus::object_path{Redundancy::namespace_path::value} /
+    Redundancy::namespace_path::bmc;
+
+const auto siblingBMCPath =
+    sdbusplus::object_path{Redundancy::namespace_path::value} /
+    Redundancy::namespace_path::sibling_bmc;
+
 template <typename T>
 void printParam(std::string key, const T& value)
 {
@@ -225,14 +233,11 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
                                          bool extended,
                                          nlohmann::ordered_json& output)
 {
-    auto path = sdbusplus::object_path{Redundancy::namespace_path::value} /
-                Redundancy::namespace_path::bmc;
-
     try
     {
         auto props = co_await Redundancy(ctx)
                          .service(Redundancy::interface)
-                         .path(path.str)
+                         .path(localBMCPath.str)
                          .properties();
 
         auto role = getPDIEnumString(props.role);
@@ -343,14 +348,11 @@ sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
                                            bool extended,
                                            nlohmann::ordered_json& output)
 {
-    auto path = sdbusplus::object_path{Redundancy::namespace_path::value} /
-                Redundancy::namespace_path::sibling_bmc;
-
     try
     {
         auto rProps = co_await Redundancy(ctx)
                           .service(siblingService)
-                          .path(path.str)
+                          .path(siblingBMCPath.str)
                           .properties();
 
         output["Role"] = getPDIEnumString(rProps.role);
@@ -362,17 +364,17 @@ sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
 
         auto fwVersion = co_await Version(ctx)
                              .service(siblingService)
-                             .path(path.str)
+                             .path(siblingBMCPath.str)
                              .version();
 
         auto state = co_await BMCState(ctx)
                          .service(siblingService)
-                         .path(path.str)
+                         .path(siblingBMCPath.str)
                          .current_bmc_state();
 
         auto pairingProps = co_await Pairing(ctx)
                                 .service(siblingService)
-                                .path(path.str)
+                                .path(siblingBMCPath.str)
                                 .properties();
 
         output["Redundancy Enabled"] = rProps.redundancy_enabled;
@@ -501,9 +503,6 @@ sdbusplus::async::task<> resetSiblingBMC(sdbusplus::async::context& ctx)
 sdbusplus::async::task<> modifyRedundancyOverride(
     sdbusplus::async::context& ctx, bool disable)
 {
-    auto path = sdbusplus::object_path{Redundancy::namespace_path::value} /
-                Redundancy::namespace_path::bmc;
-
     try
     {
         // Use lg2 so it shows up in the journal as coming from rbmctool.
@@ -512,7 +511,7 @@ sdbusplus::async::task<> modifyRedundancyOverride(
 
         co_await Redundancy(ctx)
             .service(Redundancy::interface)
-            .path(path.str)
+            .path(localBMCPath.str)
             .disable_redundancy_override(disable);
     }
     catch (const sdbusplus::exception_t& e)
@@ -552,12 +551,9 @@ sdbusplus::async::task<> startFailover(sdbusplus::async::context& ctx,
             lg2::info("Initiating failover");
         }
 
-        auto path = sdbusplus::object_path{Redundancy::namespace_path::value} /
-                    Redundancy::namespace_path::bmc;
-
         co_await Failover(ctx)
             .service(Redundancy::interface)
-            .path(path.str)
+            .path(localBMCPath.str)
             .start_failover(Failover::Requester::Tool, options);
     }
     catch (const sdbusplus::exception_t& e)
