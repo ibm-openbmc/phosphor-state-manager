@@ -52,7 +52,7 @@ using HostInterfaceMap = std::map<std::string, HostPropMap>;
 using ActivationPropMap =
     std::unordered_map<std::string, Activation::PropertiesVariant>;
 
-namespace rules = sdbusplus::bus::match::rules;
+namespace rules = sdbusplus::match_rules;
 
 namespace object_path
 {
@@ -131,8 +131,7 @@ sdbusplus::async::task<> ServicesImpl::watchHostInterfacesAdded(
         bool changed = false;
 
         auto [_, interfaces] =
-            co_await match
-                .next<sdbusplus::message::object_path, HostInterfaceMap>();
+            co_await match.next<sdbusplus::object_path, HostInterfaceMap>();
 
         auto it = interfaces.find(HostState::interface);
         if (it != interfaces.end())
@@ -322,8 +321,7 @@ sdbusplus::async::task<> ServicesImpl::watchPairingInterfacesAdded(
     while (!ctx.stop_requested())
     {
         auto [_, interfaces] =
-            co_await match
-                .next<sdbusplus::message::object_path, PairingInterfaceMap>();
+            co_await match.next<sdbusplus::object_path, PairingInterfaceMap>();
 
         auto it = interfaces.find(Pairing::interface);
         if (it != interfaces.end())
@@ -501,8 +499,8 @@ std::optional<size_t> ServicesImpl::getBMCPosition() const
 }
 
 // NOLINTBEGIN
-sdbusplus::async::task<sdbusplus::message::object_path>
-    ServicesImpl::getUnitPath(const std::string& unitName) const
+sdbusplus::async::task<sdbusplus::object_path> ServicesImpl::getUnitPath(
+    const std::string& unitName) const
 // NOLINTEND
 {
     constexpr auto systemd = sdbusplus::async::proxy()
@@ -510,7 +508,7 @@ sdbusplus::async::task<sdbusplus::message::object_path>
                                  .path(object_path::systemd)
                                  .interface(interface::systemdMgr);
 
-    co_return co_await systemd.call<sdbusplus::message::object_path>(
+    co_return co_await systemd.call<sdbusplus::object_path>(
         ctx, "GetUnit", unitName);
 }
 
@@ -560,9 +558,9 @@ sdbusplus::async::task<> ServicesImpl::listAndLogSystemdJobs() const
                                      .path(object_path::systemd)
                                      .interface(interface::systemdMgr);
 
-        using JobInfo = std::tuple<uint32_t, std::string, std::string,
-                                   std::string, sdbusplus::message::object_path,
-                                   sdbusplus::message::object_path>;
+        using JobInfo =
+            std::tuple<uint32_t, std::string, std::string, std::string,
+                       sdbusplus::object_path, sdbusplus::object_path>;
 
         auto jobs =
             co_await systemd.call<std::vector<JobInfo>>(ctx, "ListJobs");
@@ -606,7 +604,7 @@ sdbusplus::async::task<> ServicesImpl::startUnit(
     {
         lg2::info("Starting unit {UNIT}", "UNIT", unitName);
 
-        co_await systemd.call<sdbusplus::message::object_path>(
+        co_await systemd.call<sdbusplus::object_path>(
             ctx, "StartUnit", unitName, std::string{"replace"});
     }
     else

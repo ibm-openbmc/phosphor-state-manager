@@ -13,7 +13,7 @@ namespace rbmc
 using Availability =
     sdbusplus::client::xyz::openbmc_project::state::decorator::Availability<>;
 
-namespace rules = sdbusplus::bus::match::rules;
+namespace rules = sdbusplus::match_rules;
 
 sdbusplus::async::task<> SiblingChassisWatcher::init()
 {

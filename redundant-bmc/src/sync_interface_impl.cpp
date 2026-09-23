@@ -48,7 +48,7 @@ sdbusplus::async::task<bool> SyncInterfaceImpl::doFullSync()
                 "A full sync is already in progress, waiting for completion");
         }
 
-        namespace rules = sdbusplus::bus::match::rules;
+        namespace rules = sdbusplus::match_rules;
         sdbusplus::async::match match(
             ctx, rules::propertiesChanged(SyncBMCData::instance_path,
                                           SyncBMCData::interface));
