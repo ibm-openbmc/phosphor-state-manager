@@ -310,18 +310,18 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
         co_return RoleInfo{Role::Passive, RoleReason::notPaired};
     }
 
-    // A BMC with no position cannot be active.
-    auto bmcPos = providers->getServices().getBMCPosition();
-    if (!bmcPos.has_value())
-    {
-        co_return RoleInfo{Role::Passive, RoleReason::unknownBMCPosition};
-    }
-
     // A BMC with a failed system inventory status cannot be active.
     if (!co_await providers->getServices().checkSystemInventoryStatus())
     {
         co_return RoleInfo{Role::Passive,
                            RoleReason::systemInventoryNotAvailable};
+    }
+
+    // A BMC with no position cannot be active.
+    auto bmcPos = providers->getServices().getBMCPosition();
+    if (!bmcPos.has_value())
+    {
+        co_return RoleInfo{Role::Passive, RoleReason::unknownBMCPosition};
     }
 
     // If the sibling service isn't on D-Bus, the BMC can't be active.
