@@ -265,7 +265,7 @@ void SiblingImpl::loadActivationProps(
 sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded(
     std::shared_ptr<sdbusplus::async::barrier> barrier)
 {
-    namespace rules = sdbusplus::bus::match::rules;
+    namespace rules = sdbusplus::match_rules;
     sdbusplus::async::match match(ctx,
                                   rules::interfacesAddedAtPath(objectPath));
 
@@ -274,8 +274,7 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceAdded(
     while (!ctx.stop_requested())
     {
         auto [_, interfaces] =
-            co_await match
-                .next<sdbusplus::message::object_path, InterfaceMap>();
+            co_await match.next<sdbusplus::object_path, InterfaceMap>();
 
         auto prevAlive = alive();
 
@@ -322,8 +321,8 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved(
     while (!ctx.stop_requested())
     {
         auto [_, interfaces] =
-            co_await match.next<sdbusplus::message::object_path,
-                                std::vector<std::string>>();
+            co_await match
+                .next<sdbusplus::object_path, std::vector<std::string>>();
 
         auto prevAlive = alive();
 

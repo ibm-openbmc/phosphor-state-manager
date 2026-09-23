@@ -28,8 +28,7 @@ class SiblingImpl : public Sibling
                      std::vector<ReasonForNoRedundancy>, Activations>;
     using PropertyMap = std::unordered_map<std::string, PropertyVariant>;
     using InterfaceMap = std::map<std::string, PropertyMap>;
-    using ManagedObjects =
-        std::map<sdbusplus::message::object_path, InterfaceMap>;
+    using ManagedObjects = std::map<sdbusplus::object_path, InterfaceMap>;
 
     ~SiblingImpl() override = default;
     SiblingImpl(const SiblingImpl&) = delete;

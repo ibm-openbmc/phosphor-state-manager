@@ -225,9 +225,8 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
                                          bool extended,
                                          nlohmann::ordered_json& output)
 {
-    auto path =
-        sdbusplus::message::object_path{Redundancy::namespace_path::value} /
-        Redundancy::namespace_path::bmc;
+    auto path = sdbusplus::object_path{Redundancy::namespace_path::value} /
+                Redundancy::namespace_path::bmc;
 
     try
     {
@@ -344,9 +343,8 @@ sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
                                            bool extended,
                                            nlohmann::ordered_json& output)
 {
-    auto path =
-        sdbusplus::message::object_path{Redundancy::namespace_path::value} /
-        Redundancy::namespace_path::sibling_bmc;
+    auto path = sdbusplus::object_path{Redundancy::namespace_path::value} /
+                Redundancy::namespace_path::sibling_bmc;
 
     try
     {
@@ -503,9 +501,8 @@ sdbusplus::async::task<> resetSiblingBMC(sdbusplus::async::context& ctx)
 sdbusplus::async::task<> modifyRedundancyOverride(
     sdbusplus::async::context& ctx, bool disable)
 {
-    auto path =
-        sdbusplus::message::object_path{Redundancy::namespace_path::value} /
-        Redundancy::namespace_path::bmc;
+    auto path = sdbusplus::object_path{Redundancy::namespace_path::value} /
+                Redundancy::namespace_path::bmc;
 
     try
     {
@@ -555,9 +552,8 @@ sdbusplus::async::task<> startFailover(sdbusplus::async::context& ctx,
             lg2::info("Initiating failover");
         }
 
-        auto path =
-            sdbusplus::message::object_path{Redundancy::namespace_path::value} /
-            Redundancy::namespace_path::bmc;
+        auto path = sdbusplus::object_path{Redundancy::namespace_path::value} /
+                    Redundancy::namespace_path::bmc;
 
         co_await Failover(ctx)
             .service(Redundancy::interface)
