@@ -6,6 +6,7 @@
 #include "redundancy.hpp"
 #include "services_impl.hpp"
 #include "sibling_reset_impl.hpp"
+#include "system_state.hpp"
 #include "types.hpp"
 #include "util.hpp"
 #include "wait_tracker.hpp"
@@ -18,6 +19,8 @@
 #include <xyz/openbmc_project/Software/Version/client.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
+#include <xyz/openbmc_project/State/Boot/Progress/client.hpp>
+#include <xyz/openbmc_project/State/Host/client.hpp>
 
 #include <algorithm>
 #include <format>
@@ -114,6 +117,40 @@ std::string getPDIEnumString(T value)
     catch (const std::exception& e)
     {
         return "BadEnum:" + std::to_string(std::to_underlying(value));
+    }
+}
+
+sdbusplus::async::task<std::string> getSystemState(
+    sdbusplus::async::context& ctx)
+{
+    using HostState = sdbusplus::client::xyz::openbmc_project::state::Host<>;
+    using BootProgress =
+        sdbusplus::client::xyz::openbmc_project::state::boot::Progress<>;
+
+    const std::string path = std::string{HostState::namespace_path::value} +
+                             '/' + HostState::namespace_path::host + '0';
+
+    try
+    {
+        auto service =
+            co_await rbmc::util::getService(ctx, path, HostState::interface);
+
+        auto hostState = co_await HostState(ctx)
+                             .service(service)
+                             .path(path)
+                             .current_host_state();
+
+        auto bootProgress = co_await BootProgress(ctx)
+                                .service(service)
+                                .path(path)
+                                .boot_progress();
+
+        co_return rbmc::getSystemStateName(
+            rbmc::calculateSystemState(hostState, bootProgress));
+    }
+    catch (const std::exception&)
+    {
+        co_return "Unknown";
     }
 }
 
@@ -257,10 +294,17 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
             co_return;
         }
 
-        auto bmcState = co_await getBMCState(services);
-        output["BMC State"] = bmcState;
         output["Failovers Allowed"] = props.failovers_allowed;
         output["Failover In Progress"] = props.failover_in_progress;
+
+        auto bmcState = co_await getBMCState(services);
+        output["BMC State"] = bmcState;
+
+        if (role == "Active")
+        {
+            output["Sys State"] = co_await getSystemState(ctx);
+        }
+
         output["FW Version Hash"] = services.getFWVersion();
 
         try
