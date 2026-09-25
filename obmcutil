@@ -476,6 +476,21 @@ function stop_off_targets()
         obmc-power-stop@*.target
 }
 
+function is_active_bmc()
+{
+    if [ ! -x /usr/libexec/phosphor-state-manager/phosphor-rbmc-state-manager ]; then
+        return 0
+    fi
+
+    local role
+    role=$(busctl get-property \
+            xyz.openbmc_project.State.BMC.Redundancy \
+            /xyz/openbmc_project/state/bmc0 \
+            xyz.openbmc_project.State.BMC.Redundancy \
+        Role 2>/dev/null | cut -d '"' -f2)
+    [[ "$role" == *".Role.Active" ]]
+}
+
 function show_verbose_chassis_states()
 {
     # Find all chassis instances by checking for chassis state objects
@@ -567,14 +582,19 @@ function handle_cmd()
             query_state "host" "$STATE_INTERFACE.OperatingSystem.Status" "OperatingSystemState"
             ;;
         state|status)
-            for query in bmcstate chassisstate hoststate bootprogress osstate; do
-                handle_cmd $query
-            done
-            check_and_warn_boot_block
+            if ! is_active_bmc; then
+                handle_cmd bmcstate
+                echo "This BMC is not active, so chassis/host state services are not running."
+            else
+                for query in bmcstate chassisstate hoststate bootprogress osstate; do
+                    handle_cmd $query
+                done
+                check_and_warn_boot_block
 
-            # If verbose flag is set, show all chassis instance states
-            if [ -n "$G_VERBOSE" ]; then
-                show_verbose_chassis_states
+                # If verbose flag is set, show all chassis instance states
+                if [ -n "$G_VERBOSE" ]; then
+                    show_verbose_chassis_states
+                fi
             fi
             ;;
         bootprogress)
