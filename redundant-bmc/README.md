@@ -360,7 +360,7 @@ will forward the request to the passive BMC.
 ### Allowing Failovers
 
 Even when redundancy is enabled, there are periods when failovers will not be
-allowed. The `FailoversAllowed` D-Bus project reflects this state.
+allowed. The `FailoversAllowed` D-Bus property reflects this state.
 
 Failovers aren't allowed when:
 
@@ -369,9 +369,18 @@ Failovers aren't allowed when:
 3. `RedundancyEnabled` has changed to true but a full sync hasn't been
    completed.
 4. A failover is in progress.
-5. More coming.
 
 When failovers aren't allowed, rbmctool can be used to display the reason why.
+
+### Allowing Host Failovers
+
+Host firmware may need to fail over while booting if it has issues communicating
+with the active BMC. The host knows when failovers are allowed by reading the
+[PCIe MMIO host channel data](#pcie-mmio-redundancy-state), so the
+`HostFailoversAllowed` field in that data will be `true` while the system is
+booting, even when the main `FailoversAllowed` D-Bus property is `false`. This
+prevents other requesters such as Redfish clients from triggering a failover at
+that time.
 
 ### Rejecting a failover request
 
@@ -495,7 +504,7 @@ dedicated PCIe MMIO offset is reserved for redundancy-related properties.
  *   Bits 3-4: role (Unknown=0, Active=1, Passive=2)
  *   Bit 5:    redundancyEnabled
  *   Bit 6:    failoverInProgress
- *   Bit 7:    failoversAllowed
+ *   Bit 7:    hostFailoversAllowed
 ```
 
 ### Configuration

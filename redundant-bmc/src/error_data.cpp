@@ -38,6 +38,7 @@ void addRedundancyData(const RedundancyInterface& iface, AdditionalData& data)
     data["Role"] = getPDIEnumString(iface.role());
     data["RedEnabled"] = boolToYesOrNo(iface.redundancy_enabled());
     data["FOAllowed"] = boolToYesOrNo(iface.failovers_allowed());
+    data["HostFOAllowed"] = boolToYesOrNo(iface.host_failovers_allowed());
 
     if (!iface.reasons_for_no_redundancy().empty())
     {

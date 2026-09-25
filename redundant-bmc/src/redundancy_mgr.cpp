@@ -429,11 +429,20 @@ void RedundancyMgr::determineAndSetFailoversAllowed()
         }
 
         redundancyInterface.failovers_allowed(false);
+
+        // HostFailoversAllowed mirrors FailoversAllowed, except when
+        // the only reason FA=false is because it's during a boot, in which
+        // case HostFailoversAllowed is true so the host can failover then
+        // but nobody else can.
+        redundancyInterface.host_failovers_allowed(
+            reason == FailoversNotAllowedReason::WrongSystemState &&
+            systemState == SystemState::booting);
     }
     else if (!redundancyInterface.failovers_allowed())
     {
         lg2::info("Changing failovers to allowed");
         redundancyInterface.failovers_allowed(true);
+        redundancyInterface.host_failovers_allowed(true);
     }
 }
 

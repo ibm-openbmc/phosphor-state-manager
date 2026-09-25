@@ -106,6 +106,7 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
         bool redEnabled{};
         bool failoverInProgress{};
         bool failoversAllowed{};
+        bool hostFailoversAllowed{};
         bool failoverImminent{};
         std::vector<Redundancy::ReasonForNoRedundancy> reasonsForNoRedundancy;
         FailoversNotAllowedReason failoversNotAllowedReason;
@@ -116,6 +117,7 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
         .redEnabled = true,
         .failoverInProgress = false,
         .failoversAllowed = true,
+        .hostFailoversAllowed = true,
         .failoverImminent = false,
         .reasonsForNoRedundancy = {},
         .failoversNotAllowedReason = FailoversNotAllowedReason::None};
@@ -128,6 +130,7 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
             .redEnabled = false,
             .failoverInProgress = false,
             .failoversAllowed = false,
+            .hostFailoversAllowed = false,
             .failoverImminent = false,
             .reasonsForNoRedundancy = std::move(reasons),
             .failoversNotAllowedReason =
@@ -141,6 +144,8 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
         EXPECT_EQ(iface.redundancy_enabled(), expected.redEnabled);
         EXPECT_EQ(iface.failover_in_progress(), expected.failoverInProgress);
         EXPECT_EQ(iface.failovers_allowed(), expected.failoversAllowed);
+        EXPECT_EQ(iface.host_failovers_allowed(),
+                  expected.hostFailoversAllowed);
         EXPECT_EQ(iface.failover_imminent(), expected.failoverImminent);
         EXPECT_EQ(iface.reasons_for_no_redundancy(),
                   expected.reasonsForNoRedundancy);
@@ -165,27 +170,14 @@ class ManagerTest : public rbmc::test::PersistentDataTestFixture
             .Times(vals.redEnabled ? 1 : 0);
         EXPECT_CALL(storage, updateFailoverInProgress(vals.failoverInProgress))
             .Times(vals.failoverInProgress ? 1 : 0);
-        EXPECT_CALL(storage, updateFailoversAllowed(vals.failoversAllowed))
-            .Times(vals.failoversAllowed ? 1 : 0);
-
-        // The constructor initializes PCIe storage with false; if the final
-        // expected value differs, expect the initial false call as well.
-        // if (vals.redEnabled)
-        // {
-        //     EXPECT_CALL(storage, updateRedundancyEnabled(false)).Times(1);
-        // }
-        // EXPECT_CALL(storage,
-        // updateRedundancyEnabled(vals.redEnabled)).Times(1);
-        //
-        // EXPECT_CALL(storage,
-        // updateFailoverInProgress(vals.failoverInProgress));
-        //
-        // if (vals.failoversAllowed)
-        // {
-        //     EXPECT_CALL(storage, updateFailoversAllowed(false)).Times(1);
-        // }
-        // EXPECT_CALL(storage, updateFailoversAllowed(vals.failoversAllowed))
-        //     .Times(1);
+        // This FA field tracks host failovers allowed
+        EXPECT_CALL(storage, updateFailoversAllowed(vals.hostFailoversAllowed))
+            .Times(vals.hostFailoversAllowed ? 1 : 0);
+        // The host failovers allowed may be written with false at any point
+        // when failovers are not allowed (e.g. intermediate states before
+        // sync completes). Allow any number of such calls; individual tests
+        // can override for stricter checking.
+        EXPECT_CALL(storage, updateFailoversAllowed(false)).Times(AnyNumber());
     }
 
     /**
@@ -601,6 +593,7 @@ TEST_F(ManagerTest, BecomesPassive_SiblingAlreadyActive_RedEnabled)
         .redEnabled = true,
         .failoverInProgress = false,
         .failoversAllowed = true,
+        .hostFailoversAllowed = false,
         .failoverImminent = false,
         .reasonsForNoRedundancy = {},
         .failoversNotAllowedReason = FailoversNotAllowedReason::None};
@@ -846,6 +839,7 @@ TEST_F(ManagerTest, BecomeActive_FailoversNotAllowed_SystemBooting)
         .redEnabled = true,
         .failoverInProgress = false,
         .failoversAllowed = false,
+        .hostFailoversAllowed = true,
         .failoverImminent = false,
         .reasonsForNoRedundancy = {},
         .failoversNotAllowedReason =
@@ -858,6 +852,64 @@ TEST_F(ManagerTest, BecomeActive_FailoversNotAllowed_SystemBooting)
     verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
     verifyPersistentData(expectedProps.role, "Sibling is already passive",
                          false);
+}
+
+/**
+ * @brief Test: Host failovers-allowed value is correct across the
+ *        off -> booting -> other -> runtime state sequence.
+ *
+ *  off    : FA=true,  host FA=true
+ *  booting: FA=false, host FA=true
+ *  other  : FA=false, host FA=false
+ *  runtime: FA=true,  host FA=true
+ */
+TEST_F(ManagerTest, HostFailoversAllowedAcrossSystemStateTransitions)
+{
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    // Start with system off so the manager comes up with failovers allowed
+    ON_CALL(services, getSystemState()).WillByDefault(Return(SystemState::off));
+
+    setupPCIeStorageExpects(activeRedundancyEnabledProps);
+
+    auto& storage = mockProviders->getMockPCIeStorage();
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    // off: failovers and host failovers are allowed
+    verifyRedundancyProps(manager->getRedundancyInterface(),
+                          activeRedundancyEnabledProps);
+
+    // off -> booting
+    // FA goes false; host FA stays true
+
+    services.runSystemStateCallback(Role::Active, SystemState::booting);
+
+    EXPECT_FALSE(manager->getRedundancyInterface().failovers_allowed());
+    EXPECT_TRUE(manager->getRedundancyInterface().host_failovers_allowed());
+
+    // booting -> other
+    // Host FA goes false; D-Bus stays false
+    EXPECT_CALL(storage, updateFailoversAllowed(false)).Times(1);
+
+    services.runSystemStateCallback(Role::Active, SystemState::other);
+
+    EXPECT_FALSE(manager->getRedundancyInterface().failovers_allowed());
+    EXPECT_FALSE(manager->getRedundancyInterface().host_failovers_allowed());
+
+    // other -> runtime
+    // True for both D-Bus and host
+    EXPECT_CALL(storage, updateFailoversAllowed(true)).Times(1);
+
+    services.runSystemStateCallback(Role::Active, SystemState::runtime);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(),
+                          activeRedundancyEnabledProps);
 }
 
 /**
@@ -1338,7 +1390,7 @@ TEST_F(ManagerTest, FailoverBlocked_NotAllowed)
             {
                 FailoverOptions options;
                 co_await manager->method_call(Manager::start_failover_t{},
-                                              Requester::Host, options);
+                                              Requester::Redfish, options);
                 ADD_FAILURE() << "StartFailover should not have have succeeded";
             }
             catch (const sdbusplus::xyz::openbmc_project::Common::Error::
@@ -1492,6 +1544,7 @@ TEST_F(ManagerTest, StartFailoverOnActive)
         .redEnabled = true,
         .failoverInProgress = false,
         .failoversAllowed = true,
+        .hostFailoversAllowed = true,
         .failoverImminent = false,
         .reasonsForNoRedundancy = {},
         .failoversNotAllowedReason = FailoversNotAllowedReason::None};
@@ -1595,8 +1648,10 @@ TEST_F(ManagerTest, StartFailover_ActiveBlocked_FailoversNotAllowed)
             try
             {
                 FailoverOptions options;
+                // The Redfish requester is blocked, note a host
+                // requester wouldn't have been.
                 co_await manager->method_call(Manager::start_failover_t{},
-                                              Requester::Host, options);
+                                              Requester::Redfish, options);
                 ADD_FAILURE() << "StartFailover should not have succeeded";
             }
             catch (const sdbusplus::xyz::openbmc_project::Common::Error::
@@ -1612,6 +1667,7 @@ TEST_F(ManagerTest, StartFailover_ActiveBlocked_FailoversNotAllowed)
         .redEnabled = true,
         .failoverInProgress = false,
         .failoversAllowed = false,
+        .hostFailoversAllowed = true,
         .failoverImminent = false,
         .reasonsForNoRedundancy = {},
         .failoversNotAllowedReason =

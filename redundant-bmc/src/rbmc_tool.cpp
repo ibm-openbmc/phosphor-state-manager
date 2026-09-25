@@ -51,7 +51,7 @@ template <typename T>
 void printParam(std::string key, const T& value)
 {
     key.push_back(':');
-    std::println("{:22}{}", key, value);
+    std::println("{:24}{}", key, value);
 }
 
 void printReason(std::string_view reason)
@@ -228,7 +228,6 @@ void addBMCUptime(nlohmann::ordered_json& output)
     output["BMC Uptime"] = rbmc::util::uptimeToString(total);
 }
 
-// NOLINTNEXTLINE
 sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
                                          bool extended,
                                          nlohmann::ordered_json& output)
@@ -260,6 +259,7 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
         auto bmcState = co_await getBMCState(services);
         output["BMC State"] = bmcState;
         output["Failovers Allowed"] = props.failovers_allowed;
+        output["Host Failovers Allowed"] = props.host_failovers_allowed;
         output["Failover In Progress"] = props.failover_in_progress;
         output["FW Version Hash"] = services.getFWVersion();
 
@@ -379,6 +379,7 @@ sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
 
         output["Redundancy Enabled"] = rProps.redundancy_enabled;
         output["Failovers Allowed"] = rProps.failovers_allowed;
+        output["Host Failovers Allowed"] = rProps.host_failovers_allowed;
         output["BMC State"] = getPDIEnumString(state);
         output["FW Version Hash"] = fwVersion;
         output["Paired"] = pairingProps.provisioned;
