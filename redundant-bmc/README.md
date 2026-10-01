@@ -222,7 +222,7 @@ on the active BMC will:
 1. Watch for the code update to start and save that indication persistently.
 2. Any time that redundancy is attempted and it can't be enabled, the code will
    skip creating an error log if the code update indication is saved and the
-   only reason it can't be enabled is due to a code update.
+   only reason it can't be enabled is due to mismatched code versions.
 
 The indication will be cleared if:
 
