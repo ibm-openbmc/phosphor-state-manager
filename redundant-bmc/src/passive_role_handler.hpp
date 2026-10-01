@@ -60,13 +60,14 @@ class PassiveRoleHandler : public RoleHandler
      *        Reason::none if a failover is allowed right now, or the
      *        reason that it isn't.
      *
+     * @param[in] requester - Who is requesting the failover
      * @param[in] options - The options passed into the StartFailover
      *                      D-Bus method.
      *
      * @return Reason::none if failover is OK, else the reason it isn't.
      */
     sdbusplus::async::task<fo_blocked::Reason> getFailoverBlockedReason(
-        const FailoverOptions& options) override;
+        Requester requester, const FailoverOptions& options) override;
 
   private:
     /**
@@ -88,6 +89,12 @@ class PassiveRoleHandler : public RoleHandler
      *        FailoversAllowed D-Bus property.
      */
     void setupSiblingFailoversAllowedWatch();
+
+    /**
+     * @brief Setup watching the sibling BMC's
+     *        HostFailoversAllowed D-Bus property.
+     */
+    void setupSiblingHostFailoversAllowedWatch();
 
     /**
      * @brief Setup watching the sibling BMC's code update state.
@@ -117,6 +124,14 @@ class PassiveRoleHandler : public RoleHandler
      * Will mirror the value on this BMC's Redundancy interface
      */
     void siblingFailoversAllowedHandler(bool allowed);
+
+    /**
+     * @brief Handler for the HostFailoversAllowed property
+     *        on the sibling's D-Bus interface changing.
+     *
+     * Will mirror the value on this BMC's Redundancy interface
+     */
+    void siblingHostFailoversAllowedHandler(bool allowed);
 
     /**
      * @brief Handler for the DisableRedundancyOverride
