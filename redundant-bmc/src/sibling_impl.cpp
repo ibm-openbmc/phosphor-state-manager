@@ -4,9 +4,9 @@
 #include "gpio.hpp"
 
 #include <phosphor-logging/lg2.hpp>
+#include <xyz/openbmc_project/BmcPairing/BmcPairing/common.hpp>
 #include <xyz/openbmc_project/Control/Failover/client.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
-#include <xyz/openbmc_project/Provisioning/Provisioning/common.hpp>
 #include <xyz/openbmc_project/Software/Version/common.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
@@ -24,7 +24,7 @@ using BMCStateIntf = sdbusplus::common::xyz::openbmc_project::state::BMC;
 using AvailIntf =
     sdbusplus::common::xyz::openbmc_project::state::decorator::Availability;
 using PairingIntf =
-    sdbusplus::common::xyz::openbmc_project::provisioning::Provisioning;
+    sdbusplus::common::xyz::openbmc_project::bmc_pairing::BmcPairing;
 using ActivationIntf =
     sdbusplus::common::xyz::openbmc_project::software::Activation;
 
@@ -233,7 +233,7 @@ void SiblingImpl::loadPairingProps(const SiblingImpl::PropertyMap& propertyMap)
 {
     pairing.present = true;
 
-    auto it = propertyMap.find("Provisioned");
+    auto it = propertyMap.find("Paired");
     if (it != propertyMap.end())
     {
         pairing.paired = std::get<bool>(it->second);

@@ -14,8 +14,8 @@
 #include <CLI/CLI.hpp>
 #include <nlohmann/json.hpp>
 #include <phosphor-logging/lg2.hpp>
+#include <xyz/openbmc_project/BmcPairing/BmcPairing/client.hpp>
 #include <xyz/openbmc_project/Control/Failover/client.hpp>
-#include <xyz/openbmc_project/Provisioning/Provisioning/client.hpp>
 #include <xyz/openbmc_project/Software/Version/client.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
@@ -34,13 +34,13 @@ using Role = Redundancy::Role;
 using Failover = sdbusplus::client::xyz::openbmc_project::control::Failover<>;
 using Version = sdbusplus::client::xyz::openbmc_project::software::Version<>;
 using Pairing =
-    sdbusplus::client::xyz::openbmc_project::provisioning::Provisioning<>;
+    sdbusplus::client::xyz::openbmc_project::bmc_pairing::BmcPairing<>;
 using PeerConnectionStatus = sdbusplus::common::xyz::openbmc_project::
-    provisioning::Provisioning::PeerConnectionStatus;
+    bmc_pairing::BmcPairing::PeerConnectionStatus;
 
 constexpr auto siblingService =
     "xyz.openbmc_project.State.BMC.Redundancy.Sibling";
-constexpr auto pairingService = "xyz.openbmc_project.Provisioning";
+constexpr auto pairingService = "xyz.openbmc_project.BmcPairing";
 
 const auto localBMCPath =
     sdbusplus::object_path{Redundancy::namespace_path::value} /
@@ -313,7 +313,7 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
                                     .service(pairingService)
                                     .path(Pairing::instance_path)
                                     .properties();
-            output["Paired"] = pairingProps.provisioned;
+            output["Paired"] = pairingProps.paired;
 
             if (pairingProps.peer_connected != PeerConnectionStatus::Connected)
             {
@@ -426,7 +426,7 @@ sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
         output["Host Failovers Allowed"] = rProps.host_failovers_allowed;
         output["BMC State"] = getPDIEnumString(state);
         output["FW Version Hash"] = fwVersion;
-        output["Paired"] = pairingProps.provisioned;
+        output["Paired"] = pairingProps.paired;
     }
     catch (const std::exception& e)
     {

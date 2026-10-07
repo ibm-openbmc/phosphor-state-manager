@@ -7,13 +7,13 @@
 #include <openssl/evp.h>
 
 #include <phosphor-logging/lg2.hpp>
+#include <xyz/openbmc_project/BmcPairing/BmcPairing/client.hpp>
 #include <xyz/openbmc_project/Common/Progress/client.hpp>
 #include <xyz/openbmc_project/Control/SideBandBus/client.hpp>
 #include <xyz/openbmc_project/Inventory/Decorator/Position/client.hpp>
 #include <xyz/openbmc_project/Inventory/Item/System/common.hpp>
 #include <xyz/openbmc_project/Logging/Create/client.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
-#include <xyz/openbmc_project/Provisioning/Provisioning/client.hpp>
 #include <xyz/openbmc_project/Software/Activation/client.hpp>
 #include <xyz/openbmc_project/Software/Version/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
@@ -36,12 +36,12 @@ using InvProgress = sdbusplus::client::xyz::openbmc_project::common::Progress<>;
 using SidebandBus =
     sdbusplus::client::xyz::openbmc_project::control::SideBandBus<>;
 using Pairing =
-    sdbusplus::client::xyz::openbmc_project::provisioning::Provisioning<>;
+    sdbusplus::client::xyz::openbmc_project::bmc_pairing::BmcPairing<>;
 using Activation =
     sdbusplus::common::xyz::openbmc_project::software::Activation;
 using Version = sdbusplus::client::xyz::openbmc_project::software::Version<>;
 using PeerConnectionStatus = sdbusplus::common::xyz::openbmc_project::
-    provisioning::Provisioning::PeerConnectionStatus;
+    bmc_pairing::BmcPairing::PeerConnectionStatus;
 
 using HostProperties =
     std::variant<std::string, HostState::HostState, HostState::RestartCause,
@@ -226,11 +226,11 @@ sdbusplus::async::task<> ServicesImpl::readPairingProperties()
                          .path(Pairing::instance_path)
                          .properties();
 
-        paired = props.provisioned;
+        paired = props.paired;
         peerConnected = props.peer_connected == PeerConnectionStatus::Connected;
 
         lg2::debug("Initial Paired = {PAIR} and PeerConnected = {STATUS}",
-                   "PAIR", props.provisioned, "STATUS", props.peer_connected);
+                   "PAIR", props.paired, "STATUS", props.peer_connected);
     }
     catch (const sdbusplus::exception_t& e)
     {
@@ -292,13 +292,13 @@ void ServicesImpl::loadPairingProps(const PairingPropMap& propertyMap)
         }
     }
 
-    it = propertyMap.find("Provisioned");
+    it = propertyMap.find("Paired");
     if (it != propertyMap.end())
     {
         auto prevPaired = paired;
         paired = std::get<bool>(it->second);
 
-        lg2::info("The new Paired value is {PROV}", "PROV", paired);
+        lg2::info("The new Paired value is {PAIRED}", "PAIRED", paired);
 
         // Invoke callbacks if value changed
         if (prevPaired != paired)
