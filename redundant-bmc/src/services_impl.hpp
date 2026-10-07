@@ -7,7 +7,7 @@
 #include "wait_tracker.hpp"
 
 #include <sdbusplus/async/barrier.hpp>
-#include <xyz/openbmc_project/Provisioning/Provisioning/common.hpp>
+#include <xyz/openbmc_project/BmcPairing/BmcPairing/common.hpp>
 #include <xyz/openbmc_project/State/Boot/Progress/common.hpp>
 #include <xyz/openbmc_project/State/Host/common.hpp>
 
@@ -37,7 +37,7 @@ class ServicesImpl : public Services
     ServicesImpl& operator=(ServicesImpl&&) = delete;
 
     using PairingCommon =
-        sdbusplus::common::xyz::openbmc_project::provisioning::Provisioning;
+        sdbusplus::common::xyz::openbmc_project::bmc_pairing::BmcPairing;
     using PairingPropMap =
         std::unordered_map<std::string, PairingCommon::PropertiesVariant>;
     using PairingInterfaceMap = std::map<std::string, PairingPropMap>;
