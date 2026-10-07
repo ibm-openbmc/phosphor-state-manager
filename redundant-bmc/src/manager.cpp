@@ -288,24 +288,17 @@ sdbusplus::async::task<std::optional<role_determination::RoleInfo>>
     Manager::determinePassiveRoleIfRequired()
 {
     using namespace role_determination;
+    bool labMode = providers->getServices().isInSingleBMCLabMode();
 
-    // If in single BMC lab mode with a single BMC, none of
-    // these checks are necessary.
-    if (providers->getServices().isInSingleBMCLabMode())
+    if (labMode && providers->getSibling().isBMCPresent())
     {
-        if (providers->getSibling().isBMCPresent())
-        {
-            lg2::warning(
-                "Single BMC lab mode is active but there is still another BMC");
-        }
-        else
-        {
-            co_return std::nullopt;
-        }
+        lg2::warning(
+            "Single BMC lab mode is active but there is still another BMC. Ignoring mode.");
+        labMode = false;
     }
 
-    // An unpaired BMC cannot be active.
-    if (!providers->getServices().getPaired())
+    // An unpaired BMC cannot be active (though OK in lab mode)
+    if (!providers->getServices().getPaired() && !labMode)
     {
         co_return RoleInfo{Role::Passive, RoleReason::notPaired};
     }
