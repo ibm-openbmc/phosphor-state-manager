@@ -98,8 +98,6 @@ Manager::Manager(sdbusplus::async::context& ctx,
     ctx.spawn(startup());
 }
 
-// clang-tidy currently mangles this into something unreadable
-// NOLINTNEXTLINE
 sdbusplus::async::task<> Manager::startup()
 {
     auto& services = providers->getServices();
@@ -129,14 +127,31 @@ sdbusplus::async::task<> Manager::startup()
         if (sibling.isBMCPresent())
         {
             co_await sibling.waitForSiblingUp();
+        }
 
-            if (previousRole == Role::Passive)
+        auto roleInfo = co_await determineRole();
+
+        // In certain cases where the BMCs come up at exactly the
+        // same time, BMC 0 lets the other BMC go first and
+        // choose the opposite role.
+        if (sibling.alive() &&
+            role_determination::needDeferToSibling(
+                roleInfo, services.getBMCPosition(), sibling.getRole()))
+        {
+            lg2::info(
+                "Waiting for sibling to publish its role before finalizing this one");
+            co_await sibling.waitForSiblingRole();
+
+            auto newRole = co_await determineRole();
+            if (roleInfo.role != newRole.role)
             {
-                co_await sibling.waitForSiblingRole();
+                lg2::info("Role changed after waiting for sibling: now {ROLE}",
+                          "ROLE", newRole.role);
+                roleInfo = newRole;
             }
         }
 
-        updateRole(co_await determineRole());
+        updateRole(roleInfo);
     }
 
     if (chosePassiveDueToError)
@@ -275,8 +290,6 @@ sdbusplus::async::task<role_determination::RoleInfo> Manager::determineRole()
         lg2::error("Exception while determining role: {ERROR}", "ERROR",
                    e.what());
     }
-
-    // TODO, probably: Create an error log if passive due to an error
 
     co_return roleInfo;
 }

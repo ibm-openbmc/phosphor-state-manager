@@ -11,6 +11,7 @@ test(
         'persistent_data_test.cpp',
         'redundancy_test.cpp',
         'role_determination_test.cpp',
+        'role_negotiation_test.cpp',
         'system_state_test.cpp',
         'util_test.cpp',
         'wait_tracker_test.cpp',
