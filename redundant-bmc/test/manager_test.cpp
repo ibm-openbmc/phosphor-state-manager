@@ -2318,3 +2318,50 @@ TEST_F(ManagerTest, StartFailover_PassiveBMC_HostFailoversAllowed)
                           activeRedundancyEnabledProps);
     verifyPersistentData(Role::Active, "Failover", false);
 }
+
+/**
+ *  @brief: Test: BMC 0 has no previous role so would go active via
+ *          positionZero. But sibling (BMC 1) was previously active, so
+ *          BMC 0 defers to let the sibling claim active first, then
+ *          takes passive.
+ */
+TEST_F(ManagerTest, BecomesPassive_DeferToSibling_PrevActiveRole)
+{
+    // BMC position 0, sibling alive but role Unknown initially
+    TestScenarioConfig config{
+        .bmcPosition = 0, .siblingAlive = true, .siblingRole = Role::Unknown};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+
+    EXPECT_CALL(services, logError(errors::error_msg::bmcIsPassiveDueToError,
+                                   errors::Level::Error, _))
+        .Times(0);
+
+    EXPECT_CALL(services,
+                startUnit("obmc-bmc-passive.target", passiveTargetTimeout))
+        .Times(1);
+
+    // After waitForSiblingRole, the sibling will report the role as active
+    EXPECT_CALL(sibling, waitForSiblingRole()).Times(1).WillOnce([&sibling]() {
+        ON_CALL(sibling, getRole())
+            .WillByDefault(Return(std::make_optional(Role::Active)));
+        return test_helpers::makeCompletedTask();
+    });
+
+    RedundancyProps expectedProps{
+        .role = Role::Passive,
+        .redEnabled = false,
+        .failoverInProgress = false,
+        .failoversAllowed = false,
+        .failoverImminent = false,
+        .reasonsForNoRedundancy = {},
+        .failoversNotAllowedReason = FailoversNotAllowedReason::None};
+
+    createManagerAndRun(ProgressPoint::passiveHandlerStartComplete);
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+    verifyPersistentData(expectedProps.role, "Sibling is already active",
+                         false);
+}
