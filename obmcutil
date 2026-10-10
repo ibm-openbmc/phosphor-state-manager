@@ -293,7 +293,10 @@ function get_systemd_target_state()
 {
     local target="$*"
     local enabled_state
-    enabled_state=$(systemctl is-enabled "$target" 2>/dev/null) || enabled_state="unknown"
+    enabled_state=$(systemctl is-enabled "$target" 2>/dev/null)
+    if [ -z "$enabled_state" ]; then
+        enabled_state="unknown"
+    fi
     echo "$enabled_state"
 }
 
