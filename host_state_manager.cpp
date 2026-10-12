@@ -426,6 +426,21 @@ Host::Transition Host::requestedHostTransition(Transition value)
 Host::ProgressStages Host::bootProgress(ProgressStages value)
 {
     auto retVal = bootprogress::Progress::bootProgress(value);
+
+    // The RestartCause can be utilized by the host firmware to execute certain
+    // power restore polices. For example, if the RestartCause was a HostCrash
+    // then the host firmware may automatically restart certain virtual
+    // machines. Because of this, don't clear the RestartCause until the host
+    // has successfully booted up
+    if ((value == ProgressStages::SystemInitComplete ||
+         value == ProgressStages::OSRunning) &&
+        (server::Host::restartCause() != RestartCause::Unknown))
+    {
+        info("BootProgress reached {STAGE}, clearing RestartCause", "STAGE",
+             value);
+        server::Host::restartCause(RestartCause::Unknown);
+    }
+
     serialize();
     return retVal;
 }
