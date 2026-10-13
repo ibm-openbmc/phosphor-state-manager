@@ -29,7 +29,6 @@ unit_files = [
     'phosphor-bmc-quiesce-reboot.service',
     'phosphor-wait-poweron-blocks.service',
     'phosphor-wait-for-active-passive-target.service',
-    'phosphor-wait-poweron-blocks.service',
 ]
 
 # Add SMP-specific service file when multi-chassis SMP is enabled
