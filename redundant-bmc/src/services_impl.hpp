@@ -241,7 +241,7 @@ class ServicesImpl : public Services
      *
      * @return object_path - The systemd D-Bus object path
      */
-    sdbusplus::async::task<sdbusplus::message::object_path> getUnitPath(
+    sdbusplus::async::task<sdbusplus::object_path> getUnitPath(
         const std::string& unitName) const;
 
     /**
