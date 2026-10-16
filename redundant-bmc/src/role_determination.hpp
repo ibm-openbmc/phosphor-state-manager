@@ -3,6 +3,8 @@
 
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 
+#include <optional>
+
 namespace rbmc
 {
 
@@ -80,6 +82,23 @@ std::string getRoleReasonDescription(RoleReason reason);
  *        BMC to be passive.
  */
 bool isErrorReason(RoleReason reason);
+
+/**
+ * @brief Returns true if this BMC should wait for the sibling to
+ *        determine its role before finalizing its own.
+ *
+ * See the implementation for details.
+ * The wait is never needed once the sibling has published a role.
+ *
+ * @param[in] roleInfo     - The role this BMC would claim
+ * @param[in] bmcPosition  - This BMC's position
+ * @param[in] siblingRole  - The sibling's current role, if known
+ *
+ * @return true if a wait is needed
+ */
+bool needDeferToSibling(const RoleInfo& roleInfo,
+                        std::optional<size_t> bmcPosition,
+                        std::optional<Role> siblingRole);
 
 } // namespace role_determination
 

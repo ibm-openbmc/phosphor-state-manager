@@ -126,4 +126,37 @@ bool isErrorReason(RoleReason reason)
     return std::ranges::contains(errorRoleReasons, reason);
 }
 
+bool needDeferToSibling(const RoleInfo& roleInfo,
+                        std::optional<size_t> bmcPosition,
+                        std::optional<Role> siblingRole)
+{
+    // If the sibling role was known, then no need to defer.
+    if (siblingRole.value_or(Role::Unknown) != Role::Unknown)
+    {
+        return false;
+    }
+
+    // BMC 0 didn't have a previous role so only active
+    // due to position. Defer to BMC 1 in case it was resuming
+    // the active role.
+    if (roleInfo.role == Role::Active &&
+        roleInfo.reason == RoleReason::positionZero)
+    {
+        return true;
+    }
+
+    // BMC 0 has a previous role. For cases:
+    // - BMC 0 was active and BMC 1 resuming previous role of active
+    //   - BMC 0 will choose passive to avoid active/active
+    // - BMC 0 was passive and BMC 1 resuming previous role of passive
+    //   - BMC 0 will choose active to avoid passive/passive
+    if (roleInfo.reason == RoleReason::resumePrevious &&
+        bmcPosition.value_or(1) == 0)
+    {
+        return true;
+    }
+
+    return false;
+}
+
 } // namespace rbmc::role_determination
