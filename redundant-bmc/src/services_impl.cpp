@@ -738,9 +738,7 @@ sdbusplus::async::task<> ServicesImpl::waitForSystemInventoryPath()
     using namespace std::chrono_literals;
     constexpr auto timeout = 3min;
 
-    WaitTracker::WaitGuard guard(
-        waitTracker, WaitOperation::systemInventoryPath,
-        std::chrono::duration_cast<std::chrono::seconds>(timeout));
+    std::unique_ptr<WaitTracker::WaitGuard> tracker;
 
     auto end = std::chrono::steady_clock::now() + timeout;
     bool traced = false;
@@ -766,6 +764,9 @@ sdbusplus::async::task<> ServicesImpl::waitForSystemInventoryPath()
                 traced = true;
                 lg2::info("Waiting for system inventory object. ({ERROR})",
                           "ERROR", e);
+                tracker = std::make_unique<WaitTracker::WaitGuard>(
+                    waitTracker, WaitOperation::systemInventoryPath,
+                    std::chrono::duration_cast<std::chrono::seconds>(timeout));
             }
         }
 
@@ -786,9 +787,7 @@ sdbusplus::async::task<bool> ServicesImpl::checkSystemInventoryStatus()
     using namespace std::chrono_literals;
     constexpr auto timeout = 3min;
 
-    WaitTracker::WaitGuard guard(
-        waitTracker, WaitOperation::systemInventoryStatus,
-        std::chrono::duration_cast<std::chrono::seconds>(timeout));
+    std::unique_ptr<WaitTracker::WaitGuard> tracker;
 
     bool tracedWait = false;
     std::string service;
@@ -841,6 +840,9 @@ sdbusplus::async::task<bool> ServicesImpl::checkSystemInventoryStatus()
                 lg2::info(
                     "System inventory status isn't complete yet: {STATUS}",
                     "STATUS", status);
+                tracker = std::make_unique<WaitTracker::WaitGuard>(
+                    waitTracker, WaitOperation::systemInventoryStatus,
+                    std::chrono::duration_cast<std::chrono::seconds>(timeout));
             }
         }
 
@@ -901,9 +903,7 @@ sdbusplus::async::task<> ServicesImpl::waitForPeerConnection(
         co_return;
     }
 
-    WaitTracker::WaitGuard guard(
-        waitTracker, WaitOperation::peerConnection,
-        std::chrono::duration_cast<std::chrono::seconds>(timeout));
+    std::unique_ptr<WaitTracker::WaitGuard> tracker;
 
     auto end = std::chrono::steady_clock::now() + timeout;
     bool tracedWait = false;
@@ -927,6 +927,9 @@ sdbusplus::async::task<> ServicesImpl::waitForPeerConnection(
             tracedWait = true;
             lg2::info("Waiting up to {MIN} minutes for peer connection", "MIN",
                       timeout.count());
+            tracker = std::make_unique<WaitTracker::WaitGuard>(
+                waitTracker, WaitOperation::peerConnection,
+                std::chrono::duration_cast<std::chrono::seconds>(timeout));
         }
 
         co_await sdbusplus::async::sleep_for(ctx, 500ms);
@@ -941,9 +944,7 @@ sdbusplus::async::task<> ServicesImpl::waitForSelfPairing()
     using namespace std::chrono_literals;
     constexpr auto timeout = 30s;
 
-    WaitTracker::WaitGuard guard(
-        waitTracker, WaitOperation::selfPairing,
-        std::chrono::duration_cast<std::chrono::seconds>(timeout));
+    std::unique_ptr<WaitTracker::WaitGuard> tracker;
 
     auto end = std::chrono::steady_clock::now() + timeout;
     bool traced = false;
@@ -959,6 +960,9 @@ sdbusplus::async::task<> ServicesImpl::waitForSelfPairing()
         {
             traced = true;
             lg2::info("Waiting up to 30s for self pairing");
+            tracker = std::make_unique<WaitTracker::WaitGuard>(
+                waitTracker, WaitOperation::selfPairing,
+                std::chrono::duration_cast<std::chrono::seconds>(timeout));
         }
 
         co_await sdbusplus::async::sleep_for(ctx, 1s);

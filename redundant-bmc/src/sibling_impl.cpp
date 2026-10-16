@@ -488,9 +488,7 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingUp()
     using namespace std::chrono_literals;
     constexpr auto timeout = 6min;
 
-    WaitTracker::WaitGuard guard(
-        waitTracker, WaitOperation::siblingAlive,
-        std::chrono::duration_cast<std::chrono::seconds>(timeout));
+    std::unique_ptr<WaitTracker::WaitGuard> tracker;
 
     auto start = std::chrono::steady_clock::now();
     auto waiting = false;
@@ -503,6 +501,9 @@ sdbusplus::async::task<> SiblingImpl::waitForSiblingUp()
                 "Waiting up to {TIME} minutes for sibling to become alive",
                 "TIME", timeout.count());
             waiting = true;
+            tracker = std::make_unique<WaitTracker::WaitGuard>(
+                waitTracker, WaitOperation::siblingAlive,
+                std::chrono::duration_cast<std::chrono::seconds>(timeout));
         }
 
         co_await sdbusplus::async::sleep_for(ctx, 500ms);
@@ -562,9 +563,7 @@ sdbusplus::async::task<> SiblingImpl::waitForBMCSteadyState() const
         return (state == BMCState::Ready) || (state == BMCState::Quiesced);
     };
 
-    WaitTracker::WaitGuard guard(
-        waitTracker, WaitOperation::siblingBMCSteadyState,
-        std::chrono::duration_cast<std::chrono::seconds>(timeout));
+    std::unique_ptr<WaitTracker::WaitGuard> tracker;
 
     while (!steadyState(bmcState.state) &&
            ((std::chrono::steady_clock::now() - start) < timeout))
@@ -583,6 +582,9 @@ sdbusplus::async::task<> SiblingImpl::waitForBMCSteadyState() const
                 "Waiting up to {TIME} minutes for sibling BMC steady state.",
                 "TIME", timeout.count());
             waiting = true;
+            tracker = std::make_unique<WaitTracker::WaitGuard>(
+                waitTracker, WaitOperation::siblingBMCSteadyState,
+                std::chrono::duration_cast<std::chrono::seconds>(timeout));
         }
 
         co_await sdbusplus::async::sleep_for(ctx, 500ms);
