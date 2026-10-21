@@ -661,13 +661,13 @@ void displayPCIeState()
                    static_cast<bool>(state.redundancyEnabled));
         printParam("Failover In Progress",
                    static_cast<bool>(state.failoverInProgress));
-        printParam("Failovers Allowed",
+        printParam("Host Failovers Allowed",
                    static_cast<bool>(state.failoversAllowed));
 
         // Display raw byte value for debugging
         uint8_t rawByte;
         std::memcpy(&rawByte, &state, sizeof(state));
-        std::println("{:22}0b{:08b} (0x{:02X})", "Raw Byte Value:", rawByte,
+        std::println("{:24}0b{:08b} (0x{:02X})", "Raw Byte Value:", rawByte,
                      rawByte);
 
         std::println();
