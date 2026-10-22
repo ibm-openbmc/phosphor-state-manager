@@ -347,7 +347,7 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved(
         }
         if (std::ranges::contains(interfaces, VersionIntf::interface))
         {
-            redundancy.present = false;
+            version.present = false;
         }
         if (std::ranges::contains(interfaces, BMCStateIntf::interface))
         {
