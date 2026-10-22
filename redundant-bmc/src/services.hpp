@@ -4,6 +4,7 @@
 #include "system_state.hpp"
 
 #include <sdbusplus/async.hpp>
+#include <xyz/openbmc_project/Software/BootSide/common.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
 
@@ -16,6 +17,9 @@ namespace rbmc
 
 using Role =
     sdbusplus::common::xyz::openbmc_project::state::bmc::Redundancy::Role;
+
+using BootSides =
+    sdbusplus::common::xyz::openbmc_project::software::BootSide::BootSides;
 
 /**
  * @brief Predicate function type for aborting wait operations
@@ -102,6 +106,13 @@ class Services
      * @return bool - If paired or not.
      */
     virtual bool getPaired() const = 0;
+
+    /**
+     * @brief Returns this BMC's current boot side
+     *
+     * @return The current boot side, or nullopt if it isn't known (yet).
+     */
+    virtual std::optional<BootSides> getCurrentBootSide() const = 0;
 
     /**
      * @brief Returns an 8 character hash of the FW version

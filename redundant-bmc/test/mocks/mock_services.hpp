@@ -46,6 +46,9 @@ class MockServices : public testing::NiceMock<Services>
 
     MOCK_METHOD(std::string, getFWVersion, (), (const, override));
 
+    MOCK_METHOD(std::optional<BootSides>, getCurrentBootSide, (),
+                (const, override));
+
     MOCK_METHOD(
         sdbusplus::async::task<
             sdbusplus::common::xyz::openbmc_project::state::BMC::BMCState>,
@@ -126,6 +129,9 @@ class MockServices : public testing::NiceMock<Services>
         });
 
         ON_CALL(*this, getFWVersion()).WillByDefault(Return("12345678"));
+
+        ON_CALL(*this, getCurrentBootSide())
+            .WillByDefault(Return(BootSides::Temp));
 
         ON_CALL(*this, waitForSelfPairing()).WillByDefault([]() {
             return test_helpers::makeCompletedTask();

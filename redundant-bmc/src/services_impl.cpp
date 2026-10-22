@@ -15,6 +15,7 @@
 #include <xyz/openbmc_project/Logging/Create/client.hpp>
 #include <xyz/openbmc_project/ObjectMapper/client.hpp>
 #include <xyz/openbmc_project/Software/Activation/client.hpp>
+#include <xyz/openbmc_project/Software/BootSide/client.hpp>
 #include <xyz/openbmc_project/Software/Version/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
 #include <xyz/openbmc_project/State/Boot/Progress/client.hpp>
@@ -42,6 +43,7 @@ using Activation =
 using Version = sdbusplus::client::xyz::openbmc_project::software::Version<>;
 using PeerConnectionStatus = sdbusplus::common::xyz::openbmc_project::
     bmc_pairing::BmcPairing::PeerConnectionStatus;
+using BootSide = sdbusplus::client::xyz::openbmc_project::software::BootSide<>;
 
 using HostProperties =
     std::variant<std::string, HostState::HostState, HostState::RestartCause,
@@ -62,6 +64,7 @@ constexpr auto systemd = "/org/freedesktop/systemd1";
 const std::string hostState = std::string{HostState::namespace_path::value} +
                               '/' + HostState::namespace_path::host + '0';
 constexpr auto software = "/xyz/openbmc_project/software";
+constexpr auto softwareBMC = "/xyz/openbmc_project/software/bmc";
 } // namespace object_path
 
 namespace interface
@@ -77,6 +80,16 @@ constexpr auto systemd = "org.freedesktop.systemd1";
 
 sdbusplus::async::task<> ServicesImpl::init()
 {
+    // This match will be deleted after the boot side is found.
+    currentBootSideMatch = std::make_unique<sdbusplus::bus::match_t>(
+        ctx.get_bus(), rules::interfacesAddedAtPath(object_path::softwareBMC),
+        [this](sdbusplus::message_t&) {
+            if (!currentBootSide.has_value())
+            {
+                this->ctx.spawn(readCurrentBootSide());
+            }
+        });
+
     auto barrier = std::make_shared<sdbusplus::async::barrier>(7);
 
     ctx.spawn(watchHostInterfacesAdded(barrier));
@@ -91,6 +104,7 @@ sdbusplus::async::task<> ServicesImpl::init()
     co_await readHostState();
     co_await readBootProgress();
     co_await readPairingProperties();
+    co_await readCurrentBootSide();
     updateSystemState();
 
     co_await waitForSystemInventoryPath();
@@ -235,6 +249,29 @@ sdbusplus::async::task<> ServicesImpl::readPairingProperties()
     catch (const sdbusplus::exception_t& e)
     {
         // Not on D-Bus yet
+    }
+}
+
+sdbusplus::async::task<> ServicesImpl::readCurrentBootSide()
+{
+    try
+    {
+        auto service = co_await util::getService(ctx, object_path::softwareBMC,
+                                                 BootSide::interface);
+        currentBootSide = co_await BootSide(ctx)
+                              .service(service)
+                              .path(object_path::softwareBMC)
+                              .current_boot_side();
+
+        lg2::info("The current boot side is {SIDE}", "SIDE",
+                  currentBootSide.value());
+
+        currentBootSideMatch.reset();
+    }
+    catch (const sdbusplus::exception_t& e)
+    {
+        lg2::info("Unable to read the current boot side yet: {ERROR}", "ERROR",
+                  e);
     }
 }
 
