@@ -5,6 +5,7 @@
 #include <sdbusplus/async.hpp>
 #include <xyz/openbmc_project/Control/Failover/common.hpp>
 #include <xyz/openbmc_project/Software/Activation/common.hpp>
+#include <xyz/openbmc_project/Software/BootSide/common.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/common.hpp>
 #include <xyz/openbmc_project/State/BMC/common.hpp>
 
@@ -34,6 +35,8 @@ class Sibling
         state::bmc::Redundancy::ReasonForNoRedundancy;
     using Activations = sdbusplus::common::xyz::openbmc_project::software::
         Activation::Activations;
+    using BootSides =
+        sdbusplus::common::xyz::openbmc_project::software::BootSide::BootSides;
     using RedundancyEnabledCallback = std::function<void(bool)>;
     using BMCStateCallback = std::function<void(BMCState)>;
     using HealthCallback = std::function<void(bool)>;
@@ -122,6 +125,13 @@ class Sibling
      * @return - The version, or nullopt if not available
      */
     virtual std::optional<std::string> getFWVersion() const = 0;
+
+    /**
+     * @brief Returns the sibling BMC's current boot side
+     *
+     * @return - The current boot side, or nullopt if not available
+     */
+    virtual std::optional<BootSides> getCurrentBootSide() const = 0;
 
     /**
      * @brief Returns if the sibling has failovers allowed
