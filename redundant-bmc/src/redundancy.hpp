@@ -35,6 +35,7 @@ struct Input
     bool siblingCannotBeActive;
     BMCState siblingState;
     bool codeVersionsMatch;
+    bool currentBootSidesMatch;
     bool manualDisable;
     bool redundancyOffAtRuntimeStart;
     bool syncFailed;

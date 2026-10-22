@@ -63,6 +63,11 @@ ReasonsForNoRedundancy getNoRedundancyReasons(const Input& input)
                 reasons.push_back(CodeVersionMismatch);
             }
 
+            if (!input.currentBootSidesMatch)
+            {
+                reasons.push_back(BootSideMismatch);
+            }
+
             if (!input.peerConnected)
             {
                 reasons.push_back(NetworkError);

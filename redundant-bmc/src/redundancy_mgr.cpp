@@ -176,6 +176,27 @@ redundancy::ReasonsForNoRedundancy RedundancyMgr::getNoRedundancyReasons()
     auto& sibling = providers.getSibling();
     auto& services = providers.getServices();
 
+    const bool bootSidesMatch = [&services, &sibling]() {
+        const auto localBootSide = services.getCurrentBootSide();
+        const auto siblingBootSide = sibling.getCurrentBootSide();
+
+        // For now, don't disable redundancy due to an unknown boot side.
+        if (!localBootSide.has_value() || !siblingBootSide.has_value())
+        {
+            if (sibling.alive())
+            {
+                lg2::warning(
+                    "Both current boot sides aren't available so won't use them "
+                    "when checking redundancy (L={LOCAL} S={SIBLING})",
+                    "LOCAL", localBootSide.has_value(), "SIBLING",
+                    siblingBootSide.has_value());
+            }
+            return true;
+        }
+
+        return *localBootSide == *siblingBootSide;
+    }();
+
     redundancy::Input input{
         .role = redundancyInterface.role(),
         .siblingPresent = sibling.isBMCPresent(),
@@ -187,6 +208,7 @@ redundancy::ReasonsForNoRedundancy RedundancyMgr::getNoRedundancyReasons()
         .siblingState = sibling.getBMCState().value_or(BMCState::NotReady),
         .codeVersionsMatch =
             services.getFWVersion() == sibling.getFWVersion().value_or(""),
+        .currentBootSidesMatch = bootSidesMatch,
         .manualDisable = manualDisable,
         .redundancyOffAtRuntimeStart = isRedundancyOffAtRuntime(),
         .syncFailed = syncFailed,

@@ -19,6 +19,7 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         .siblingCannotBeActive = false,
         .siblingState = rbmc::BMCState::Ready,
         .codeVersionsMatch = true,
+        .currentBootSidesMatch = true,
         .manualDisable = false,
         .redundancyOffAtRuntimeStart = false,
         .syncFailed = false,
@@ -90,6 +91,16 @@ TEST(RedundancyTest, NoRedundancyReasonsTest)
         auto reasons = getNoRedundancyReasons(input);
         ASSERT_EQ(reasons.size(), 1);
         EXPECT_EQ(*reasons.begin(), CodeVersionMismatch);
+    }
+
+    // Current boot sides don't match
+    {
+        auto input = golden;
+        input.currentBootSidesMatch = false;
+
+        auto reasons = getNoRedundancyReasons(input);
+        ASSERT_EQ(reasons.size(), 1);
+        EXPECT_EQ(*reasons.begin(), BootSideMismatch);
     }
 
     // Sibling is in Quiesce state
