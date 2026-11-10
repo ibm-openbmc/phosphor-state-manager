@@ -105,6 +105,7 @@ items to see if redundancy can be enabled:
    so.
 1. The sibling BMC has been paired.
 1. The firmware versions are the same on the BMCs.
+1. The current boot sides (Temp or Perm) are the same on the BMCs.
 1. The network between the BMCs is connected.
 1. If configured for it, the Available property on the passive BMC's parent
    chassis must be true.

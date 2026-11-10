@@ -16,6 +16,7 @@
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/BmcPairing/BmcPairing/client.hpp>
 #include <xyz/openbmc_project/Control/Failover/client.hpp>
+#include <xyz/openbmc_project/Software/BootSide/client.hpp>
 #include <xyz/openbmc_project/Software/Version/client.hpp>
 #include <xyz/openbmc_project/State/BMC/Redundancy/client.hpp>
 #include <xyz/openbmc_project/State/BMC/client.hpp>
@@ -33,6 +34,7 @@ using BMCState = sdbusplus::client::xyz::openbmc_project::state::BMC<>;
 using Role = Redundancy::Role;
 using Failover = sdbusplus::client::xyz::openbmc_project::control::Failover<>;
 using Version = sdbusplus::client::xyz::openbmc_project::software::Version<>;
+using BootSide = sdbusplus::client::xyz::openbmc_project::software::BootSide<>;
 using Pairing =
     sdbusplus::client::xyz::openbmc_project::bmc_pairing::BmcPairing<>;
 using PeerConnectionStatus = sdbusplus::common::xyz::openbmc_project::
@@ -49,6 +51,8 @@ const auto localBMCPath =
 const auto siblingBMCPath =
     sdbusplus::object_path{Redundancy::namespace_path::value} /
     Redundancy::namespace_path::sibling_bmc;
+
+constexpr auto softwareBMCPath = "/xyz/openbmc_project/software/bmc";
 
 template <typename T>
 void printParam(std::string key, const T& value)
@@ -309,6 +313,21 @@ sdbusplus::async::task<> getLocalBMCInfo(sdbusplus::async::context& ctx,
 
         try
         {
+            auto bootSideService = co_await rbmc::util::getService(
+                ctx, softwareBMCPath, BootSide::interface);
+            auto bootSide = co_await BootSide(ctx)
+                                .service(bootSideService)
+                                .path(softwareBMCPath)
+                                .current_boot_side();
+            output["Current Boot Side"] = getPDIEnumString(bootSide);
+        }
+        catch (const std::exception& e)
+        {
+            output["Current Boot Side"] = "Unknown";
+        }
+
+        try
+        {
             auto pairingProps = co_await Pairing(ctx)
                                     .service(pairingService)
                                     .path(Pairing::instance_path)
@@ -421,11 +440,17 @@ sdbusplus::async::task<> getSiblingBMCInfo(sdbusplus::async::context& ctx,
                                 .path(siblingBMCPath.str)
                                 .properties();
 
+        auto bootSide = co_await BootSide(ctx)
+                            .service(siblingService)
+                            .path(siblingBMCPath.str)
+                            .current_boot_side();
+
         output["Redundancy Enabled"] = rProps.redundancy_enabled;
         output["Failovers Allowed"] = rProps.failovers_allowed;
         output["Host Failovers Allowed"] = rProps.host_failovers_allowed;
         output["BMC State"] = getPDIEnumString(state);
         output["FW Version Hash"] = fwVersion;
+        output["Current Boot Side"] = getPDIEnumString(bootSide);
         output["Paired"] = pairingProps.paired;
     }
     catch (const std::exception& e)

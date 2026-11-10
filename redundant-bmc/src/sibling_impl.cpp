@@ -27,6 +27,8 @@ using PairingIntf =
     sdbusplus::common::xyz::openbmc_project::bmc_pairing::BmcPairing;
 using ActivationIntf =
     sdbusplus::common::xyz::openbmc_project::software::Activation;
+using BootSideIntf =
+    sdbusplus::common::xyz::openbmc_project::software::BootSide;
 
 SiblingImpl::SiblingImpl(sdbusplus::async::context& ctx,
                          const RedundantBMCConfig& config, Services& services,
@@ -255,6 +257,17 @@ void SiblingImpl::loadPairingProps(const SiblingImpl::PropertyMap& propertyMap)
     }
 }
 
+void SiblingImpl::loadBootSideProps(const SiblingImpl::PropertyMap& propertyMap)
+{
+    bootSide.present = true;
+
+    auto it = propertyMap.find("CurrentBootSide");
+    if (it != propertyMap.end())
+    {
+        bootSide.side = std::get<BootSides>(it->second);
+    }
+}
+
 void SiblingImpl::loadActivationProps(
     const SiblingImpl::PropertyMap& propertyMap)
 {
@@ -347,7 +360,7 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved(
         }
         if (std::ranges::contains(interfaces, VersionIntf::interface))
         {
-            redundancy.present = false;
+            version.present = false;
         }
         if (std::ranges::contains(interfaces, BMCStateIntf::interface))
         {
@@ -364,6 +377,10 @@ sdbusplus::async::task<> SiblingImpl::watchInterfaceRemoved(
         if (std::ranges::contains(interfaces, ActivationIntf::interface))
         {
             activation.present = false;
+        }
+        if (std::ranges::contains(interfaces, BootSideIntf::interface))
+        {
+            bootSide.present = false;
         }
 
         // If alive before and all interfaces are now gone invoke the callbacks
@@ -479,6 +496,10 @@ void SiblingImpl::loadFromPropertyMap(const std::string& interface,
     else if (interface == ActivationIntf::interface)
     {
         loadActivationProps(propertyMap);
+    }
+    else if (interface == BootSideIntf::interface)
+    {
+        loadBootSideProps(propertyMap);
     }
 }
 

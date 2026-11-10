@@ -118,6 +118,16 @@ class ServicesImpl : public Services
     bool getPaired() const override;
 
     /**
+     * @brief Returns this BMC's current boot side
+     *
+     * @return The current boot side, or nullopt if it isn't known (yet).
+     */
+    std::optional<BootSides> getCurrentBootSide() const override
+    {
+        return currentBootSide;
+    }
+
+    /**
      * @brief Returns an 8 character hash of the FW version
      *
      * It's read out of the VERSION_ID field in /etc/os-release.
@@ -310,6 +320,14 @@ class ServicesImpl : public Services
     void loadPairingProps(const PairingPropMap& propertyMap);
 
     /**
+     * @brief Reads the current boot side and caches it.
+     *
+     * Once there is a value, the InterfacesAdded watch is removed
+     * because the value can't change without a reboot.
+     */
+    sdbusplus::async::task<> readCurrentBootSide();
+
+    /**
      * @brief Starts the PropertiesChanged watch the Activation interface
      *
      * @param[in] barrier - Initialization barrier
@@ -378,6 +396,17 @@ class ServicesImpl : public Services
      * @brief The paired status value
      */
     bool paired{false};
+
+    /**
+     * @brief The current boot side value
+     */
+    std::optional<BootSides> currentBootSide;
+
+    /**
+     * @brief The InterfacesAdded match on the Software.BootSide object
+     *        in case it isn't on D-Bus at startup.
+     */
+    std::unique_ptr<sdbusplus::bus::match_t> currentBootSideMatch;
 
     /**
      * @brief D-Bus path for the Item.System object

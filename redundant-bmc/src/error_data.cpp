@@ -114,6 +114,12 @@ void addSiblingData(const Sibling& sibling, AdditionalData& data)
     {
         data["SibBMCState"] = getPDIEnumString(stateOpt.value());
     }
+
+    auto sideOpt = sibling.getCurrentBootSide();
+    if (sideOpt.has_value())
+    {
+        data["SibCurrentBootSide"] = getPDIEnumString(sideOpt.value());
+    }
 }
 
 void addServicesData(const Services& services, bool isActive,
@@ -132,6 +138,12 @@ void addServicesData(const Services& services, bool isActive,
         {
             data["SysStateError"] = e.what();
         }
+    }
+
+    auto sideOpt = services.getCurrentBootSide();
+    if (sideOpt.has_value())
+    {
+        data["CurrentBootSide"] = getPDIEnumString(sideOpt.value());
     }
 
     auto logs = data::getFailoverLogs(services.getPersistentDataPath(), 0);

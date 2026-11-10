@@ -25,7 +25,8 @@ class SiblingImpl : public Sibling
   public:
     using PropertyVariant =
         std::variant<std::string, bool, Role, size_t, BMCState,
-                     std::vector<ReasonForNoRedundancy>, Activations>;
+                     std::vector<ReasonForNoRedundancy>, Activations,
+                     BootSides>;
     using PropertyMap = std::unordered_map<std::string, PropertyVariant>;
     using InterfaceMap = std::map<std::string, PropertyMap>;
     using ManagedObjects = std::map<sdbusplus::object_path, InterfaceMap>;
@@ -237,6 +238,21 @@ class SiblingImpl : public Sibling
     }
 
     /**
+     * @brief Returns the sibling BMC's current boot side
+     *
+     * @return - The current boot side, or nullopt if not available
+     */
+    std::optional<BootSides> getCurrentBootSide() const override
+    {
+        if (alive())
+        {
+            return bootSide.side;
+        }
+
+        return std::nullopt;
+    }
+
+    /**
      * @brief Returns if the sibling has a code update in progress
      *
      * @return - If in progress, or nullopt if not available
@@ -377,6 +393,13 @@ class SiblingImpl : public Sibling
     void loadPairingProps(const PropertyMap& propertyMap);
 
     /**
+     * @brief Sets BootSide data members with whatever is in the property map
+     *
+     * @param[in] propertyMap - The property name -> value map
+     */
+    void loadBootSideProps(const PropertyMap& propertyMap);
+
+    /**
      * @brief Sets Activation data members with whatever is in the property map
      *
      * @param[in] propertyMap - The property name -> value map
@@ -403,6 +426,7 @@ class SiblingImpl : public Sibling
         availability.present = false;
         pairing.present = false;
         activation.present = false;
+        bootSide.present = false;
     }
 
     /**
@@ -522,6 +546,17 @@ class SiblingImpl : public Sibling
      * @brief Activation presence and value
      */
     Activation activation;
+
+    struct BootSide
+    {
+        bool present = false;
+        BootSides side = BootSides::Temp;
+    };
+
+    /**
+     * @brief Current boot side presence and value.
+     */
+    BootSide bootSide;
 
     /**
      * @brief The D-Bus object path for the sibling.

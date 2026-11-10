@@ -1274,6 +1274,37 @@ TEST_F(ManagerTest, NoCodeUpdate_ErrorLogOnVersionMismatch)
 }
 
 /**
+ * @brief Test: Redundancy disabled due to the current boot sides not matching.
+ */
+TEST_F(ManagerTest, CurrentBootSideMismatch_RedundancyDisabled)
+{
+    TestScenarioConfig config{.bmcPosition = 0, .siblingRole = Role::Passive};
+    setupTestScenario(config);
+
+    auto& services = mockProviders->getMockServices();
+    auto& sibling = mockProviders->getMockSibling();
+
+    setupActiveBMCWithAliveSiblingExpects();
+
+    ON_CALL(services, getCurrentBootSide())
+        .WillByDefault(Return(BootSides::Temp));
+    ON_CALL(sibling, getCurrentBootSide())
+        .WillByDefault(Return(BootSides::Perm));
+
+    // There should be an error log
+    EXPECT_CALL(services, logError(errors::error_msg::noRedundancy,
+                                   errors::Level::Error, _))
+        .Times(1);
+
+    createManagerAndRun(ProgressPoint::activeHandlerStartComplete);
+
+    const auto expectedProps = activeRedundancyDisabledProps(
+        {Redundancy::ReasonForNoRedundancy::BootSideMismatch});
+
+    verifyRedundancyProps(manager->getRedundancyInterface(), expectedProps);
+}
+
+/**
  * @brief Test: Redundancy disabled due to code version mismatch, but a code
  *              update is in progress. The error should not be logged when
  *              CodeVersionMismatch is the sole reason and a code update is

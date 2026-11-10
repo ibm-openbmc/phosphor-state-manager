@@ -36,6 +36,8 @@ class MockSibling : public testing::NiceMock<Sibling>
     MOCK_METHOD(std::optional<bool>, getPaired, (), (const, override));
     MOCK_METHOD(std::optional<std::string>, getFWVersion, (),
                 (const, override));
+    MOCK_METHOD(std::optional<BootSides>, getCurrentBootSide, (),
+                (const, override));
     MOCK_METHOD(std::optional<bool>, getFailoversAllowed, (),
                 (const, override));
     MOCK_METHOD(std::optional<bool>, getHostFailoversAllowed, (),
@@ -112,6 +114,14 @@ class MockSibling : public testing::NiceMock<Sibling>
                 return std::make_optional<std::string>("12345678");
             }
             return std::optional<std::string>{};
+        });
+
+        ON_CALL(*this, getCurrentBootSide()).WillByDefault([this]() {
+            if (this->alive())
+            {
+                return std::make_optional(BootSides::Temp);
+            }
+            return std::optional<BootSides>{};
         });
     }
 
