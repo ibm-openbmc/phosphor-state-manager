@@ -159,6 +159,7 @@ executable(
     'host_state_manager_main.cpp',
     'host_check.cpp',
     dependencies: [
+        CLI11,
         cereal,
         libgpiod,
         phosphordbusinterfaces,
@@ -203,6 +204,7 @@ executable(
     'phosphor-chassis-state-manager',
     chassis_sources,
     dependencies: [
+        CLI11,
         cereal,
         libgpiod,
         nlohmann_json_dep,
@@ -220,7 +222,13 @@ executable(
 executable(
     'phosphor-chassis-check-power-status',
     'chassis_check_power_status.cpp',
-    dependencies: [libgpiod, phosphordbusinterfaces, phosphorlogging, sdbusplus],
+    dependencies: [
+        CLI11,
+        libgpiod,
+        phosphordbusinterfaces,
+        phosphorlogging,
+        sdbusplus,
+    ],
     link_with: [utils_lib],
     implicit_include_directories: true,
     install: true,
@@ -265,7 +273,7 @@ executable(
 executable(
     'phosphor-discover-system-state',
     'discover_system_state.cpp',
-    dependencies: [cereal, libgpiod, phosphorlogging, sdbusplus],
+    dependencies: [CLI11, cereal, libgpiod, phosphorlogging, sdbusplus],
     link_with: [settings_lib, utils_lib],
     implicit_include_directories: true,
     install: true,
@@ -296,7 +304,14 @@ executable(
     'phosphor-scheduled-host-transition',
     'scheduled_host_transition_main.cpp',
     'scheduled_host_transition.cpp',
-    dependencies: [cereal, libgpiod, phosphorlogging, sdbusplus, sdeventplus],
+    dependencies: [
+        CLI11,
+        cereal,
+        libgpiod,
+        phosphorlogging,
+        sdbusplus,
+        sdeventplus,
+    ],
     link_with: [utils_lib],
     implicit_include_directories: true,
     install: true,

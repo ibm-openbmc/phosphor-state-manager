@@ -42,7 +42,7 @@ void BMC::bmcIsQuiesced()
 {
     this->currentBMCState(BMCState::Quiesced);
 
-    // There is no getting out of Quiesced once entered (other then BMC
+    // There is no getting out of Quiesced once entered (other than BMC
     // reboot) so stop watching for signals
     auto method =
         this->bus.new_method_call(SYSTEMD_SERVICE, SYSTEMD_OBJ_PATH,
@@ -81,7 +81,8 @@ std::string BMC::getUnitState(const std::string& unitToCheck)
     {
         // Not all input units will have been loaded yet so just return an
         // empty string if an exception is caught in this path
-        info("Unit {UNIT} not found: {ERROR}", "UNIT", unitToCheck, "ERROR", e);
+        debug("Unit {UNIT} not found: {ERROR}", "UNIT", unitToCheck, "ERROR",
+              e);
         return std::string{};
     }
 
