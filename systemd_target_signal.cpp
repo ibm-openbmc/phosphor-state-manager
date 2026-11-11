@@ -217,11 +217,11 @@ void SystemdTargetLogging::subscribeToSystemdSignals()
         return;
     }
 
+    expandServiceWildcards();
+
     // Call destructor on match callback since application is now subscribed to
     // systemd signals
     this->systemdNameOwnedChangedSignal.~match();
-
-    expandServiceWildcards();
 
     // Now that systemd is available, set up immediate-quiesce monitoring
     initImmediateQuiesceMonitoring();
@@ -359,7 +359,7 @@ void SystemdTargetLogging::initImmediateQuiesceMonitoring()
         // Install a PropertiesChanged match on this unit's
         // org.freedesktop.systemd1.Unit interface
         auto matchRule = sdbusplus::match_rules::propertiesChanged(
-            unitPath.str, SYSTEMD_UNIT_INTERFACE);
+            unitPath.string(), SYSTEMD_UNIT_INTERFACE);
 
         this->immediateQuiesceMatches.emplace_back(
             this->bus, matchRule,
@@ -378,8 +378,8 @@ void SystemdTargetLogging::initImmediateQuiesceMonitoring()
 
         try
         {
-            std::variant<std::string> currentState;
-            this->bus.call(getMethod).read(currentState);
+            auto currentState =
+                this->bus.call(getMethod).unpack<std::variant<std::string>>();
             const auto* stateStr = std::get_if<std::string>(&currentState);
             if (stateStr != nullptr && *stateStr == "failed")
             {

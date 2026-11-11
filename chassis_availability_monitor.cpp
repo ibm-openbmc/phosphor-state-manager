@@ -260,10 +260,10 @@ void ChassisAvailability::setupMonitoringForChassis(int chassisNum)
             substituteChassisNumber(condition.baseObjectPath, chassisNum);
 
         // Subscribe to PropertiesChanged signal
-        auto matchRule = sdbusplus::bus::match::rules::propertiesChanged(
+        auto matchRule = sdbusplus::match_rules::propertiesChanged(
             objectPath, condition.interface);
 
-        auto match = std::make_unique<sdbusplus::bus::match_t>(
+        auto match = std::make_unique<sdbusplus::match>(
             bus, matchRule, [this, chassisNum](sdbusplus::message_t& /*msg*/) {
                 checkAvailability(chassisNum);
             });
@@ -358,10 +358,10 @@ void ChassisAvailability::updateAvailableProperty(int chassisNum,
 
 void ChassisAvailability::subscribeToChassisAdded()
 {
-    auto matchRule = sdbusplus::bus::match::rules::interfacesAdded(
+    auto matchRule = sdbusplus::match_rules::interfacesAdded(
         "/xyz/openbmc_project/inventory");
 
-    chassisAddedMatch = std::make_unique<sdbusplus::bus::match_t>(
+    chassisAddedMatch = std::make_unique<sdbusplus::match>(
         bus, matchRule,
         [this](sdbusplus::message_t& msg) { onChassisAdded(msg); });
 }

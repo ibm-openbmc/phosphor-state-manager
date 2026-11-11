@@ -32,7 +32,7 @@ struct PropertyCondition
 struct ChassisState
 {
     bool available = false;
-    std::vector<std::unique_ptr<sdbusplus::bus::match_t>> propertyMatches;
+    std::vector<std::unique_ptr<sdbusplus::match>> propertyMatches;
 };
 
 /** @class ChassisAvailability
@@ -143,10 +143,10 @@ class ChassisAvailability
     std::map<int, ChassisState> chassisStates;
 
     /** @brief D-Bus signal matches for PropertiesChanged subscriptions */
-    std::vector<std::unique_ptr<sdbusplus::bus::match_t>> propertyMatches;
+    std::vector<std::unique_ptr<sdbusplus::match>> propertyMatches;
 
     /** @brief D-bus signal match for a new added chassis */
-    std::unique_ptr<sdbusplus::bus::match_t> chassisAddedMatch;
+    std::unique_ptr<sdbusplus::match> chassisAddedMatch;
 };
 
 } // namespace phosphor::state::manager

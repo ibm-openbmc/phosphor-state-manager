@@ -52,14 +52,15 @@ void subscribeToSystemdSignals(sdbusplus::bus_t& bus)
     return;
 }
 
-std::string getService(sdbusplus::bus_t& bus, std::string path,
+std::string getService(sdbusplus::bus_t& bus,
+                       const sdbusplus::object_path& path,
                        std::string interface)
 {
     auto mapper = bus.new_method_call(ObjectMapper::default_service,
                                       ObjectMapper::instance_path,
                                       ObjectMapper::interface, "GetObject");
 
-    mapper.append(path, std::vector<std::string>({interface}));
+    mapper.append(path.string(), std::vector<std::string>({interface}));
 
     std::vector<std::pair<std::string, std::vector<std::string>>>
         mapperResponse;
@@ -216,16 +217,17 @@ void createBmcDump(sdbusplus::bus_t& bus,
     using DumpCreate = sdbusplus::client::xyz::openbmc_project::dump::Create<>;
     using DumpIntr = sdbusplus::common::xyz::openbmc_project::dump::Create;
     using CreateParameters = DumpIntr::CreateParameters;
+
     auto dumpPath = sdbusplus::object_path(DumpCreate::namespace_path::value) /
                     DumpCreate::namespace_path::bmc;
 
-    auto method =
-        bus.new_method_call(DumpCreate::default_service, dumpPath.str.c_str(),
-                            DumpCreate::interface, "CreateDump");
+    auto method = bus.new_method_call(
+        DumpCreate::default_service, dumpPath.str.c_str(),
+        DumpCreate::interface, DumpCreate::method_names::create_dump);
 
     // Pass the log entry object path as EventId — the dump manager extracts
     // this into dreport -p, and the dreport metadata plugin uses it to collect
-    // the full error log entry details inside the dump archive.
+    // the full details inside the dump archive.
     std::vector<std::pair<std::string, std::variant<std::string, uint64_t>>>
         params;
     if (!objectPath.str.empty())
